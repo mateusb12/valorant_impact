@@ -2,7 +2,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-page = requests.get("https://rib.gg/series/12728?match=25609")
+page = requests.get("https://runitback.gg/series/12728?match=25608&round=3&tab=round-stats")
 soup = BeautifulSoup(page.content, 'html.parser')
 
 scripts = soup.findAll('script')

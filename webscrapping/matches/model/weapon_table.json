@@ -1,0 +1,86 @@
+{
+	"1": {
+        "name": "Odin",
+		"price": "3200"
+	}, 
+	"2": {
+        "name": "Odin",
+		"price": "3200"
+	}, 
+	"3": {
+        "name": "Ares",
+		"price": "1600"
+	}, 
+	"4": {
+        "name": "Vandal",
+		"price": "2900"
+	}, 
+	"5": {
+        "name": "Bulldog",
+		"price": "2100"
+	}, 
+	"6": {
+        "name": "Phantom",
+		"price": "2900"
+	}, 
+	"7": {
+        "name": "NPE",
+		"price": "0"
+	}, 
+	"8": {
+        "name": "Judge",
+		"price": "1600"
+	}, 
+	"9": {
+        "name": "Bucky",
+		"price": "900"
+	},
+	"10": {
+        "name": "Frenzy",
+		"price": "500"
+	},
+	"11": {
+        "name": "Classic",
+		"price": "0"
+	},
+	"12": {
+        "name": "Ghost",
+		"price": "500"
+	},
+	"13": {
+        "name": "Sheriff",
+		"price": "800"
+	},
+	"14": {
+        "name": "Shorty",
+		"price": "200"
+	},
+	"15": {
+        "name": "Operator",
+		"price": "5000"
+	},
+	"16": {
+        "name": "Guardian",
+		"price": "2400"
+	},
+	"17": {
+        "name": "Marshal",
+		"price": "1000"
+	},
+	"18": {
+        "name": "Spectre",
+		"price": "1600"
+	},
+	"19": {
+        "name": "Stinger",
+		"price": "1100"
+	},	
+	"20": {
+        "name": "KNIFE",
+		"price": "0"
+	},
+	"21": {
+        "name": "GOLDENGUN",
+		"price": "0"
+	}
+}

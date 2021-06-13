@@ -1,5 +1,6 @@
 import datetime
 import json
+import pandas as pd
 
 agent_table = {1: "Breach", 2: "Raze", 3: "Cypher", 4: "Sova", 5: "Killjoy", 6: "Viper",
                7: "Phoenix", 8: "Brimstone", 9: "Sage", 10: "Reyna", 11: "Omen", 12: "Jett",
@@ -30,6 +31,8 @@ class Analyser:
         self.round_events = None
         self.map_id = None
         self.map_name = None
+        self.round_table = None
+        self.reverse_round_table = None
 
     def set_config(self, **kwargs):
         self.chosen_map = kwargs["map"]
@@ -39,6 +42,8 @@ class Analyser:
         self.current_status = self.generate_player_table()
         self.map_id = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
         self.map_name = self.maps_data[str(self.map_id)]
+        self.round_table = self.get_round_table()
+        self.reverse_round_table = self.get_reverse_round_table()
 
     def get_plant_timestamp(self):
         for h in self.round_events.values():
@@ -69,15 +74,16 @@ class Analyser:
         return player_dict
 
     def get_round_events(self) -> dict:
-        round_report = {}
-        for m in self.data["matches"]["matchDetails"]["events"]:
-            if m["roundId"] == self.chosen_round:
-                print(m)
-                round_report[m["roundTimeMillis"]] = {"round_number": m["roundNumber"],
-                                                      "victim": m["referencePlayerId"],
-                                                      "event": m["eventType"],
-                                                      "timing": m["roundTimeMillis"]}
-        return round_report
+        return {
+            m["roundTimeMillis"]: {
+                "round_number": m["roundNumber"],
+                "victim": m["referencePlayerId"],
+                "event": m["eventType"],
+                "timing": m["roundTimeMillis"],
+            }
+            for m in self.data["matches"]["matchDetails"]["events"]
+            if m["roundId"] == self.chosen_round
+        }
 
     def get_round_winner(self) -> int:
         for q in self.data["series"]["seriesById"]["matches"][self.chosen_map]["rounds"]:
@@ -86,6 +92,11 @@ class Analyser:
                     return 1
                 else:
                     return 0
+
+    def get_valid_maps(self) -> dict:
+        match_list = enumerate(self.data["series"]["seriesById"]["matches"])
+
+        return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
 
     def generate_single_event(self, **kwargs):
         player_table = self.current_status
@@ -130,8 +141,9 @@ class Analyser:
         if "winner" in kwargs:
             round_winner = kwargs["winner"]
 
-        return (self.chosen_round, round_millis, atk_gun_price, def_gun_price, atk_alive, def_alive,
-                def_has_operator, def_has_odin, spike_1beep, spike_2beep, self.map_name["name"], self.match_id,
+        return (self.chosen_round, self.reverse_round_table[self.chosen_round], round_millis, atk_gun_price,
+                def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin, spike_1beep, spike_2beep,
+                self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
     @staticmethod
@@ -147,26 +159,59 @@ class Analyser:
     def generate_full_round(self) -> list:
         plant = self.get_plant_timestamp()
         round_winner = self.get_round_winner()
-        first_round = self.generate_single_event(timestamp=0, winner=round_winner)
+        first_round = self.generate_single_event(timestamp=0, winner=round_winner, first=True)
         round_array = [first_round]
+        self.round_events = self.get_round_events()
         for key, value in self.round_events.items():
-            beep_table = self.evaluate_spike_beeps(key, plant)
+            timestamp = value["timing"]
             situation = self.current_status
             if value["victim"] is not None:
                 self.current_status[value["victim"]]["alive"] = False
+            if value["event"] == "revival":
+                self.current_status[value["victim"]]["alive"] = True
             event = self.generate_single_event(timestamp=key, winner=round_winner)
             round_array.append(event)
         return round_array
 
+    def get_round_table(self) -> dict:
+        return {
+            round_data["number"]: round_data["id"]
+            for round_data in self.data["series"]["seriesById"]["matches"][
+                self.chosen_map
+            ]["rounds"]
+        }
 
-a = Analyser("script_a.json")
-a.set_config(map=0, round=401753)
-r1 = a.generate_full_round()
+    def get_reverse_round_table(self) -> dict:
+        return {
+            round_data["id"]: round_data["number"]
+            for round_data in self.data["series"]["seriesById"]["matches"][
+                self.chosen_map
+            ]["rounds"]
+        }
 
-## COLOCAR RESS!! ROUND 401754 É UM ROUND COM SAGE RESSANDO
-a.set_config(map=0, round=401754)
-r2 = a.generate_full_round()
+    def generate_map_metrics(self) -> list:
+        map_events = []
+        round_table = self.get_round_table()
+        for i in round_table.values():
+            self.set_config(map=self.chosen_map, round=i)
+            map_events += self.generate_full_round()
+        return map_events
 
-apple = 5 + 3
+    def get_first_round(self) -> list:
+        return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
 
+match_id = 25608
+a = Analyser("{}.json".format(match_id))
+vv = a.get_valid_maps()
+map_index = a.get_valid_maps()[match_id]
+r = a.get_first_round()
+
+a.set_config(map=map_index, round=r)
+report = a.generate_map_metrics()
+df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
+                                   'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
+                                   'Spike_1_beep', 'Spike_2_beep',
+                                   'MapName', 'MatchID', 'SeriesID', 'bestOF',
+                                   'FinalWinner'])
+print(df)

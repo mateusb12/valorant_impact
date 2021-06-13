@@ -11,7 +11,7 @@ begin_time = datetime.datetime.now()
 
 class Analyser:
     def __init__(self, input_file: str):
-        data_file = open('matches/{}'.format(input_file))
+        data_file = open('matches/json/{}'.format(input_file))
         self.data = json.load(data_file)
 
         weapon_file = open('matches/model/weapon_table.json')
@@ -203,18 +203,27 @@ class Analyser:
     def get_first_round(self) -> list:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
+    def export_single_map(self, input_match_id: int):
+        vm = self.get_valid_maps()
+        map_index = vm[input_match_id]
+        r = self.get_first_round()
+        self.set_config(map=map_index, round=r)
+        report = self.generate_map_metrics()
+        df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
+                                           'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
+                                           'Spike_1_beep', 'Spike_2_beep',
+                                           'MapName', 'MatchID', 'SeriesID', 'bestOF',
+                                           'FinalWinner'])
+        df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
-match_id = 25661
-a = Analyser("{}.json".format(match_id))
-vv = a.get_valid_maps()
-map_index = a.get_valid_maps()[match_id]
-r = a.get_first_round()
 
-a.set_config(map=map_index, round=r)
-report = a.generate_map_metrics()
-df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
-                                   'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                   'Spike_1_beep', 'Spike_2_beep',
-                                   'MapName', 'MatchID', 'SeriesID', 'bestOF',
-                                   'FinalWinner'])
-df.to_csv(r'matches\exports\{}.csv'.format(match_id), index=False)
+match_db = pd.read_csv("matches/events/502_links.csv")
+for i in match_db.iterrows():
+    match_id = i[1]["match_ID"]
+    match_link = i[1]["match_link"]
+    print("ID → {}".format(match_id))
+    a = Analyser("{}.json".format(match_id))
+    a.export_single_map(match_id)
+
+
+

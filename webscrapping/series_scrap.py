@@ -1,6 +1,8 @@
 import json
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
+import csv
 
 
 # page = requests.get("https://runitback.gg/series/12728?match=25608&round=3&tab=round-stats")
@@ -32,8 +34,25 @@ class RIBScrapper:
     def scrap_match_link(link: str) -> str:
         return link.split("/")[-1].split("?")[-1].split("&")[0].split("=")[-1]
 
+    @staticmethod
+    def generate_links(event_id: int):
+        df = pd.read_csv('matches/rib/events/{}.csv'.format(event_id))
+        df_ids = df[["Series Id", "Match Id"]]
+        link_dict = {}
+        for i in df_ids.iterrows():
+            series_id = i[1]["Series Id"]
+            match_id = i[1]["Match Id"]
+            final_link = "https://runitback.gg/series/{}?match={}&round=1&tab=round-stats".format(
+                series_id, match_id)
+            link_dict[match_id] = final_link
+        with open('matches/rib/events/{}_links.csv'.format(event_id), 'w') as f:
+            f.write("match_ID,match_link\n")
+            [f.write('{0},{1}\n'.format(key, value)) for key, value in link_dict.items()]
+
 
 # il = "https://runitback.gg/series/12728?match=25609&round=1&tab=replay"
 il = "https://runitback.gg/series/12751?match=25661&round=1&tab=replay"
 rb = RIBScrapper()
 rb.export_json(il)
+
+rb.generate_links(502)

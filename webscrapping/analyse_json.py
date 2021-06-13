@@ -112,7 +112,10 @@ class Analyser:
         for key, value in player_table.items():
             if value["alive"]:
                 weapon_id = str(value["weaponId"])
-                weapon_tuple = self.weapon_data[weapon_id]
+                if weapon_id != 'None':
+                    weapon_tuple = self.weapon_data[weapon_id]
+                else:
+                    weapon_tuple = {'name': 'None', 'price': 0}
                 weapon_price = weapon_tuple["price"]
                 if value["attacking_side"]:
                     atk_gun_price += int(weapon_price)
@@ -201,7 +204,7 @@ class Analyser:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
 
-match_id = 25608
+match_id = 25661
 a = Analyser("{}.json".format(match_id))
 vv = a.get_valid_maps()
 map_index = a.get_valid_maps()[match_id]
@@ -214,4 +217,4 @@ df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_w
                                    'Spike_1_beep', 'Spike_2_beep',
                                    'MapName', 'MatchID', 'SeriesID', 'bestOF',
                                    'FinalWinner'])
-print(df)
+df.to_csv(r'matches\exports\{}.csv'.format(match_id), index=False)

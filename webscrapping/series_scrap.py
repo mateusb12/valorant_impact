@@ -57,6 +57,8 @@ class RIBScrapper:
 # il = "https://runitback.gg/series/12751?match=25661&round=1&tab=replay"
 rb = RIBScrapper()
 
+rb.export_json("https://runitback.gg/series/12751?match=25661&round=18&tab=replay")
+
 # rb.generate_links("na.csv")
 
 # match_db = pd.read_csv("matches/events/na_links.csv")

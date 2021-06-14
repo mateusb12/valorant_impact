@@ -48,6 +48,16 @@ class Analyser:
         self.round_table = self.get_round_table()
         self.reverse_round_table = self.get_reverse_round_table()
 
+        round_pos = self.reverse_round_table[self.chosen_round]
+        old_attack = self.attacking_team
+        new_attack = 0
+        if old_attack == 1:
+            new_attack = 2
+        elif old_attack == 2:
+            new_attack = 1
+        if round_pos >= 13:
+            self.attacking_team = new_attack
+
     def get_plant_timestamp(self):
         for h in self.round_events.values():
             if h["event"] == "plant":
@@ -72,6 +82,7 @@ class Analyser:
                        "shieldId": i["armorId"],
                        "loadoutValue": i["loadoutValue"],
                        "attacking_side": ign_table[player_id]["team_number"] == self.attacking_team,
+                       "team_number": ign_table[player_id]["team_number"],
                        "alive": True}
                 player_dict[player_id] = aux
         return player_dict
@@ -166,6 +177,7 @@ class Analyser:
 
     def generate_full_round(self) -> list:
         plant = self.get_plant_timestamp()
+        self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
         first_round = self.generate_single_event(timestamp=0, winner=round_winner, first=True)
         round_array = [first_round]
@@ -230,7 +242,6 @@ class Analyser:
 #     print(i)
 #     a = Analyser("{}.json".format(i))
 #     a.export_single_map(i)
-
 
 def merge_csv():
     folder = "matches/exports"

@@ -153,10 +153,12 @@ class Analyser:
                 self.event_id, self.best_of, round_winner)
 
     @staticmethod
-    def evaluate_spike_beeps(current_stamp: int, spike_stamp: int):
+    def evaluate_spike_beeps(current_stamp: int, spike_stamp: int) -> dict:
+        if spike_stamp is None:
+            return {"1beep": 0, "2beep": 0}
         if current_stamp <= spike_stamp:
             return {"1beep": 0, "2beep": 0}
-        running_time = spike_stamp - current_stamp
+        running_time = current_stamp - spike_stamp
         if 0 < running_time <= 25000:
             return {"1beep": 1, "2beep": 0}
         if running_time > 25000:
@@ -175,7 +177,8 @@ class Analyser:
                 self.current_status[value["victim"]]["alive"] = False
             if value["event"] == "revival":
                 self.current_status[value["victim"]]["alive"] = True
-            event = self.generate_single_event(timestamp=key, winner=round_winner)
+            beep_table = self.evaluate_spike_beeps(timestamp, plant)
+            event = self.generate_single_event(timestamp=key, winner=round_winner, beeps=beep_table)
             round_array.append(event)
         return round_array
 
@@ -220,31 +223,22 @@ class Analyser:
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
 
-# match_db = pd.read_csv("matches/events/502_links.csv")
-# for i in match_db.iterrows():
-#     match_id = i[1]["match_ID"]
-#     match_link = i[1]["match_link"]
-#     print("ID → {}".format(match_id))
-#     a = Analyser("{}.json".format(match_id))
-#     a.export_single_map(match_id)
-
 # file_list = os.listdir('matches/json')
 # match_list = [int(x[:-5]) for x in file_list]
-#
 #
 # for i in match_list:
 #     print(i)
 #     a = Analyser("{}.json".format(i))
 #     a.export_single_map(i)
 
+
 def merge_csv():
     folder = "matches/exports"
     os.chdir(folder)
     extension = 'csv'
-    all_filenames = [i for i in glob.glob('*.{}'.format(extension))]
+    all_filenames = [file for file in glob.glob('*.{}'.format(extension))]
     combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
     combined_csv.to_csv("combined_csv.csv", index=False, encoding='utf-8-sig')
     print('done!')
 
-
-
+merge_csv()

@@ -1,4 +1,6 @@
 import json
+import os
+
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -55,11 +57,11 @@ class RIBScrapper:
 # il = "https://runitback.gg/series/12751?match=25661&round=1&tab=replay"
 rb = RIBScrapper()
 
-# rb.generate_links("502.csv")
+# rb.generate_links("na.csv")
 
-match_db = pd.read_csv("matches/events/502_links.csv")
-for i in match_db.iterrows():
-    match_id = i[1]["match_ID"]
-    match_link = i[1]["match_link"]
-    print("ID → {}".format(match_id))
-    rb.export_json(match_link)
+# match_db = pd.read_csv("matches/events/na_links.csv")
+# for i in match_db.iterrows():
+#     match_id = i[1]["match_ID"]
+#     match_link = i[1]["match_link"]
+#     print("ID → {}".format(match_id))
+#     rb.export_json(match_link)

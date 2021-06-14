@@ -1,5 +1,8 @@
 import datetime
+import glob
 import json
+import os
+
 import pandas as pd
 
 agent_table = {1: "Breach", 2: "Raze", 3: "Cypher", 4: "Sova", 5: "Killjoy", 6: "Viper",
@@ -217,13 +220,31 @@ class Analyser:
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
 
-match_db = pd.read_csv("matches/events/502_links.csv")
-for i in match_db.iterrows():
-    match_id = i[1]["match_ID"]
-    match_link = i[1]["match_link"]
-    print("ID → {}".format(match_id))
-    a = Analyser("{}.json".format(match_id))
-    a.export_single_map(match_id)
+# match_db = pd.read_csv("matches/events/502_links.csv")
+# for i in match_db.iterrows():
+#     match_id = i[1]["match_ID"]
+#     match_link = i[1]["match_link"]
+#     print("ID → {}".format(match_id))
+#     a = Analyser("{}.json".format(match_id))
+#     a.export_single_map(match_id)
+
+# file_list = os.listdir('matches/json')
+# match_list = [int(x[:-5]) for x in file_list]
+#
+#
+# for i in match_list:
+#     print(i)
+#     a = Analyser("{}.json".format(i))
+#     a.export_single_map(i)
+
+def merge_csv():
+    folder = "matches/exports"
+    os.chdir(folder)
+    extension = 'csv'
+    all_filenames = [i for i in glob.glob('*.{}'.format(extension))]
+    combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+    combined_csv.to_csv("combined_csv.csv", index=False, encoding='utf-8-sig')
+    print('done!')
 
 
 

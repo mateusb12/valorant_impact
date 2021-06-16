@@ -2,6 +2,7 @@ import datetime
 import glob
 import json
 import os
+from typing import Tuple
 
 import pandas as pd
 
@@ -23,9 +24,9 @@ class Analyser:
         maps_file = open('matches/model/map_table.json')
         self.maps_data = json.load(maps_file)
 
-        self.match_id = self.data["series"]["seriesById"]["id"]
-        self.event_id = self.data["series"]["seriesById"]["eventId"]
-        self.best_of = self.data["series"]["seriesById"]["bestOf"]
+        self.match_id: int = self.data["series"]["seriesById"]["id"]
+        self.event_id: int = self.data["series"]["seriesById"]["eventId"]
+        self.best_of: int = self.data["series"]["seriesById"]["bestOf"]
 
         self.attacking_team = None
         self.current_status = None
@@ -38,15 +39,16 @@ class Analyser:
         self.reverse_round_table = None
 
     def set_config(self, **kwargs):
-        self.chosen_map = kwargs["map"]
-        self.chosen_round = kwargs["round"]
-        self.attacking_team = self.data["series"]["seriesById"]["matches"][self.chosen_map]["attackingFirstTeamNumber"]
+        self.chosen_map: str = kwargs["map"]
+        self.chosen_round: int = kwargs["round"]
+        self.attacking_team: int = self.data["series"]["seriesById"]["matches"][self.chosen_map][
+            "attackingFirstTeamNumber"]
         self.round_events = self.get_round_events()
-        self.current_status = self.generate_player_table()
-        self.map_id = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
-        self.map_name = self.maps_data[str(self.map_id)]
-        self.round_table = self.get_round_table()
-        self.reverse_round_table = self.get_reverse_round_table()
+        self.current_status: dict = self.generate_player_table()
+        self.map_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
+        self.map_name: str = self.maps_data[str(self.map_id)]
+        self.round_table: dict = self.get_round_table()
+        self.reverse_round_table: dict = self.get_reverse_round_table()
 
         round_pos = self.reverse_round_table[self.chosen_round]
         old_attack = self.attacking_team
@@ -112,16 +114,31 @@ class Analyser:
 
         return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
 
+    @staticmethod
+    def generate_spike_timings(round_millis: int, plant_millis: int) -> Tuple:
+        if (
+                plant_millis is not None
+                and round_millis <= plant_millis
+                or plant_millis is None
+        ):
+            regular_time = round_millis
+            spike_time = 0
+        else:
+            regular_time = 0
+            spike_time = round_millis - plant_millis
+
+        def round_func(x):
+            return int(round(x / 1000))
+
+        regular_time = round_func(regular_time)
+        spike_time = round_func(spike_time)
+        return regular_time, spike_time
+
     def generate_single_event(self, **kwargs):
         player_table = self.current_status
-
-        atk_gun_price = 0
-        def_gun_price = 0
-        atk_alive = 0
-        def_alive = 0
-        def_has_operator = 0
-        def_has_odin = 0
+        atk_gun_price, def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin = (0, 0, 0, 0, 0, 0)
         round_millis = kwargs["timestamp"]
+        plant_millis = kwargs["plant"]
 
         for key, value in player_table.items():
             if value["alive"]:
@@ -145,21 +162,15 @@ class Analyser:
         atk_gun_price /= 5
         def_gun_price /= 5
 
-        spike_1beep = 0
-        spike_2beep = 0
+        regular_time, spike_time = self.generate_spike_timings(round_millis, plant_millis)
 
         round_winner = None
-
-        if "beeps" in kwargs:
-            beep_dict = kwargs["beeps"]
-            spike_1beep = beep_dict["1beep"]
-            spike_2beep = beep_dict["2beep"]
-
         if "winner" in kwargs:
             round_winner = kwargs["winner"]
 
         return (self.chosen_round, self.reverse_round_table[self.chosen_round], round_millis, atk_gun_price,
-                def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin, spike_1beep, spike_2beep,
+                def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin,
+                regular_time, spike_time,
                 self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
@@ -179,7 +190,7 @@ class Analyser:
         plant = self.get_plant_timestamp()
         self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
-        first_round = self.generate_single_event(timestamp=0, winner=round_winner, first=True)
+        first_round = self.generate_single_event(timestamp=0, winner=round_winner, plant=plant)
         round_array = [first_round]
         self.round_events = self.get_round_events()
         for key, value in self.round_events.items():
@@ -190,7 +201,8 @@ class Analyser:
             if value["event"] == "revival":
                 self.current_status[value["victim"]]["alive"] = True
             beep_table = self.evaluate_spike_beeps(timestamp, plant)
-            event = self.generate_single_event(timestamp=key, winner=round_winner, beeps=beep_table)
+            event = self.generate_single_event(timestamp=key, winner=round_winner,
+                                               beeps=beep_table, plant=plant)
             round_array.append(event)
         return round_array
 
@@ -229,27 +241,51 @@ class Analyser:
         report = self.generate_map_metrics()
         df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
                                            'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                           'Spike_1_beep', 'Spike_2_beep',
+                                           'RegularTime', 'SpikeTime',
                                            'MapName', 'MatchID', 'SeriesID', 'bestOF',
                                            'FinalWinner'])
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
+    def export_df(self, input_match_id: int):
+        vm = self.get_valid_maps()
+        map_index = vm[input_match_id]
+        r = self.get_first_round()
+        self.set_config(map=map_index, round=r)
+        report = self.generate_map_metrics()
+        return pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
+                                             'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
+                                             'RegularTime', 'SpikeTime',
+                                             'MapName', 'MatchID', 'SeriesID', 'bestOF',
+                                             'FinalWinner'])
 
-# file_list = os.listdir('matches/json')
-# match_list = [int(x[:-5]) for x in file_list]
+
+# a = Analyser("25645.json")
+# a.set_config(map=0, round=402114)
+# q = a.generate_full_round()
+# a.export_single_map(25645)
+# apple = 5 + 3
+
+file_list = os.listdir('matches/json')
+match_list = [int(x[:-5]) for x in file_list]
+
+df_list = []
+
+for i in match_list:
+    print(i)
+    a = Analyser("{}.json".format(i))
+    df_list.append(a.export_df(i))
+
+merged = pd.concat(df_list)
+merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
+
+# def merge_csv():
+#     folder = "matches/exports"
+#     os.chdir(folder)
+#     extension = 'csv'
+#     all_filenames = [file for file in glob.glob('*.{}'.format(extension))]
+#     combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+#     combined_csv.to_csv("combined_csv.csv", index=False, encoding='utf-8-sig')
+#     print('done!')
 #
-# for i in match_list:
-#     print(i)
-#     a = Analyser("{}.json".format(i))
-#     a.export_single_map(i)
-
-def merge_csv():
-    folder = "matches/exports"
-    os.chdir(folder)
-    extension = 'csv'
-    all_filenames = [file for file in glob.glob('*.{}'.format(extension))]
-    combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
-    combined_csv.to_csv("combined_csv.csv", index=False, encoding='utf-8-sig')
-    print('done!')
-
-merge_csv()
+#
+# merge_csv()

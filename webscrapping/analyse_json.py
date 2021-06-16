@@ -23,9 +23,6 @@ class Analyser:
 
         maps_file = open('matches/model/map_table.json')
         self.maps_data = json.load(maps_file)
-
-        self.match_id: int = self.data["series"]["seriesById"]["id"]
-        self.event_id: int = self.data["series"]["seriesById"]["eventId"]
         self.best_of: int = self.data["series"]["seriesById"]["bestOf"]
 
         self.attacking_team = None
@@ -37,6 +34,8 @@ class Analyser:
         self.map_name = None
         self.round_table = None
         self.reverse_round_table = None
+        self.match_id = None
+        self.event_id = None
 
     def set_config(self, **kwargs):
         self.chosen_map: str = kwargs["map"]
@@ -46,6 +45,8 @@ class Analyser:
         self.round_events = self.get_round_events()
         self.current_status: dict = self.generate_player_table()
         self.map_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
+        self.match_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["id"]
+        self.event_id: int = self.data["series"]["seriesById"]["id"]
         self.map_name: str = self.maps_data[str(self.map_id)]
         self.round_table: dict = self.get_round_table()
         self.reverse_round_table: dict = self.get_reverse_round_table()

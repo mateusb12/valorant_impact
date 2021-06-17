@@ -4,8 +4,6 @@ import lightgbm
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-
-
 path = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\'
 df = pd.read_csv('{}combined_csv.csv'.format(path))
 df = pd.get_dummies(df, columns=['MapName'])
@@ -24,7 +22,11 @@ model = lightgbm.LGBMClassifier(bagging_freq=params["bagging_freq"], min_data_in
                                 min_sum_hessian_in_leaf=params["min_sum_hessian_in_leaf"])
 model.fit(X_train, Y_train)
 
-df = pd.read_csv('{}combined_csv.csv'.format(path))
+match = 26423
+series = 13188
+
+path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\exports\\'
+df = pd.read_csv('{}{}.csv'.format(path2,match))
 
 
 class RoundReplay:
@@ -86,10 +88,11 @@ class RoundReplay:
             current_time = i[1].RegularTime
             next_time = tuple(rdf["RegularTime"].loc[[current_index + 1]])[0]
             if current_time != 0 and next_time == 0:
-                return round(tuple(rdf["RoundTime"].loc[[current_index + 1]])[0] / 1000, 0)
+                bomb = rdf["RoundTime"].loc[[current_index]]
+                return round(tuple(bomb)[0] / 1000, 0)
         return None
 
 
-rr = RoundReplay(25609)
-q = rr.get_plant_stamp(13)
+rr = RoundReplay(26423)
+q = rr.get_plant_stamp(6)
 apple = 5 + 3

@@ -15,6 +15,11 @@ begin_time = datetime.datetime.now()
 
 class Analyser:
     def __init__(self, input_file: str):
+
+        current_folder = os.getcwd().split("\\")[-1]
+        if current_folder == "Classification_datascience":
+            os.chdir("webscrapping")
+
         data_file = open('matches/json/{}'.format(input_file))
         self.data = json.load(data_file)
 
@@ -260,11 +265,11 @@ class Analyser:
                                              'FinalWinner'])
 
 
-a = Analyser("25645.json")
-a.set_config(map=0, round=402119)
-q = a.generate_full_round()
-a.export_single_map(25645)
-apple = 5 + 3
+# a = Analyser("25645.json")
+# a.set_config(map=0, round=402119)
+# q = a.generate_full_round()
+# a.export_single_map(25645)
+# apple = 5 + 3
 
 # file_list = os.listdir('matches/json')
 # match_list = [int(x[:-5]) for x in file_list]

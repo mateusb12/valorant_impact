@@ -4,6 +4,8 @@ import lightgbm
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+
+
 path = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\'
 df = pd.read_csv('{}combined_csv.csv'.format(path))
 df = pd.get_dummies(df, columns=['MapName'])
@@ -75,6 +77,19 @@ class RoundReplay:
         ax.grid(linewidth=1, color='white', zorder=0)
         plt.title("Attacking win probability over time")
 
+    def get_plant_stamp(self, round_number: int) -> int or None:
+        rdf = self.get_round_dataframe(round_number)
+        if max(rdf.SpikeTime) == 0:
+            return None
+        for i in rdf.iterrows():
+            current_index = i[0]
+            current_time = i[1].RegularTime
+            next_time = tuple(rdf["RegularTime"].loc[[current_index + 1]])[0]
+            if current_time != 0 and next_time == 0:
+                return round(tuple(rdf["RoundTime"].loc[[current_index + 1]])[0] / 1000, 0)
+        return None
 
-rr = RoundReplay(25645)
-print(rr.get_attacking_probabilities())
+
+rr = RoundReplay(25609)
+q = rr.get_plant_stamp(13)
+apple = 5 + 3

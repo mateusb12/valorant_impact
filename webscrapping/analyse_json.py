@@ -260,24 +260,24 @@ class Analyser:
                                              'FinalWinner'])
 
 
-# a = Analyser("25645.json")
-# a.set_config(map=0, round=402114)
-# q = a.generate_full_round()
-# a.export_single_map(25645)
-# apple = 5 + 3
+a = Analyser("25645.json")
+a.set_config(map=0, round=402119)
+q = a.generate_full_round()
+a.export_single_map(25645)
+apple = 5 + 3
 
-file_list = os.listdir('matches/json')
-match_list = [int(x[:-5]) for x in file_list]
-
-df_list = []
-
-for i in match_list:
-    print(i)
-    a = Analyser("{}.json".format(i))
-    df_list.append(a.export_df(i))
-
-merged = pd.concat(df_list)
-merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
+# file_list = os.listdir('matches/json')
+# match_list = [int(x[:-5]) for x in file_list]
+#
+# df_list = []
+#
+# for i in match_list:
+#     print(i)
+#     a = Analyser("{}.json".format(i))
+#     df_list.append(a.export_df(i))
+#
+# merged = pd.concat(df_list)
+# merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
 
 # def merge_csv():
 #     folder = "matches/exports"

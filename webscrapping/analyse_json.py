@@ -89,6 +89,8 @@ class Analyser:
                        "weaponId": i["weaponId"],
                        "shieldId": i["armorId"],
                        "loadoutValue": i["loadoutValue"],
+                       "spentCreds": i["spentCreds"],
+                       "remainingCreds": i["remainingCreds"],
                        "attacking_side": ign_table[player_id]["team_number"] == self.attacking_team,
                        "team_number": ign_table[player_id]["team_number"],
                        "alive": True}
@@ -141,29 +143,46 @@ class Analyser:
         return regular_time, spike_time
 
     def generate_single_event(self, **kwargs):
-        player_table = self.current_status
+        player_table: dict = self.current_status
         atk_gun_price, def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin = (0, 0, 0, 0, 0, 0)
-        round_millis = kwargs["timestamp"]
-        plant_millis = kwargs["plant"]
+        atk_bank, def_bank = (0, 0)
+        round_millis: int = kwargs["timestamp"]
+        plant_millis: int = kwargs["plant"]
+        agent_types = {'initiator': (1, 4, 13), 'duelist': (2, 7, 10, 12, 14),
+                       'sentinel': (3, 5, 9), 'controller': (6, 8, 11, 15)}
+        atk_alive_type = {'initiator': 0, 'duelist': 0,
+                          'sentinel': 0, 'controller': 0}
+        def_alive_type = {'initiator': 0, 'duelist': 0,
+                          'sentinel': 0, 'controller': 0}
 
         for key, value in player_table.items():
             if value["alive"]:
-                weapon_id = str(value["weaponId"])
+                weapon_id: str = str(value["weaponId"])
                 if weapon_id != 'None':
-                    weapon_tuple = self.weapon_data[weapon_id]
+                    weapon_tuple: dict = self.weapon_data[weapon_id]
                 else:
-                    weapon_tuple = {'name': 'None', 'price': 0}
-                weapon_price = weapon_tuple["price"]
+                    weapon_tuple: dict = {'name': 'None', 'price': 0}
+                weapon_price: str = weapon_tuple["price"]
                 if value["attacking_side"]:
                     atk_gun_price += int(weapon_price)
                     atk_alive += 1
+                    for archetype, agent_ids in agent_types.items():
+                        if value['agentId'] in agent_ids:
+                            atk_alive_type[archetype] += 1
                 else:
                     def_gun_price += int(weapon_price)
                     def_alive += 1
+                    for archetype, agent_ids in agent_types.items():
+                        if value['agentId'] in agent_ids:
+                            def_alive_type[archetype] += 1
                     if weapon_id == "15":
                         def_has_operator = 1
                     elif weapon_id == "2":
                         def_has_odin = 1
+            if value["attacking_side"]:
+                atk_bank += value["remainingCreds"]
+            else:
+                def_bank += value["remainingCreds"]
 
         atk_gun_price /= 5
         def_gun_price /= 5
@@ -176,7 +195,7 @@ class Analyser:
 
         return (self.chosen_round, self.reverse_round_table[self.chosen_round], round_millis, atk_gun_price,
                 def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin,
-                regular_time, spike_time,
+                regular_time, spike_time, atk_bank, def_bank,
                 self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
@@ -247,7 +266,7 @@ class Analyser:
         report = self.generate_map_metrics()
         df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
                                            'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                           'RegularTime', 'SpikeTime',
+                                           'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
                                            'MapName', 'MatchID', 'SeriesID', 'bestOF',
                                            'FinalWinner'])
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
@@ -260,29 +279,33 @@ class Analyser:
         report = self.generate_map_metrics()
         return pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
                                              'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                             'RegularTime', 'SpikeTime',
+                                             'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
                                              'MapName', 'MatchID', 'SeriesID', 'bestOF',
                                              'FinalWinner'])
 
 
-# a = Analyser("25645.json")
-# a.set_config(map=0, round=402119)
+# a = Analyser("26426.json")
+# a.set_config(map=1, round=414368)
 # q = a.generate_full_round()
-# a.export_single_map(25645)
+# a.export_single_map(26426)
 # apple = 5 + 3
 
-# file_list = os.listdir('matches/json')
-# match_list = [int(x[:-5]) for x in file_list]
-#
-# df_list = []
-#
-# for i in match_list:
-#     print(i)
-#     a = Analyser("{}.json".format(i))
-#     df_list.append(a.export_df(i))
-#
-# merged = pd.concat(df_list)
-# merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
+def merge_all_csv():
+    file_list = os.listdir('matches/json')
+    match_list = [int(x[:-5]) for x in file_list]
+
+    df_list = []
+
+    for i in match_list:
+        print(i)
+        a = Analyser("{}.json".format(i))
+        df_list.append(a.export_df(i))
+
+    merged = pd.concat(df_list)
+    merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
+
+
+# merge_all_csv()
 
 # def merge_csv():
 #     folder = "matches/exports"

@@ -2,7 +2,7 @@ import datetime
 import glob
 import json
 import os
-from typing import Tuple
+from typing import Tuple, List
 
 import pandas as pd
 
@@ -150,10 +150,8 @@ class Analyser:
         plant_millis: int = kwargs["plant"]
         agent_types = {'initiator': (1, 4, 13), 'duelist': (2, 7, 10, 12, 14),
                        'sentinel': (3, 5, 9), 'controller': (6, 8, 11, 15)}
-        atk_alive_type = {'initiator': 0, 'duelist': 0,
-                          'sentinel': 0, 'controller': 0}
-        def_alive_type = {'initiator': 0, 'duelist': 0,
-                          'sentinel': 0, 'controller': 0}
+        atk_agents = {'initiator': 0, 'duelist': 0, 'sentinel': 0, 'controller': 0}
+        def_agents = {'initiator': 0, 'duelist': 0, 'sentinel': 0, 'controller': 0}
 
         for key, value in player_table.items():
             if value["alive"]:
@@ -168,13 +166,13 @@ class Analyser:
                     atk_alive += 1
                     for archetype, agent_ids in agent_types.items():
                         if value['agentId'] in agent_ids:
-                            atk_alive_type[archetype] += 1
+                            atk_agents[archetype] += 1
                 else:
                     def_gun_price += int(weapon_price)
                     def_alive += 1
                     for archetype, agent_ids in agent_types.items():
                         if value['agentId'] in agent_ids:
-                            def_alive_type[archetype] += 1
+                            def_agents[archetype] += 1
                     if weapon_id == "15":
                         def_has_operator = 1
                     elif weapon_id == "2":
@@ -196,6 +194,8 @@ class Analyser:
         return (self.chosen_round, self.reverse_round_table[self.chosen_round], round_millis, atk_gun_price,
                 def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin,
                 regular_time, spike_time, atk_bank, def_bank,
+                atk_agents['initiator'], atk_agents['duelist'], atk_agents['sentinel'], atk_agents['controller'],
+                def_agents['initiator'], def_agents['duelist'], def_agents['sentinel'], def_agents['controller'],
                 self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
@@ -258,17 +258,23 @@ class Analyser:
     def get_first_round(self) -> list:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
+    def get_feature_labels(self) -> List[str]:
+        comparison_test = self.generate_map_metrics()
+        return ['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
+                'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
+                'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
+                'ATK_initiators', 'ATK_duelists', 'ATK_sentinels', 'ATK_controllers',
+                'DEF_initiators', 'DEF_duelists', 'DEF_sentinels', 'DEF_controllers',
+                'MapName', 'MatchID', 'SeriesID', 'bestOF',
+                'FinalWinner']
+
     def export_single_map(self, input_match_id: int):
         vm = self.get_valid_maps()
         map_index = vm[input_match_id]
         r = self.get_first_round()
         self.set_config(map=map_index, round=r)
         report = self.generate_map_metrics()
-        df = pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
-                                           'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                           'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
-                                           'MapName', 'MatchID', 'SeriesID', 'bestOF',
-                                           'FinalWinner'])
+        df = pd.DataFrame(report, columns=self.get_feature_labels())
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
     def export_df(self, input_match_id: int):
@@ -277,11 +283,7 @@ class Analyser:
         r = self.get_first_round()
         self.set_config(map=map_index, round=r)
         report = self.generate_map_metrics()
-        return pd.DataFrame(report, columns=['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
-                                             'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                                             'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
-                                             'MapName', 'MatchID', 'SeriesID', 'bestOF',
-                                             'FinalWinner'])
+        return pd.DataFrame(report, columns=self.get_feature_labels())
 
 
 # a = Analyser("26426.json")
@@ -289,6 +291,7 @@ class Analyser:
 # q = a.generate_full_round()
 # a.export_single_map(26426)
 # apple = 5 + 3
+
 
 def merge_all_csv():
     file_list = os.listdir('matches/json')
@@ -302,8 +305,7 @@ def merge_all_csv():
         df_list.append(a.export_df(i))
 
     merged = pd.concat(df_list)
-    merged.to_csv(r'matches\exports\combined_csv.csv', index=False)
-
+    merged.to_csv(r'matches\rounds\combined_csv.csv', index=False)
 
 # merge_all_csv()
 

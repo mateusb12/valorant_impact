@@ -65,8 +65,7 @@ class RIBScrapper:
         os.chdir("matches/exports")
         file_list = os.listdir()
         os.chdir("../../")
-        existing = filename in file_list
-        return existing
+        return filename in file_list
 
 
 # il = "https://runitback.gg/series/12728?match=25609&round=1&tab=replay"

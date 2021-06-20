@@ -157,10 +157,9 @@ class Analyser:
             if value["alive"]:
                 weapon_id: str = str(value["weaponId"])
                 if weapon_id != 'None':
-                    weapon_tuple: dict = self.weapon_data[weapon_id]
+                    weapon_price: str = self.weapon_data[weapon_id]["price"]
                 else:
-                    weapon_tuple: dict = {'name': 'None', 'price': 0}
-                weapon_price: str = weapon_tuple["price"]
+                    weapon_price: str = '0'
                 if value["attacking_side"]:
                     atk_gun_price += int(weapon_price)
                     atk_alive += 1
@@ -181,9 +180,6 @@ class Analyser:
                 atk_bank += value["remainingCreds"]
             else:
                 def_bank += value["remainingCreds"]
-
-        atk_gun_price /= 5
-        def_gun_price /= 5
 
         regular_time, spike_time = self.generate_spike_timings(round_millis, plant_millis)
 
@@ -286,11 +282,13 @@ class Analyser:
         return pd.DataFrame(report, columns=self.get_feature_labels())
 
 
-# a = Analyser("26426.json")
-# a.set_config(map=1, round=414368)
-# q = a.generate_full_round()
+a = Analyser("26426.json")
+a.set_config(map=1, round=414368)
+q = a.generate_full_round()
 # a.export_single_map(26426)
-# apple = 5 + 3
+w = a.export_df(26426)
+print(w.columns)
+apple = 5 + 3
 
 
 def merge_all_csv():

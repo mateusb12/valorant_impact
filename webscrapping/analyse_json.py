@@ -152,6 +152,8 @@ class Analyser:
                        'sentinel': (3, 5, 9), 'controller': (6, 8, 11, 15)}
         atk_agents = {'initiator': 0, 'duelist': 0, 'sentinel': 0, 'controller': 0}
         def_agents = {'initiator': 0, 'duelist': 0, 'sentinel': 0, 'controller': 0}
+        atk_shields, def_shields = 0, 0
+        shield_table = {None: 0, 1: 25, 2: 50}
 
         for key, value in player_table.items():
             if value["alive"]:
@@ -163,12 +165,14 @@ class Analyser:
                 if value["attacking_side"]:
                     atk_gun_price += int(weapon_price)
                     atk_alive += 1
+                    atk_shields += shield_table[value['shieldId']]
                     for archetype, agent_ids in agent_types.items():
                         if value['agentId'] in agent_ids:
                             atk_agents[archetype] += 1
                 else:
                     def_gun_price += int(weapon_price)
                     def_alive += 1
+                    def_shields += shield_table[value['shieldId']]
                     for archetype, agent_ids in agent_types.items():
                         if value['agentId'] in agent_ids:
                             def_agents[archetype] += 1
@@ -192,6 +196,7 @@ class Analyser:
                 regular_time, spike_time, atk_bank, def_bank,
                 atk_agents['initiator'], atk_agents['duelist'], atk_agents['sentinel'], atk_agents['controller'],
                 def_agents['initiator'], def_agents['duelist'], def_agents['sentinel'], def_agents['controller'],
+                atk_shields, def_shields,
                 self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
@@ -261,6 +266,7 @@ class Analyser:
                 'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
                 'ATK_initiators', 'ATK_duelists', 'ATK_sentinels', 'ATK_controllers',
                 'DEF_initiators', 'DEF_duelists', 'DEF_sentinels', 'DEF_controllers',
+                'ATK_Shields', 'DEF_Shields',
                 'MapName', 'MatchID', 'SeriesID', 'bestOF',
                 'FinalWinner']
 
@@ -278,17 +284,19 @@ class Analyser:
         map_index = vm[input_match_id]
         r = self.get_first_round()
         self.set_config(map=map_index, round=r)
+        features = self.get_feature_labels()
         report = self.generate_map_metrics()
-        return pd.DataFrame(report, columns=self.get_feature_labels())
+        return pd.DataFrame(report, columns=features)
 
 
-a = Analyser("26426.json")
-a.set_config(map=1, round=414368)
-q = a.generate_full_round()
+# a = Analyser("26426.json")
+# a.set_config(map=1, round=414368)
+# q = a.generate_full_round()
+# a.export_df(a.match_id)
 # a.export_single_map(26426)
-w = a.export_df(26426)
-print(w.columns)
-apple = 5 + 3
+# w = a.export_df(26426)
+# print(w.columns)
+# apple = 5 + 3
 
 
 def merge_all_csv():
@@ -305,16 +313,4 @@ def merge_all_csv():
     merged = pd.concat(df_list)
     merged.to_csv(r'matches\rounds\combined_csv.csv', index=False)
 
-# merge_all_csv()
-
-# def merge_csv():
-#     folder = "matches/exports"
-#     os.chdir(folder)
-#     extension = 'csv'
-#     all_filenames = [file for file in glob.glob('*.{}'.format(extension))]
-#     combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
-#     combined_csv.to_csv("combined_csv.csv", index=False, encoding='utf-8-sig')
-#     print('done!')
-#
-#
-# merge_csv()
+merge_all_csv()

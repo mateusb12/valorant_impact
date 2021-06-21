@@ -1,3 +1,4 @@
+import os
 from typing import List
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -62,6 +63,48 @@ class RoundReplay:
         table["Round time"] = raw_timings
         return table[["Round time", "Attack_win_probability"]]
 
+    def plot_round(self, round_number: int, **kwargs):
+        plt.figure(figsize=(12, 5))
+        chosen_side = kwargs["side"]
+        color_dict = {"atk": "red", "def": "blue"}
+        round_data = self.get_round_probability(round_number, side=chosen_side)
+
+        sns.set_context(rc={'patch.linewidth': 2.0})
+        sns.set(font_scale=1.3)
+        ax = sns.lineplot(x="Round time", y="Attack_win_probability", data=round_data,
+                          linewidth=2.0, zorder=3, color=color_dict[chosen_side])
+        ax.set(xlabel='Round time (s)', ylabel='Win probability (%)')
+        ax.xaxis.labelpad = 10
+        ax.yaxis.labelpad = 12
+        ax.grid(linewidth=.4, color='gray', zorder=0)
+        title_dict = {"atk": "Attack", "def": "Defense"}
+        plt.title("{} win probability over time".format(title_dict[chosen_side]))
+        ax.lines[0].set_marker("o")
+        ax.lines[0].set_markersize(9)
+        plt.axhline(y=0, color="black")
+        plt.axhline(y=50, linestyle="--", color="grey")
+        plant = self.get_plant_stamp(round_number)
+        if plant is not None:
+            plt.axvline(x=plant)
+
+        arrow = {'facecolor': 'tab:blue', 'shrink': 0.05, 'alpha': 0.75}
+        # plt.gca().annotate('nzr 2 frenzy kills', xy=(5.5, 61), xytext=(-8, 70), arrowprops=arrow, fontsize=13, color='green', weight='bold')
+        # plt.gca().annotate('khalil stinger kill', xy=(16.8, 91), xytext=(-1, 90), arrowprops=arrow, fontsize=13, color='green', weight='bold')
+        # plt.gca().annotate('zaks deleta o xand, \nmas o round já estava encaminhado', xy=(24, 79), xytext=(16, 60), arrowprops=arrow, fontsize=13, color='red', weight='bold')
+        # plt.gca().annotate('FURIA only has 20% chance \n of winning this round', xy=(0, 17), xytext=(10, 5), arrowprops=arrow, fontsize=13, color='red', weight='bold')
+
+
+class MatchReplay:
+    def __init__(self, match_id: int, input_df: pd.DataFrame):
+        self.df: pd.DataFrame = input_df
+        self.match_id: int = match_id
+        self.query: pd.DataFrame = input_df.query('MatchID == {}'.format(match_id))
+
+    def get_round_table(self) -> dict:
+        g = self.query[["RoundNumber", "RoundID"]]
+        g.drop_duplicates()
+        return dict(zip(g.RoundNumber, g.RoundID))
+
     def get_atk_scores(self) -> List[int]:
         dfm = list(self.get_round_winners().values())
         score_dict = {'atk': 0, 'def': 0}
@@ -77,6 +120,11 @@ class RoundReplay:
             atk_scores.append(score_dict['atk'])
 
         return atk_scores
+
+    def get_round_winners(self) -> dict:
+        g = self.query[["RoundNumber", "FinalWinner"]]
+        g.drop_duplicates()
+        return dict(zip(g.RoundNumber, g.FinalWinner))
 
     def get_def_scores(self) -> List[int]:
         dfm = list(self.get_round_winners().values())
@@ -113,45 +161,60 @@ class RoundReplay:
         r_def = pd.Series(self.get_def_scores())
         r_winner = pd.Series([self.get_match_winner()] * len(r_number))
         r_ids = pd.Series([self.match_id] * len(r_number))
+        r_atk_bank = pd.Series(self.get_atk_bank())
+        r_def_bank = pd.Series(self.get_def_bank())
 
         frame = {'MatchID': r_ids, 'RoundNumber': r_number, 'AtkScore': r_atk, 'DefScore': r_def,
+                 'ATK_Bank': r_atk_bank, 'DEF_Bank': r_def_bank,
                  'FinalWinner': r_winner}
 
-        return pd.DataFrame(frame)
+        d_frame = pd.DataFrame(frame)
+        d_frame.dropna()
 
-    def plot_round(self, round_number: int, **kwargs):
-        plt.figure(figsize=(12, 5))
-        chosen_side = kwargs["side"]
-        color_dict = {"atk": "red", "def": "blue"}
-        round_data = self.get_round_probability(round_number, side=chosen_side)
+        return d_frame
 
-        sns.set_context(rc={'patch.linewidth': 2.0})
-        sns.set(font_scale=1.3)
-        ax = sns.lineplot(x="Round time", y="Attack_win_probability", data=round_data,
-                          linewidth=2.0, zorder=3, color=color_dict[chosen_side])
-        ax.set(xlabel='Round time (s)', ylabel='Win probability (%)')
-        ax.xaxis.labelpad = 10
-        ax.yaxis.labelpad = 12
-        ax.grid(linewidth=.4, color='gray', zorder=0)
-        title_dict = {"atk": "Attack", "def": "Defense"}
-        plt.title("{} win probability over time".format(title_dict[chosen_side]))
-        ax.lines[0].set_marker("o")
-        ax.lines[0].set_markersize(9)
-        plt.axhline(y=0, color="black")
-        plt.axhline(y=50, linestyle="--", color="grey")
-        plant = self.get_plant_stamp(round_number)
-        if plant is not None:
-            plt.axvline(x=plant)
+    def get_all_matches(self) -> set:
+        return set(self.df.MatchID)
 
-        arrow = {'facecolor': 'tab:blue', 'shrink': 0.05, 'alpha': 0.75}
-        # plt.gca().annotate('nzr 2 frenzy kills', xy=(5.5, 61), xytext=(-8, 70), arrowprops=arrow, fontsize=13, color='green', weight='bold')
-        # plt.gca().annotate('khalil stinger kill', xy=(16.8, 91), xytext=(-1, 90), arrowprops=arrow, fontsize=13, color='green', weight='bold')
-        # plt.gca().annotate('zaks deleta o xand, \nmas o round já estava encaminhado', xy=(24, 79), xytext=(16, 60), arrowprops=arrow, fontsize=13, color='red', weight='bold')
-        # plt.gca().annotate('FURIA only has 20% chance \n of winning this round', xy=(0, 17), xytext=(10, 5), arrowprops=arrow, fontsize=13, color='red', weight='bold')
+    def get_atk_bank(self) -> List[int]:
+        return [
+            max(self.query.query('RoundNumber == {}'.format(r)).ATK_bank)
+            for r in self.get_round_table().keys()
+        ]
+
+    def get_def_bank(self) -> List[int]:
+        return [
+            max(self.query.query('RoundNumber == {}'.format(r)).DEF_bank)
+            for r in self.get_round_table().keys()
+        ]
+
+    def get_big_dataframe(self):
+        df_list = []
+        match_indexes = list(self.get_all_matches())
+
+        for i in match_indexes:
+            self.match_id = i
+            print(i)
+            self.query: pd.DataFrame = self.df.query('MatchID == {}'.format(i))
+            df_list.append(self.generate_match_dataframe())
+
+        merged = pd.concat(df_list)
+        merged.dropna(inplace=True)
+        merged["AtkScore"] = merged["AtkScore"].astype(int)
+        merged["DefScore"] = merged["DefScore"].astype(int)
+
+        return merged
+
+    def export_big_dataframe(self):
+        big_df = self.get_big_dataframe()
+        big_df.to_csv(r'matches\rounds\matches_csv.csv', index=False)
+        print('SUCCESS!')
 
 
-match = 26913
-path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\exports\\'
-data = pd.read_csv('{}{}.csv'.format(path2, match))
-rr = RoundReplay(match, data, 'model')
-print(rr.generate_match_dataframe())
+# match = 26913
+# path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
+# data = pd.read_csv('{}'.format(path2))
+#
+# mr = MatchReplay(match, data)
+# mr.export_big_dataframe()
+

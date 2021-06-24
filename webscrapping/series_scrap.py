@@ -67,6 +67,14 @@ class RIBScrapper:
         os.chdir("../../")
         return filename in file_list
 
+    def download_links(self, link_file: str):
+        match_db = pd.read_csv("matches/events/{}".format(link_file))
+        for i in match_db.iterrows():
+            match_id = i[1]["match_ID"]
+            match_link = i[1]["match_link"]
+            print("ID → {}".format(match_id))
+            self.export_json(match_link)
+
 
 # il = "https://runitback.gg/series/12728?match=25609&round=1&tab=replay"
 # il = "https://runitback.gg/series/12751?match=25661&round=1&tab=replay"
@@ -75,9 +83,10 @@ rb = RIBScrapper()
 # rb.export_json("https://runitback.gg/series/12751?match=25661&round=18&tab=replay")
 # print(rb.existing_file("15593.csv"))
 
-# rb.generate_links("na.csv")
+# rb.generate_links("br.csv")
+rb.download_links('br_links.csv')
 
-# match_db = pd.read_csv("matches/events/na_links.csv")
+# match_db = pd.read_csv("matches/events/br_links.csv")
 # for i in match_db.iterrows():
 #     match_id = i[1]["match_ID"]
 #     match_link = i[1]["match_link"]

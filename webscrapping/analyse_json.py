@@ -20,7 +20,7 @@ class Analyser:
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
 
-        data_file = open('matches/json/{}'.format(input_file))
+        data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
         self.data = json.load(data_file)
 
         weapon_file = open('matches/model/weapon_table.json')
@@ -299,7 +299,7 @@ class Analyser:
 # apple = 5 + 3
 
 
-def merge_all_csv():
+def merge_all_csv(csv_name: str):
     file_list = os.listdir('matches/json')
     match_list = [int(x[:-5]) for x in file_list]
 
@@ -311,6 +311,7 @@ def merge_all_csv():
         df_list.append(a.export_df(i))
 
     merged = pd.concat(df_list)
-    merged.to_csv(r'matches\rounds\combined_csv.csv', index=False)
+    merged.to_csv(r'matches\rounds\{}'.format(csv_name), index=False)
 
-merge_all_csv()
+
+merge_all_csv('combined_br.csv')

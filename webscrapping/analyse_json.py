@@ -200,6 +200,7 @@ class Analyser:
                 self.map_name["name"], self.match_id,
                 self.event_id, self.best_of, round_winner)
 
+
     @staticmethod
     def evaluate_spike_beeps(current_stamp: int, spike_stamp: int) -> dict:
         if spike_stamp is None:
@@ -291,6 +292,7 @@ class Analyser:
 
 # a = Analyser("26426.json")
 # a.set_config(map=1, round=414368)
+# a.get_round_positions()
 # q = a.generate_full_round()
 # a.export_df(a.match_id)
 # a.export_single_map(26426)

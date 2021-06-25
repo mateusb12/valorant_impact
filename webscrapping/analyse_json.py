@@ -314,4 +314,4 @@ def merge_all_csv(csv_name: str):
     merged.to_csv(r'matches\rounds\{}'.format(csv_name), index=False)
 
 
-merge_all_csv('combined_br.csv')
+# merge_all_csv('combined_br.csv')

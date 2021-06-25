@@ -78,13 +78,13 @@ class RIBScrapper:
 
 # il = "https://runitback.gg/series/12728?match=25609&round=1&tab=replay"
 # il = "https://runitback.gg/series/12751?match=25661&round=1&tab=replay"
-rb = RIBScrapper()
+# rb = RIBScrapper()
 
 # rb.export_json("https://runitback.gg/series/12751?match=25661&round=18&tab=replay")
 # print(rb.existing_file("15593.csv"))
 
 # rb.generate_links("br.csv")
-rb.download_links('br_links.csv')
+# rb.download_links('br_links.csv')
 
 # match_db = pd.read_csv("matches/events/br_links.csv")
 # for i in match_db.iterrows():

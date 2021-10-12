@@ -10,32 +10,24 @@ _Predicting the round outcomes_
 
 - Getting all matches IDs by giving the RIB discord bot the event IDs (br.csv) 
 
-#### Example
-
 ```sh
 !rib matches -e 529 526 502 472 470 442 438 417 410 428 401 366 361 202 335 297 338 292 267 263 262 230 213 176 175 147 99 -csv
 ```
 
 ### `Generate all links`
 - Creating a CSV with all matches HTTP links based on the csv above
-
-#### Example
 ```
 rb.generate_links("br.csv")
 ```
 
 ### `Download all links`
 - Downloading JSONs from the csv above (webscrapping/matches/json)
-
-#### Example
 ```
 rb.download_links("br_links.csv")
 ```
 
 ### `Merge all CSVs`
 - Converting that new JSON folder into a single csv dataset (combined_br.csv)
-
-#### Example
 ```
 merge_all_csv('combined_br.csv')
 ```

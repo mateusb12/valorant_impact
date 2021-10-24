@@ -49,7 +49,7 @@ All these variables are used as an input to a machine learning model, which eval
 
 More details on the jupyter notebooks
 
-![](https://i.imgur.com/C6knfE2.png)
+![](https://i.imgur.com/Izinsiy.png)
 
 ## Case study (Furia vs Highpower)
 

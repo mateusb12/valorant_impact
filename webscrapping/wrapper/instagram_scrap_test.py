@@ -37,25 +37,28 @@ async def get_followers_async(profile_list: List[str]) -> List[int]:
                 internal_loop.run_in_executor(executor, get_instagram_followers_count,
                                               *(profile, session)) for profile in profile_list
             ]
+            print("Tasks instantiated!")
             for response in await asyncio.gather(*tasks):
+                print("Appending {}".format(response))
                 res.append(response)
             return res
 
+if __name__ == "main":
+    profiles = ['gabrielfreiredev', 'freire.tatyana', 'saranobre', 'daralmeida', 'babisp']
+    start = time.time()
+    for p in profiles:
+        count = get_instagram_followers_count(p, requests)
+        print(f'{p} has {count} followers')
+    end = time.time()
+    elapsed = end - start
+    print(f'SYNC elapsed time: {elapsed} seconds')
 
-profiles = ['gabrielfreiredev', 'freire.tatyana', 'saranobre', 'daralmeida', 'babisp']
-start = time.time()
-for p in profiles:
-    count = get_instagram_followers_count(p, requests)
-    print(f'{p} has {count} followers')
-end = time.time()
-elapsed = end - start
-print(f'SYNC elapsed time: {elapsed} seconds')
+    start = time.time()
+    loop = asyncio.get_event_loop()
+    future = asyncio.ensure_future(get_followers_async(profiles))
+    r = loop.run_until_complete(future)
+    end = time.time()
+    print(r)
+    elapsed = end - start
+    print(f'ASYNC Elapsed time: {elapsed} seconds')
 
-start = time.time()
-loop = asyncio.get_event_loop()
-future = asyncio.ensure_future(get_followers_async(profiles))
-r = loop.run_until_complete(future)
-end = time.time()
-print(r)
-elapsed = end - start
-print(f'ASYNC Elapsed time: {elapsed} seconds')

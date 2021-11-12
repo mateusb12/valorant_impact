@@ -10,10 +10,24 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\webscrapping\matches\events\br.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\webscrapping\matches\events\br_links.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\webscrapping\wrapper\qw.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
             </Attribute>
           </value>
         </entry>

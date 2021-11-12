@@ -19,6 +19,8 @@ class Analyser:
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
+        elif current_folder == "wrapper":
+            os.chdir("..")
 
         data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
         self.data = json.load(data_file)
@@ -301,21 +303,21 @@ class Analyser:
 # apple = 5 + 3
 
 
-def merge_all_csv(csv_name: str):
-    file_list = os.listdir('matches/json')
-    match_list = [int(x[:-5]) for x in file_list]
-
-    df_list = []
-
-    for i in match_list:
-        print(i)
-        a = Analyser("{}.json".format(i))
-        df_list.append(a.export_df(i))
-
-    print("Append done")
-    print(os.getcwd())
-    merged = pd.concat(df_list)
-    merged.to_csv(r'{}\matches\rounds\{}'.format(os.getcwd(), csv_name), index=False)
-
-
-merge_all_csv('combined_br.csv')
+# def merge_all_csv(csv_name: str):
+#     file_list = os.listdir('matches/json')
+#     match_list = [int(x[:-5]) for x in file_list]
+#
+#     df_list = []
+#
+#     for i in match_list:
+#         print(i)
+#         a = Analyser("{}.json".format(i))
+#         df_list.append(a.export_df(i))
+#
+#     print("Append done")
+#     print(os.getcwd())
+#     merged = pd.concat(df_list)
+#     merged.to_csv(r'{}\matches\rounds\{}'.format(os.getcwd(), csv_name), index=False)
+#
+#
+# merge_all_csv('combined_br.csv')

@@ -5,31 +5,36 @@ _Predicting the round outcomes_
 - Entirely done on BS4
 - Data scrapped from RunItBack 2d replay feature
 
+### `Get events (discord command)`
+- Let's get the events to which the current best 12 liquipedia NA teams attended
+![](https://i.imgur.com/NbPdH6x.png)
+```
+!rib events -t 388 75 305 141 603 318 417 1931 617 278 281 279 116 -csv
+```
 ### `Get all matches (discord command)`
 
 
-- Getting all matches IDs by giving the RIB discord bot the event IDs (br.csv) 
+- Getting all matches IDs by giving the RIB discord bot the event IDs. 
+- Since the amount of events in our previous .csv is high we're going to handpick some big events.
+- This is going to generate a file called [na.csv], which should be put in [webscrapping/matches/events]
 
 ```sh
-!rib matches -e 529 526 502 472 470 442 438 417 410 428 401 366 361 202 335 297 338 292 267 263 262 230 213 176 175 147 99 -csv
+!rib matches -e 779 771 761 672 643 502 -csv
 ```
 
-### `Generate all links`
-- Creating a CSV with all matches HTTP links based on the csv above
+### `Generate and download all links (scrap_matches.py)`
+- This will create a .csv with lots of links to the matches.
+- There is an option to download them using threads in order to increase the speed
+- JSON files will be put in [webscrapping/matches/jsons]
 ```
-rb.generate_links("br.csv")
-```
-
-### `Download all links`
-- Downloading JSONs from the csv above (webscrapping/matches/json)
-```
-rb.download_links("br_links.csv")
+ms = MatchScrapper("na.csv")
+ms.download_all_matches(assync=True)
 ```
 
 ### `Merge all CSVs`
 - Converting that new JSON folder into a single csv dataset (combined_br.csv)
 ```
-merge_all_csv('combined_br.csv')
+ms.merge_jsons_into_csv("na_merged.csv", delete_json=True)
 ```
 
 ## Current game state

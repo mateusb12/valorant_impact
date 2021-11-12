@@ -312,8 +312,10 @@ def merge_all_csv(csv_name: str):
         a = Analyser("{}.json".format(i))
         df_list.append(a.export_df(i))
 
+    print("Append done")
+    print(os.getcwd())
     merged = pd.concat(df_list)
-    merged.to_csv(r'matches\rounds\{}'.format(csv_name), index=False)
+    merged.to_csv(r'{}\matches\rounds\{}'.format(os.getcwd(), csv_name), index=False)
 
 
-# merge_all_csv('combined_br.csv')
+merge_all_csv('combined_br.csv')

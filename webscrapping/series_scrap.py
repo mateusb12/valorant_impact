@@ -1,5 +1,4 @@
 import os
-
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -15,8 +14,16 @@ class RIBScrapper:
     def __init__(self):
         pass
 
-    def export_json(self, input_link: str):
-        page = requests.get(input_link)
+    def export_json(self, input_link: str, input_session: requests.Session):
+        """
+        Get a RIB link and convert it to a json file.
+        Link example: https://runitback.gg/series/12728?match=25608&round=3&tab=round-stats
+        :param input_link: run it back link
+        :param input_session: the session to use for the request.
+        :return: JSON file
+        """
+
+        page = input_session.get(input_link)
         soup = BeautifulSoup(page.content, 'html.parser')
         scripts = soup.findAll('script')
         content_filter = [i for i in scripts if len(i.attrs) == 0]
@@ -38,6 +45,12 @@ class RIBScrapper:
 
     @staticmethod
     def generate_links(filename: str) -> str:
+        """
+        Get a RIB .csv file and convert it to a list of match links.
+        You should get that RIB file from the RIB bot discord.
+        :param filename: RIB file
+        :return: CSV file containing all matches links
+        """
         event_id = filename.split('.')[0]
         print("Reading file [{}.csv] from [matches/events/{}.csv]".format(event_id, event_id))
         df = pd.read_csv('matches/events/{}.csv'.format(event_id))
@@ -61,6 +74,11 @@ class RIBScrapper:
 
     @staticmethod
     def existing_file(filename: str):
+        """
+        Check if a given file exists in the current folder
+        :param filename
+        :return: True or False
+        """
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
@@ -80,16 +98,16 @@ class RIBScrapper:
         print("Reading links from [{}]".format(link_file))
         match_db = pd.read_csv("matches/events/{}".format(link_file))
         size = len(match_db)
-        total_time_seconds = int(size * 7/3)
+        total_time_seconds = int(size * 7 / 3)
         for index, i in enumerate(match_db.iterrows(), start=1):
-            remaining_seconds = int(total_time_seconds - (index * 7/3))
+            remaining_seconds = int(total_time_seconds - (index * 7 / 3))
             total_time_date = self.seconds_to_time(remaining_seconds)
             match_id = i[1]["match_ID"]
             match_link = i[1]["match_link"]
 
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))
-            self.export_json(match_link)
+            self.export_json(match_link, requests)
 
 
 if __name__ == '__main__':

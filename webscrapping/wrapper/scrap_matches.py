@@ -10,11 +10,14 @@ class MatchScrapper:
         self.rbs = RIBScrapper()
         self.rib_csv = filename
 
-    def download_all_matches(self):
+    def download_all_matches(self, **kwargs):
         os.chdir("../")
         csv_link = self.rbs.generate_links(self.rib_csv)
         print("File [{}] generated!".format(csv_link))
-        self.rbs.async_download_run(csv_link)
+        if kwargs["assync"]:
+            self.rbs.async_download_run(csv_link)
+        else:
+            self.rbs.download_links(csv_link)
 
     def merge_jsons_into_csv(self, filename_output: str, **kwargs):
         self.merge_all_csv(filename_output)
@@ -40,7 +43,6 @@ class MatchScrapper:
 
     @staticmethod
     def delete_jsons():
-        current_dir = os.getcwd()
         os.chdir("matches/json")
         print(os.getcwd())
         all_files = os.listdir()
@@ -51,6 +53,6 @@ class MatchScrapper:
 
 if __name__ == "__main__":
     ms = MatchScrapper("na.csv")
-    ms.download_all_matches()
-    ms.merge_jsons_into_csv("na_merged.csv", delete_json=True)
+    ms.download_all_matches(assync=False)
+    # ms.merge_jsons_into_csv("na_merged.csv", delete_json=True)
 

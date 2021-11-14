@@ -1,6 +1,8 @@
 import asyncio
 import os
 import time
+from selenium import webdriver
+import selenium.webdriver.firefox.webdriver as FirefoxWebDriver
 
 import requests
 from concurrent.futures import ThreadPoolExecutor
@@ -16,7 +18,7 @@ def create_link(series_id: int, match_id: int):
 
 class RIBScrapper:
     def __init__(self):
-        pass
+        self.driver: FirefoxWebDriver = webdriver.Firefox()
 
     @staticmethod
     def scrap_match_link(link: str) -> str:
@@ -66,16 +68,16 @@ class RIBScrapper:
         print("Reading links from [{}]".format(link_table))
         match_db = pd.read_csv("matches/events/{}".format(link_table))
         size = len(match_db)
-        total_time_seconds = int(size * 7 / 3)
+        total_time_seconds = int(size * 131 / 50)
         for index, i in enumerate(match_db.iterrows(), start=1):
-            remaining_seconds = int(total_time_seconds - (index * 7 / 3))
+            remaining_seconds = int(total_time_seconds - (index * 131 / 50))
             total_time_date = self.seconds_to_time(remaining_seconds)
             match_id = i[1]["match_ID"]
             match_link = i[1]["match_link"]
 
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))
-            self.export_json(match_link, requests)
+            self.export_json_using_selenium(match_link)
 
     async def async_download_links(self, input_match_db: pd.DataFrame):
         res = []
@@ -130,6 +132,20 @@ class RIBScrapper:
         with open(output_location, 'w', encoding='utf-8') as fp:
             fp.write(first_half)
         return output_location
+
+    def export_json_using_selenium(self, input_link: str):
+        self.driver.get(input_link)
+        html = self.driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+        scripts = soup.findAll('script')
+        content_filter = [i for i in scripts if len(i.attrs) == 0]
+        match_tag = content_filter[1]
+        match_script = match_tag.contents[0].string
+        script = match_script[:match_script.find("?{}:")]
+        output_index = self.scrap_match_link(input_link)
+
+        with open("matches/json/{}.json".format(output_index), "w", encoding='utf-8') as f:
+            f.write(script)
 
     @staticmethod
     def existing_file(filename: str):

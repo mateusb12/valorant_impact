@@ -1,11 +1,8 @@
-import asyncio
 import os
-import time
 from selenium import webdriver
 import selenium.webdriver.firefox.webdriver as FirefoxWebDriver
 
 import requests
-from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import pandas as pd
 
@@ -25,6 +22,21 @@ class RIBScrapper:
         return link.split("/")[-1].split("?")[-1].split("&")[0].split("=")[-1]
 
     @staticmethod
+    def existing_file(filename: str):
+        """
+        Check if a given file exists in the current folder
+        :param filename
+        :return: True or False
+        """
+        current_folder = os.getcwd().split("\\")[-1]
+        if current_folder == "Classification_datascience":
+            os.chdir("webscrapping")
+        os.chdir("matches/exports")
+        file_list = os.listdir()
+        os.chdir("../../")
+        return filename in file_list
+
+    @staticmethod
     def generate_single_link(series_id: int, match_id: int) -> str:
         return "https://runitback.gg/series/{}?match={}&round=1&tab=round-stats".format(
             series_id, match_id)
@@ -37,7 +49,15 @@ class RIBScrapper:
         return "{}:{}:{}".format(hours, minutes, seconds)
 
     @staticmethod
-    def generate_links(filename: str) -> str:
+    def fix_current_folder():
+        path = os.getcwd()
+        folder = path.split("\\")[-1]
+        if folder == "wrapper":
+            path_parent = os.path.dirname(os.getcwd())
+            os.chdir(path_parent)
+            new_path = os.getcwd()
+
+    def generate_links(self, filename: str) -> str:
         """
         Get a RIB .csv file and convert it to a list of match links.
         You should get that RIB file from the RIB bot discord.
@@ -46,6 +66,7 @@ class RIBScrapper:
         """
         event_id = filename.split('.')[0]
         print("Reading file [{}.csv] from [matches/events/{}.csv]".format(event_id, event_id))
+        self.fix_current_folder()
         df = pd.read_csv('matches/events/{}.csv'.format(event_id))
         df_ids = df[["Series Id", "Match Id"]]
         link_dict = {}
@@ -66,6 +87,7 @@ class RIBScrapper:
         :param link_table: .csv file containing all matches links
         """
         print("Reading links from [{}]".format(link_table))
+        self.fix_current_folder()
         match_db = pd.read_csv("matches/events/{}".format(link_table))
         size = len(match_db)
         total_time_seconds = int(size * 131 / 50)
@@ -77,36 +99,9 @@ class RIBScrapper:
 
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))
+            # t = Thread(target=self.export_json_using_selenium, args=(match_link,))
+            # t.start()
             self.export_json_using_selenium(match_link)
-
-    async def async_download_links(self, input_match_db: pd.DataFrame):
-        res = []
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            with requests.session() as session:
-                internal_loop = asyncio.get_event_loop()
-                tasks = [
-                    internal_loop.run_in_executor(executor, self.export_json,
-                                                  *(i[1]["match_link"], session)) for i in input_match_db.iterrows()
-                ]
-                print("Tasks instantiated!")
-                for response in await asyncio.gather(*tasks):
-                    print("Appending {}".format(response))
-                    res.append(response)
-                return res
-
-    def async_download_run(self, link_table: str):
-        """
-        Asynchronously download RIB links using threads.
-        :param link_table: .csv file containing all matches links
-        """
-        async_start = time.time()
-        loop = asyncio.get_event_loop()
-        match_db = pd.read_csv("matches/events/{}".format(link_table))
-        future = asyncio.ensure_future(self.async_download_links(match_db))
-        r = loop.run_until_complete(future)
-        async_end = time.time()
-        print(r)
-        print("Time was {}".format(async_end - async_start))
 
     def export_json(self, input_link: str, input_session: requests.Session):
         """
@@ -133,9 +128,11 @@ class RIBScrapper:
             fp.write(first_half)
         return output_location
 
-    def export_json_using_selenium(self, input_link: str):
-        self.driver.get(input_link)
-        html = self.driver.page_source
+    def export_json_using_selenium(self, input_link: str, current_driver=None):
+        if current_driver is None:
+            current_driver = self.driver
+        current_driver.get(input_link)
+        html = current_driver.page_source
         soup = BeautifulSoup(html, "html.parser")
         scripts = soup.findAll('script')
         content_filter = [i for i in scripts if len(i.attrs) == 0]
@@ -147,20 +144,15 @@ class RIBScrapper:
         with open("matches/json/{}.json".format(output_index), "w", encoding='utf-8') as f:
             f.write(script)
 
-    @staticmethod
-    def existing_file(filename: str):
-        """
-        Check if a given file exists in the current folder
-        :param filename
-        :return: True or False
-        """
-        current_folder = os.getcwd().split("\\")[-1]
-        if current_folder == "Classification_datascience":
-            os.chdir("webscrapping")
-        os.chdir("matches/exports")
-        file_list = os.listdir()
-        os.chdir("../../")
-        return filename in file_list
+    def selenium_threads(self, link_table: str):
+        match_db = pd.read_csv("matches/events/{}".format(link_table))
+        # thread_driver_a = webdriver.Firefox()
+        # thread_driver_b = webdriver.Firefox()
+        # for link in match_db.iterrows():
+        #     match_link = link[1]["match_link"]
+        #     self.export_json_using_selenium(match_link, current_driver=thread_driver_a)
+            # t = Thread(target=self.export_json_using_selenium, args=(link, thread_driver_a,))
+            # t.start()
 
 
 if __name__ == '__main__':
@@ -168,7 +160,6 @@ if __name__ == '__main__':
 
     # start = time.time()
     # rb.download_links("na_links.csv")
-    rb.async_download_run("na_links.csv")
     # loop = asyncio.get_event_loop()
     # link_table = "na_links.csv"
     # match_db = pd.read_csv("matches/events/{}".format(link_table))

@@ -15,7 +15,8 @@ def create_link(series_id: int, match_id: int):
 
 class RIBScrapper:
     def __init__(self):
-        self.driver: FirefoxWebDriver = webdriver.Firefox()
+        # self.driver: FirefoxWebDriver = webdriver.Firefox()
+        self.current_path = os.getcwd()
 
     @staticmethod
     def scrap_match_link(link: str) -> str:
@@ -48,16 +49,16 @@ class RIBScrapper:
         seconds = time_in_seconds % 60
         return "{}:{}:{}".format(hours, minutes, seconds)
 
-    @staticmethod
-    def fix_current_folder():
+    def fix_current_folder(self):
         path = os.getcwd()
         folder = path.split("\\")[-1]
         if folder == "wrapper":
             path_parent = os.path.dirname(os.getcwd())
             os.chdir(path_parent)
             new_path = os.getcwd()
+            self.current_path = new_path
 
-    def generate_links(self, filename: str) -> str:
+    def generate_link_table(self, filename: str) -> str:
         """
         Get a RIB .csv file and convert it to a list of match links.
         You should get that RIB file from the RIB bot discord.
@@ -145,9 +146,10 @@ class RIBScrapper:
             f.write(script)
 
     def selenium_threads(self, link_table: str):
+        self.fix_current_folder()
         match_db = pd.read_csv("matches/events/{}".format(link_table))
-        # thread_driver_a = webdriver.Firefox()
-        # thread_driver_b = webdriver.Firefox()
+        thread_driver_a = webdriver.Firefox()
+        thread_driver_b = webdriver.Firefox()
         # for link in match_db.iterrows():
         #     match_link = link[1]["match_link"]
         #     self.export_json_using_selenium(match_link, current_driver=thread_driver_a)

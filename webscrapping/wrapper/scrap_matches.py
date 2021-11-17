@@ -4,6 +4,7 @@ from selenium import webdriver
 from webscrapping.analyse_json import Analyser
 from webscrapping.series_scrap import RIBScrapper
 import os
+from webscrapping.wrapper.folder_fixer import fix_current_folder
 
 
 class MatchScrapper:
@@ -69,10 +70,14 @@ def download_run(filename: str, tag: str):
     ms.download_all_matches(filename="{}_{}.csv".format(filename, tag), thread=False)
     print("--- %s seconds ---" % (time.time() - start_time))
     ms.close_firefox()
+    fix_current_folder()
+    os.chdir("matches/events")
+    os.remove("{}_{}.csv".format(filename, tag))
 
 
 if __name__ == "__main__":
-    download_run("na_links", "a")
+    download_run("na_links", "b")
+    # os.remove("../matches/rounds/na_links_a.csv")
     # ms = MatchScrapper("na.csv")
     # ms.generate_csv_table()
     # ms = MatchScrapper("na.csv")

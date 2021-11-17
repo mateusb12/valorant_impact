@@ -19,22 +19,48 @@ _Predicting the round outcomes_
 - This is going to generate a file called [na.csv], which should be put in [webscrapping/matches/events]
 
 ```sh
-!rib matches -e 779 771 761 672 643 502 -csv
+!rib matches -e 779 771 761 704 703 672 643 633 584 566502 457 435 418 105 377 
+326 309 295 278 258 232 216 169 -csv
 ```
 
-### `Generate and download all links (scrap_matches.py)`
-- This will create a .csv with lots of links to the matches.
-- There is an option to download them using threads in order to increase the speed
-- JSON files will be put in [webscrapping/matches/jsons]
+### `Generate link table (csv_manager.py)`
+- Get a RIB .csv file (from discord) and convert it to a list of match links.
+- In our example this is going to generate "na_links.csv"
 ```
-ms = MatchScrapper("na.csv")
-ms.download_all_matches(assync=True)
+ccr = CsvCreator("na.csv")
+ccr.generate_link_table()
 ```
 
-### `Merge all CSVs`
-- Converting that new JSON folder into a single csv dataset (combined_br.csv)
+### `Split link table (csv_manager.py)`
+- Since our "na_links.csv" is 151kb with more than 2000 matches, we're going to split it
+- This is going to generate from "na_links_x.csv", with x ranging from "a" to "t"
+- Each file has 8kb and 100 matches length
 ```
-ms.merge_jsons_into_csv("na_merged.csv", delete_json=True)
+ccp = CsvSplitter("na_links.csv", file_amount=20)
+ccp.split()
+```
+
+### `Download a single table link (scrap_matches.py)`
+- In this example we're going to download "na_links_a.csv" links
+- You can start multiple runs at the same time ("threads") by doing the following
+```
+- Change second parameter value from "a" to "b" → right click -> run file in python console
+```
+- In our example each file takes 4 minutes to be fully downloaded.
+- You can increase the speed by "threading" everything at once
+- JSON files will be downloaded in [webscrapping/matches/jsons]
+```
+download_run("na_links", "a")
+```
+
+### `Merge all CSVs (csv_manager.py)`
+- After almost 1 hour we finally managed to download all of our matches
+- This generated a JSON folder with 2,241 files and 880 MB
+- Let's convert everything into a single csv dataset (combined_na.csv)
+- obs: some files main contain inconsistencies. For instance, 12875.json only had 9 players instead of 10. So I had to delete that file. You can check that match here: https://rib.gg/series/7386?match=12875&round=1&tab=round-stats
+```
+cm = CsvMerger("na_merged.csv", delete_jsons=False)
+cm.merge()
 ```
 
 ## Current game state

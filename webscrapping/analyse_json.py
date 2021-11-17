@@ -23,7 +23,13 @@ class Analyser:
             os.chdir("..")
 
         data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
-        self.data = json.load(data_file)
+        body_txt = data_file.read()
+        first_segment = body_txt[0:24]
+        if first_segment == "window.__INITIAL_STATE__":
+            new_format = body_txt[45:]
+            self.data = json.loads(new_format)
+        else:
+            self.data = json.load(data_file)
 
         weapon_file = open('matches/model/weapon_table.json')
         self.weapon_data = json.load(weapon_file)

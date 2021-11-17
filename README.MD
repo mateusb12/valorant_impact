@@ -23,7 +23,7 @@ _Predicting the round outcomes_
 326 309 295 278 258 232 216 169 -csv
 ```
 
-### `Generate link table `
+### `Generate link table (csv_manager.py)`
 - Get a RIB .csv file (from discord) and convert it to a list of match links.
 - In our example this is going to generate "na_links.csv"
 ```
@@ -31,7 +31,7 @@ ccr = CsvCreator("na.csv")
 ccr.generate_link_table()
 ```
 
-### `Split link table`
+### `Split link table (csv_manager.py)`
 - Since our "na_links.csv" is 151kb with more than 2000 matches, we're going to split it
 - This is going to generate from "na_links_x.csv", with x ranging from "a" to "t"
 - Each file has 8kb and 100 matches length
@@ -53,10 +53,14 @@ ccp.split()
 download_run("na_links", "a")
 ```
 
-### `Merge all CSVs`
-- Converting that new JSON folder into a single csv dataset (combined_br.csv)
+### `Merge all CSVs (csv_manager.py)`
+- After almost 1 hour we finally managed to download all of our matches
+- This generated a JSON folder with 2,241 files and 880 MB
+- Let's convert everything into a single csv dataset (combined_na.csv)
+- obs: some files main contain inconsistencies. For instance, 12875.json only had 9 players instead of 10. So I had to delete that file. You can check that match here: https://rib.gg/series/7386?match=12875&round=1&tab=round-stats
 ```
-ms.merge_jsons_into_csv("na_merged.csv", delete_json=True)
+cm = CsvMerger("na_merged.csv", delete_jsons=False)
+cm.merge()
 ```
 
 ## Current game state

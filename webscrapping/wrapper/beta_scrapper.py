@@ -57,14 +57,14 @@ class Scraper(threading.Thread):
         return link.split("/")[-1].split("?")[-1].split("&")[0].split("=")[-1]
 
 
-urls = ["https://google.com", "https://stackoverflow.com", "https://yahoo.com", "https://msn.com"]
-# threads = []
+if __name__ == "__main__":
+    urls = ["https://google.com", "https://stackoverflow.com", "https://yahoo.com", "https://msn.com"]
+    # threads = []
 
-rbs = RIBScrapper()
-link_file = "na_links.csv"
-rbs.fix_current_folder()
-match_db = pd.read_csv("matches/events/{}".format(link_file))
-
+    rbs = RIBScrapper()
+    link_file = "na_links.csv"
+    rbs.fix_current_folder()
+    match_db = pd.read_csv("matches/events/{}".format(link_file))
 
 # class LinkScrapper:
 #     def __init__(self, input_db: pd.DataFrame):

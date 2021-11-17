@@ -8,6 +8,8 @@ import pandas as pd
 
 
 # page = requests.get("https://runitback.gg/series/12728?match=25608&round=3&tab=round-stats")
+from webscrapping.wrapper.folder_fixer import fix_current_folder
+
 
 def create_link(series_id: int, match_id: int):
     return "https://runitback.gg/series/{}?match={}&round=1&tab=replay".format(series_id, match_id)
@@ -15,7 +17,7 @@ def create_link(series_id: int, match_id: int):
 
 class RIBScrapper:
     def __init__(self):
-        # self.driver: FirefoxWebDriver = webdriver.Firefox()
+        self.driver: FirefoxWebDriver = webdriver.Firefox()
         self.current_path = os.getcwd()
 
     @staticmethod
@@ -58,37 +60,13 @@ class RIBScrapper:
             new_path = os.getcwd()
             self.current_path = new_path
 
-    def generate_link_table(self, filename: str) -> str:
-        """
-        Get a RIB .csv file and convert it to a list of match links.
-        You should get that RIB file from the RIB bot discord.
-        :param filename: RIB file
-        :return: generate a CSV file containing all matches links
-        """
-        event_id = filename.split('.')[0]
-        print("Reading file [{}.csv] from [matches/events/{}.csv]".format(event_id, event_id))
-        self.fix_current_folder()
-        df = pd.read_csv('matches/events/{}.csv'.format(event_id))
-        df_ids = df[["Series Id", "Match Id"]]
-        link_dict = {}
-        for i in df_ids.iterrows():
-            series_id = i[1]["Series Id"]
-            match_id = i[1]["Match Id"]
-            final_link = "https://rib.gg/series/{}?match={}&round=1&tab=round-stats".format(
-                series_id, match_id)
-            link_dict[match_id] = final_link
-        with open('matches/events/{}_links.csv'.format(event_id), 'w') as f:
-            f.write("match_ID,match_link\n")
-            [f.write('{0},{1}\n'.format(key, value)) for key, value in link_dict.items()]
-        return "{}_links.csv".format(event_id)
-
     def download_links(self, link_table: str):
         """
         Get a .csv file containing all matches links and download all matches json files.
         :param link_table: .csv file containing all matches links
         """
         print("Reading links from [{}]".format(link_table))
-        self.fix_current_folder()
+        fix_current_folder()
         match_db = pd.read_csv("matches/events/{}".format(link_table))
         size = len(match_db)
         total_time_seconds = int(size * 131 / 50)
@@ -145,8 +123,9 @@ class RIBScrapper:
         with open("matches/json/{}.json".format(output_index), "w", encoding='utf-8') as f:
             f.write(script)
 
-    def selenium_threads(self, link_table: str):
-        self.fix_current_folder()
+    @staticmethod
+    def selenium_threads(link_table: str):
+        fix_current_folder()
         match_db = pd.read_csv("matches/events/{}".format(link_table))
         thread_driver_a = webdriver.Firefox()
         thread_driver_b = webdriver.Firefox()

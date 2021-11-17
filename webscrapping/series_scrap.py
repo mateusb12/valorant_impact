@@ -16,8 +16,11 @@ def create_link(series_id: int, match_id: int):
 
 
 class RIBScrapper:
-    def __init__(self):
-        self.driver: FirefoxWebDriver = webdriver.Firefox()
+    def __init__(self, **kwargs):
+        if "open" in kwargs and not kwargs["open"]:
+            self.driver = None
+        else:
+            self.driver: FirefoxWebDriver = webdriver.Firefox()
         self.current_path = os.getcwd()
 
     @staticmethod
@@ -25,16 +28,17 @@ class RIBScrapper:
         return link.split("/")[-1].split("?")[-1].split("&")[0].split("=")[-1]
 
     @staticmethod
-    def existing_file(filename: str):
+    def existing_file(filename: str, foldername: str):
         """
         Check if a given file exists in the current folder
+        :param foldername: folder name
         :param filename
         :return: True or False
         """
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
-        os.chdir("matches/exports")
+        os.chdir("matches/{}".format(foldername))
         file_list = os.listdir()
         os.chdir("../../")
         return filename in file_list

@@ -1,0 +1,22 @@
+1637170730294	geckodriver	INFO	Listening on 127.0.0.1:63786
+1637170733332	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "--marionette" "--remote-debugging-port" "63787" "-no-remote" "-profile" "C:\\Users\\mateu\\AppData\\Local\\Temp\\rust_mozprofilee1rdAj"
+1637170733787	Marionette	INFO	Marionette enabled
+console.warn: SearchSettings: "get: No settings file exists, new profile?" (new NotFoundError("Could not open the file at C:\\Users\\mateu\\AppData\\Local\\Temp\\rust_mozprofilee1rdAj\\search.json.mozlz4", (void 0)))
+DevTools listening on ws://localhost:63787/devtools/browser/4f3c62a7-8019-4de6-a938-093c35223ecd
+1637170736334	Marionette	INFO	Listening on port 63793
+1637170736512	RemoteAgent	WARN	TLS certificate errors will be ignored for this session
+console.log: WebExtensions: reset-default-search: starting.
+console.log: WebExtensions: reset-default-search: No addons in our list are installed.
+JavaScript error: , line 0: NS_ERROR_NOT_AVAILABLE
+1637172302572	Marionette	INFO	Stopped listening on port 63793
+console.warn: TopSitesFeed: Failed to fetch data from Contile server: NetworkError when attempting to fetch resource.
+1637182985857	geckodriver	INFO	Listening on 127.0.0.1:60413
+1637182988938	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "--marionette" "--remote-debugging-port" "60414" "-no-remote" "-profile" "C:\\Users\\mateu\\AppData\\Local\\Temp\\rust_mozprofile1i8j4q"
+1637182989430	Marionette	INFO	Marionette enabled
+console.warn: SearchSettings: "get: No settings file exists, new profile?" (new NotFoundError("Could not open the file at C:\\Users\\mateu\\AppData\\Local\\Temp\\rust_mozprofile1i8j4q\\search.json.mozlz4", (void 0)))
+DevTools listening on ws://localhost:60414/devtools/browser/bcfd2a90-71b5-4fe9-954c-1fe308d0198e
+1637182992119	Marionette	INFO	Listening on port 60428
+1637182992635	RemoteAgent	WARN	TLS certificate errors will be ignored for this session
+console.log: WebExtensions: reset-default-search: starting.
+console.log: WebExtensions: reset-default-search: No addons in our list are installed.
+JavaScript error: , line 0: NS_ERROR_NOT_AVAILABLE

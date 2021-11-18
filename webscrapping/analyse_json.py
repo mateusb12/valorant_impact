@@ -31,6 +31,8 @@ class Analyser:
         else:
             self.data = json.load(data_file)
 
+        self.raw_match_id = int(input_file.split(".")[0])
+
         weapon_file = open('matches/model/weapon_table.json')
         self.weapon_data = json.load(weapon_file)
 

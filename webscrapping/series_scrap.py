@@ -23,6 +23,14 @@ class RIBScrapper:
             self.driver: FirefoxWebDriver = webdriver.Firefox()
         self.current_path = os.getcwd()
 
+    def late_open(self):
+        if self.driver is None:
+            self.driver = webdriver.Firefox()
+
+    def close_driver(self):
+        if self.driver is not None:
+            self.driver.close()
+
     @staticmethod
     def scrap_match_link(link: str) -> str:
         return link.split("/")[-1].split("?")[-1].split("&")[0].split("=")[-1]
@@ -38,6 +46,8 @@ class RIBScrapper:
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
+        elif current_folder == "wrapper":
+            os.chdir("..")
         os.chdir("matches/{}".format(foldername))
         file_list = os.listdir()
         os.chdir("../../")
@@ -111,7 +121,7 @@ class RIBScrapper:
             fp.write(first_half)
         return output_location
 
-    def export_json_using_selenium(self, input_link: str, current_driver=None):
+    def export_json_using_selenium(self, input_link: str, current_driver=None, **kwargs):
         if current_driver is None:
             current_driver = self.driver
         current_driver.get(input_link)
@@ -124,8 +134,16 @@ class RIBScrapper:
         script = match_script[:match_script.find("?{}:")]
         output_index = self.scrap_match_link(input_link)
 
-        with open("matches/json/{}.json".format(output_index), "w", encoding='utf-8') as f:
+        if "folder_location" in kwargs:
+            output_location = "matches/json/{}.json".format(output_index)
+        else:
+            output_location = "matches/{}/{}.json".format(kwargs["folder_location"], output_index)
+
+        with open(output_location, "w", encoding='utf-8') as f:
             f.write(script)
+            print("File downloaded at {}".format(output_location))
+
+
 
     @staticmethod
     def selenium_threads(link_table: str):

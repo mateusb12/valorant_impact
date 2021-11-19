@@ -12,10 +12,12 @@ from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
 
 class RoundReplay:
     def __init__(self, match_id: int, input_df: pd.DataFrame, input_model: lightgbm.LGBMClassifier):
-        self.match_id = match_id
-        self.query = df.query('MatchID == {}'.format(match_id))
-        self.round_table = self.get_round_table()
         self.df = input_df
+        self.match_id = match_id
+        verification = "MatchID" in self.df
+        self.query = input_df.query("MatchID == {}".format(39944))
+        self.round_table = self.get_round_table()
+
         self.model = input_model
 
     def get_round_table(self) -> dict:
@@ -87,7 +89,11 @@ class RoundReplay:
         ax.lines[0].set_marker("o")
         ax.lines[0].set_markersize(9)
         plt.axhline(y=0, color="black")
-        plt.axhline(y=50, linestyle="--", color="grey")
+        plt.axhline(y=50, linestyle="-", color="grey", linewidth=1.5)
+        plt.grid(True, which='both', linestyle='--', zorder=0, linewidth=0.9)
+
+        # plot a grid
+
         plant = self.get_plant_stamp(round_number)
         if plant is not None:
             plt.axvline(x=plant)
@@ -216,21 +222,11 @@ class MatchReplay:
         print('SUCCESS!')
 
 
-if __name__ == "__main__":
-    match = 39944
-    series = 18674
-    print("match → {} series → {}".format(match, series))
-    smd = SingleMatchDownloader(match, series)
-    match_df = smd.get_csv()
-
+def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClassifier:
     params = pd.read_csv('model_params.csv', index_col=False)
     params = params.to_dict('records')[0]
-
-    path = os.getcwd()
-    df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
-
-    df = df[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive", "DEF_has_OP", "Def_has_Odin",
-             "RegularTime", "SpikeTime", "MapName", "FinalWinner"]]
+    df = input_dataset[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive", "DEF_has_OP", "Def_has_Odin",
+                        "RegularTime", "SpikeTime", "MapName", "FinalWinner"]]
     df = pd.get_dummies(df, columns=['MapName'])
     X = df.drop(['FinalWinner'], axis='columns')
     Y = df.FinalWinner
@@ -242,13 +238,24 @@ if __name__ == "__main__":
                                     num_threads=params["num_threads"],
                                     min_sum_hessian_in_leaf=params["min_sum_hessian_in_leaf"])
     model.fit(X_train, Y_train)
+    return model
 
-    rr = RoundReplay(match, df, model)
+
+def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
+    print("match → {} series → {}".format(match_id, series_id))
+    smd = SingleMatchDownloader(match_id, series_id)
+    smd.download()
+
+    raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
+    model = generate_prediction_model(raw_df)
+
+    return RoundReplay(match_id, raw_df, model)
+
+
+if __name__ == "__main__":
+    pass
     # path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
     # data = pd.read_csv('{}'.format(path2))
     #
     # mr = MatchReplay(match, data)
     # mr.export_big_dataframe()
-
-
-

@@ -4,14 +4,19 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+from sklearn.model_selection import train_test_split, cross_val_score
+import lightgbm
+
+from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
+
 
 class RoundReplay:
-    def __init__(self, match_id: int, df: pd.DataFrame, model):
+    def __init__(self, match_id: int, input_df: pd.DataFrame, input_model: lightgbm.LGBMClassifier):
         self.match_id = match_id
         self.query = df.query('MatchID == {}'.format(match_id))
         self.round_table = self.get_round_table()
-        self.df = df
-        self.model = model
+        self.df = input_df
+        self.model = input_model
 
     def get_round_table(self) -> dict:
         g = self.query[["RoundNumber", "RoundID"]]
@@ -211,10 +216,39 @@ class MatchReplay:
         print('SUCCESS!')
 
 
-# match = 26913
-# path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
-# data = pd.read_csv('{}'.format(path2))
-#
-# mr = MatchReplay(match, data)
-# mr.export_big_dataframe()
+if __name__ == "__main__":
+    match = 39944
+    series = 18674
+    print("match → {} series → {}".format(match, series))
+    smd = SingleMatchDownloader(match, series)
+    match_df = smd.get_csv()
+
+    params = pd.read_csv('model_params.csv', index_col=False)
+    params = params.to_dict('records')[0]
+
+    path = os.getcwd()
+    df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
+
+    df = df[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive", "DEF_has_OP", "Def_has_Odin",
+             "RegularTime", "SpikeTime", "MapName", "FinalWinner"]]
+    df = pd.get_dummies(df, columns=['MapName'])
+    X = df.drop(['FinalWinner'], axis='columns')
+    Y = df.FinalWinner
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, train_size=0.8, test_size=0.2, random_state=15)
+
+    model = lightgbm.LGBMClassifier(bagging_freq=params["bagging_freq"], min_data_in_leaf=params["min_data_in_leaf"],
+                                    max_depth=params["max_depth"],
+                                    learning_rate=params["learning_rate"], num_leaves=params["num_leaves"],
+                                    num_threads=params["num_threads"],
+                                    min_sum_hessian_in_leaf=params["min_sum_hessian_in_leaf"])
+    model.fit(X_train, Y_train)
+
+    rr = RoundReplay(match, df, model)
+    # path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
+    # data = pd.read_csv('{}'.format(path2))
+    #
+    # mr = MatchReplay(match, data)
+    # mr.export_big_dataframe()
+
+
 

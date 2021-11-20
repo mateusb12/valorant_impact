@@ -48,6 +48,25 @@ class RoundReplay:
                 return round(tuple(rdf["RoundTime"].loc[[current_index]])[0] / 1000, 0)
         return None
 
+    def get_clutchy_rounds(self, chosen_side: str) -> dict:
+        dtb = self.get_round_table()
+        round_amount = max(dtb, key=dtb.get)
+        minimum_probabilities_dict = {}
+        for i in range(1, round_amount + 1):
+            aux = self.get_round_probability(i, side=chosen_side)
+            winner = list(aux["Final Winner"])[0]
+            if winner == chosen_side:
+                round_id = list(aux["Round"])[0]
+                min_prob = min(list(aux["Win_probability"]))
+                minimum_probabilities_dict[round_id] = min_prob
+
+        return {
+            k: v
+            for k, v in sorted(
+                minimum_probabilities_dict.items(), key=lambda item: item[1]
+            )
+        }
+
     def get_round_probability(self, round_number: int, **kwargs):
         old_table = self.get_round_dataframe(round_number)
         table = old_table[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
@@ -65,21 +84,31 @@ class RoundReplay:
             attack_pred = [round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
         elif side == "def":
             attack_pred = [100 - round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
-        table["Attack_win_probability"] = attack_pred
-        raw_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
+        table["Win_probability"] = attack_pred
+        raw_timings = [round(x / 1000, 2) for x in old_table.RoundTime]
+        integer_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
         table["Round time"] = raw_timings
-        return table[["Round time", "Attack_win_probability"]]
+        margin_differences = [(x - attack_pred[i - 1]) for i, x in enumerate(attack_pred)][1:]
+        margin_differences.insert(0, 0)
+        table["Difference (%)"] = margin_differences
+        winner = self.get_round_winners()[round_number]
+        tag_dict = {0: "def", 1: "atk"}
+        table["Final Winner"] = tag_dict[winner]
+        table["Round"] = round_number
+        table["Integer time"] = integer_timings
+        return table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round", "Integer time"]]
 
     def plot_round(self, round_number: int, **kwargs):
         plt.figure(figsize=(12, 5))
         chosen_side = kwargs["side"]
         color_dict = {"atk": "red", "def": "blue"}
+        marker_dict = {"atk": "#511C29", "def": "darkblue"}
         round_data = self.get_round_probability(round_number, side=chosen_side)
 
         sns.set_context(rc={'patch.linewidth': 2.0})
         sns.set(font_scale=1.3)
-        ax = sns.lineplot(x="Round time", y="Attack_win_probability", data=round_data,
-                          linewidth=2.0, zorder=3, color=color_dict[chosen_side])
+        ax = sns.lineplot(x="Round time", y="Win_probability", data=round_data,
+                          linewidth=0, zorder=0, color=color_dict[chosen_side])
         ax.set(xlabel='Round time (s)', ylabel='Win probability (%)')
         ax.xaxis.labelpad = 10
         ax.yaxis.labelpad = 12
@@ -92,11 +121,29 @@ class RoundReplay:
         plt.axhline(y=50, linestyle="-", color="grey", linewidth=1.5)
         plt.grid(True, which='both', linestyle='--', zorder=0, linewidth=0.9)
 
-        # plot a grid
+        x_data = list(round_data["Round time"])
+        y_data = list(round_data["Win_probability"])
+        marker_colors = [marker_dict[chosen_side]] * len(x_data)
+
+        plt.plot(x_data, y_data, linestyle="-", linewidth=1.7, color=color_dict[chosen_side], zorder=0)
+        for point in zip(x_data, y_data, marker_colors):
+            plt.scatter(point[0], point[1], color=point[2], s=60)
 
         plant = self.get_plant_stamp(round_number)
         if plant is not None:
             plt.axvline(x=plant)
+
+        plt.show()
+
+        def annotation(x_coord: float, y_coord: float, orientation: str):
+            if orientation == "up":
+                plt.gca().annotate('SU', xy=(18, 61), xytext=(x_coord - 0.5, y_coord + 2.95), fontsize=13,
+                                   color='green', weight='bold')
+            elif orientation == "down":
+                plt.gca().annotate('SU', xy=(18, 61), xytext=(x_coord - 0.5, y_coord - 5.9), fontsize=13, color='green',
+                                   weight='bold')
+
+        # annotation(20, 39.70, "down")
 
         arrow = {'facecolor': 'tab:blue', 'shrink': 0.05, 'alpha': 0.75}
         # plt.gca().annotate('nzr 2 frenzy kills', xy=(5.5, 61), xytext=(-8, 70), arrowprops=arrow, fontsize=13, color='green', weight='bold')
@@ -243,8 +290,8 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
 
 def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
     print("match → {} series → {}".format(match_id, series_id))
-    smd = SingleMatchDownloader(match_id, series_id)
-    smd.download()
+    # smd = SingleMatchDownloader(match_id, series_id)
+    # smd.download()
 
     raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
     model = generate_prediction_model(raw_df)
@@ -253,9 +300,22 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    pass
+    match = 39944
+    series = 18674
+    rr = generate_round_replay_example(match, series)
+    q = rr.get_round_probability(4, side="atk")
+    apple = 5 + 1
+
+
+    # rr.plot_round(4, side="atk")
+
     # path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
     # data = pd.read_csv('{}'.format(path2))
     #
     # mr = MatchReplay(match, data)
     # mr.export_big_dataframe()
+
+d1 = {5: 1, 62: 2, 17: 3}
+
+# Get the maximum key of d1
+print(max(d1, key=d1.get))

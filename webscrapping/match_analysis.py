@@ -3,10 +3,12 @@ from typing import List
 import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
+import matplotlib.lines as mlines
 
 from sklearn.model_selection import train_test_split, cross_val_score
 import lightgbm
 
+from webscrapping.analyse_json import Analyser
 from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
 
 
@@ -14,11 +16,14 @@ class RoundReplay:
     def __init__(self, match_id: int, input_df: pd.DataFrame, input_model: lightgbm.LGBMClassifier):
         self.df = input_df
         self.match_id = match_id
-        verification = "MatchID" in self.df
         self.query = input_df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
-
+        self.analyser = Analyser("{}.json".format(match_id))
         self.model = input_model
+        self.chosen_round = None
+
+    def choose_round(self, round_number: int):
+        self.chosen_round = round_number
 
     def get_round_table(self) -> dict:
         g = self.query[["RoundNumber", "RoundID"]]
@@ -67,7 +72,8 @@ class RoundReplay:
             )
         }
 
-    def get_round_probability(self, round_number: int, **kwargs):
+    def get_round_probability(self, **kwargs):
+        round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
         table = old_table[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
                            "DEF_has_OP", "Def_has_Odin",
@@ -98,12 +104,46 @@ class RoundReplay:
         table["Integer time"] = integer_timings
         return table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round", "Integer time"]]
 
-    def plot_round(self, round_number: int, **kwargs):
-        plt.figure(figsize=(12, 5))
+    def get_round_story(self) -> dict:
+        round_story = []
+        for i in self.analyser.export_round_events():
+            if i["roundNumber"] == self.chosen_round:
+                output = "None"
+                if i["eventType"] == "kill":
+                    output = "{} [{}] {}".format(i["killer_name"], i["weapon"]["name"], i["victim_name"])
+                elif i["eventType"] == "plant":
+                    output = "{} {}".format(i["killer_name"], "planted the spike")
+                elif i["eventType"] == "defuse":
+                    output = "{} {}".format(i["killer_name"], "defused the spike")
+                elif i["eventType"] == "revival":
+                    output = "{} revived {}".format(i["killer_name"], i["victim_name"])
+                else:
+                    apple = 5
+                    output = "{} {}".format(i["killer_name"], "exception")
+                round_story.append(output)
+        rs_dict = {"A": "Round start"}
+        for i, x in enumerate(round_story):
+            rs_dict[self.letterify(i + 1, displace=True)] = x
+        return rs_dict
+
+    @staticmethod
+    def letterify(number: int, **kwargs):
+        if "displace" in kwargs and kwargs["displace"]:
+            return chr(ord("B") + number - 1)
+        else:
+            return chr(ord("A") + number - 1)
+
+    def plot_round(self, **kwargs):
+        round_number = self.chosen_round
         chosen_side = kwargs["side"]
+        marker_margin = 0
+        if "marker_margin" in kwargs:
+            marker_margin = kwargs["marker_margin"]
+
+        plt.figure(figsize=(12, 5))
         color_dict = {"atk": "red", "def": "blue"}
         marker_dict = {"atk": "#511C29", "def": "darkblue"}
-        round_data = self.get_round_probability(round_number, side=chosen_side)
+        round_data = self.get_round_probability(side=chosen_side)
 
         sns.set_context(rc={'patch.linewidth': 2.0})
         sns.set(font_scale=1.3)
@@ -125,6 +165,24 @@ class RoundReplay:
         y_data = list(round_data["Win_probability"])
         marker_colors = [marker_dict[chosen_side]] * len(x_data)
 
+        def annotation(content: str, x_coord: float, y_coord: float, orientation: str):
+            font_size = 14
+            down_table = {"atk": -7 + marker_margin, "def": -5 + marker_margin}
+            down_orientation = down_table[chosen_side]
+            if orientation == "up":
+                plt.gca().annotate(content, xy=(18, 61), xytext=(x_coord - 0.5, y_coord + 2.95), fontsize=font_size,
+                                   color='green', weight='bold')
+            elif orientation == "down":
+                plt.gca().annotate(content, xy=(18, 61), xytext=(x_coord - 0.35, y_coord + down_orientation),
+                                   fontsize=font_size, color='green', weight='bold')
+
+        prob_table = self.get_round_probability(side=chosen_side)[["Round time", "Win_probability"]]
+        for index, item in enumerate(prob_table.iterrows()):
+            fixed_index = index + 1
+            aux = list(item[1])
+            label = self.letterify(fixed_index)
+            annotation(self.letterify(fixed_index), aux[0], aux[1], "down")
+
         plt.plot(x_data, y_data, linestyle="-", linewidth=1.7, color=color_dict[chosen_side], zorder=0)
         for point in zip(x_data, y_data, marker_colors):
             plt.scatter(point[0], point[1], color=point[2], s=60)
@@ -133,15 +191,16 @@ class RoundReplay:
         if plant is not None:
             plt.axvline(x=plant)
 
-        plt.show()
+        locs = ["upper left", "lower left", "center right"]
+        blue_line = mlines.Line2D([], [], color='green', marker='o',
+                                  markersize=7, label='Blue stars')
+        label_list = [key + " → " + value for key, value in self.get_round_story().items()]
+        plt.gca().legend(
+            labels=label_list,
+            handles=[blue_line] * len(label_list),
+            loc=(1.1, 0.15))
 
-        def annotation(x_coord: float, y_coord: float, orientation: str):
-            if orientation == "up":
-                plt.gca().annotate('SU', xy=(18, 61), xytext=(x_coord - 0.5, y_coord + 2.95), fontsize=13,
-                                   color='green', weight='bold')
-            elif orientation == "down":
-                plt.gca().annotate('SU', xy=(18, 61), xytext=(x_coord - 0.5, y_coord - 5.9), fontsize=13, color='green',
-                                   weight='bold')
+        plt.show()
 
         # annotation(20, 39.70, "down")
 
@@ -305,12 +364,14 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 40057
+    match = 42038
     series = 19728
     rr = generate_round_replay_example(match, series)
+    rr.choose_round(6)
+    rr.plot_round(side="atk")
+
     # q = rr.get_round_probability(4, side="atk")
     # apple = 5 + 1
-
 
     # rr.plot_round(4, side="atk")
 

@@ -1,16 +1,7 @@
-import datetime
-import glob
 import json
 import os
 from typing import Tuple, List
-
 import pandas as pd
-
-agent_table = {1: "Breach", 2: "Raze", 3: "Cypher", 4: "Sova", 5: "Killjoy", 6: "Viper",
-               7: "Phoenix", 8: "Brimstone", 9: "Sage", 10: "Reyna", 11: "Omen", 12: "Jett",
-               13: "Skye", 14: "Yoru", 15: "Astra"}
-
-begin_time = datetime.datetime.now()
 
 
 class Analyser:
@@ -290,7 +281,7 @@ class Analyser:
 
     def get_map_table(self) -> dict:
         aux = self.data["series"]["seriesById"]["matches"]
-        return {aux[index]["id"]: index+1 for index in range(len(aux))}
+        return {aux[index]["id"]: index + 1 for index in range(len(aux))}
 
     def generate_map_metrics(self) -> list:
         """
@@ -338,9 +329,9 @@ class Analyser:
         report = self.generate_map_metrics()
         return pd.DataFrame(report, columns=features)
 
-    def export_round_events(self, round_number: int) -> dict:
+    def export_round_events(self) -> dict:
         self.chosen_map = self.get_map_table()[self.raw_match_id]
-        self.chosen_round = self.get_round_table()[round_number]
+        self.chosen_round = self.get_round_table()[1]
         self.set_config(map=self.chosen_map, round=self.chosen_round)
         export_events = self.data["matches"]["matchDetails"]["events"]
 
@@ -351,16 +342,19 @@ class Analyser:
             killer_agent_id = self.current_status[killer_id]["agentId"]
             killer_agent_name = self.agent_data[str(killer_agent_id)]["name"]
 
-            if event["eventType"] == "kill":
+            if event["eventType"] in ["kill", "revival"]:
                 victim_name = self.current_status[victim_id]["name"]["ign"]
                 victim_agent_id = self.current_status[victim_id]["agentId"]
                 victim_agent_name = self.agent_data[str(victim_agent_id)]["name"]
                 event["victim_agent_name"] = victim_agent_name
                 event["victim_name"] = victim_name
+            else:
+                event["victim_agent_name"] = "None"
+                event["victim_name"] = "None"
             if event["weaponId"] is not None:
                 weapon = self.weapon_data[str(event["weaponId"])]
             else:
-                weapon = "NA"
+                weapon = {"weaponId": "None", "name": event["ability"]}
             event["killer_name"] = killer_name
             event["killer_agent_name"] = killer_agent_name
             event["weapon"] = weapon
@@ -370,9 +364,12 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser("32387.json")
-    dm = a.export_round_events(1)
+    dm = a.export_round_events()
     apple = 5 + 1
 
+    buy_list = ["apple", "banana", "orange", "pear", "pineapple", "strawberry", "watermelon"]
+    # enumerate buy_list into a indexed dict
+    buy_dict = {i: x for i, x in enumerate(buy_list)}
 
 # a.set_config(map=1, round=414368)
 # a.get_round_positions()

@@ -57,14 +57,17 @@ class RoundReplay:
         dtb = self.get_round_table()
         round_amount = max(dtb, key=dtb.get)
         minimum_probabilities_dict = {}
+        original_round = self.chosen_round
         for i in range(1, round_amount + 1):
-            aux = self.get_round_probability(i, side=chosen_side)
+            self.chosen_round = i
+            aux = self.get_round_probability(side=chosen_side)
             winner = list(aux["Final Winner"])[0]
             if winner == chosen_side:
                 round_id = list(aux["Round"])[0]
                 min_prob = min(list(aux["Win_probability"]))
                 minimum_probabilities_dict[round_id] = min_prob
 
+        self.chosen_round = original_round
         return {
             k: v
             for k, v in sorted(
@@ -73,6 +76,12 @@ class RoundReplay:
         }
 
     def get_round_probability(self, **kwargs):
+        """
+        :param kwargs: round_number: int
+                       side: str, "atk" or "def"
+                       add_events: boolean
+        :return: pd.DataFrame table with the probabilities of each round
+        """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
         table = old_table[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
@@ -102,7 +111,47 @@ class RoundReplay:
         table["Final Winner"] = tag_dict[winner]
         table["Round"] = round_number
         table["Integer time"] = integer_timings
-        return table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round", "Integer time"]]
+        # table["Stamp"] = [chr(x) for x in range(65, 65 + len(integer_timings))]
+        table = table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round",
+                       "Integer time"]]
+        if "add_events" in kwargs and kwargs["add_events"]:
+            extra_df = self.round_events_dataframe()
+            table.reset_index(drop=True, inplace=True)
+            extra_df.reset_index(drop=True, inplace=True)
+            table = pd.concat([table, extra_df], axis=1)
+            wp = list(table["Win_probability"])
+            new_diff = [x - wp[i - 1] for i, x in enumerate(wp)][1:]
+            new_diff.insert(0, 0)
+            table["Difference (%)"] = new_diff
+
+            table = table[["Round", "Round time", "Stamps", "Difference (%)", "Actors", "Means", "Victims",
+                           "Win_probability", "Final Winner"]]
+
+        return table
+
+    def round_events_dataframe(self) -> pd.DataFrame:
+        stamps = ["A"]
+        actors = ["None"]
+        means = ["None"]
+        victims = ["None"]
+        story = self.get_round_story()
+        for key, value in story.items():
+            action_list = value.split(" ")
+            # 'spike' not in action_list
+            if 'Round' not in action_list and 'spike' not in action_list:
+                stamps.append(key)
+                actors.append(action_list[0])
+                if "[" in action_list[1]:
+                    means.append(action_list[1][1:-1])
+                else:
+                    means.append(action_list[1])
+                victims.append(action_list[2])
+            elif 'spike' in action_list:
+                stamps.append(key)
+                actors.append(action_list[0])
+                means.append("spike")
+                victims.append("spike")
+        return pd.DataFrame({"Stamps": stamps, "Actors": actors, "Means": means, "Victims": victims})
 
     def get_round_story(self) -> dict:
         round_story = []
@@ -364,11 +413,12 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 42038
+    match = 42039
     series = 19728
     rr = generate_round_replay_example(match, series)
-    rr.choose_round(6)
-    rr.plot_round(side="atk")
+    rr.choose_round(2)
+    rr.get_round_probability(side="atk", add_events=True)
+    #rr.plot_round(side="atk")
 
     # q = rr.get_round_probability(4, side="atk")
     # apple = 5 + 1

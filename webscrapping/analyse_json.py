@@ -23,17 +23,16 @@ class Analyser:
 
         data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
         body_txt = data_file.read()
-        first_segment = body_txt[0:24]
-        if first_segment == "window.__INITIAL_STATE__":
-            new_format = body_txt[45:]
-            self.data = json.loads(new_format)
-        else:
-            self.data = json.loads(body_txt)
+        self.data = None
+        self.trim_trash_code(body_txt)
 
         self.raw_match_id = int(input_file.split(".")[0])
 
         weapon_file = open('matches/model/weapon_table.json')
         self.weapon_data = json.load(weapon_file)
+
+        agent_file = open('matches/model/agent_table.json')
+        self.agent_data = json.load(agent_file)
 
         maps_file = open('matches/model/map_table.json')
         self.maps_data = json.load(maps_file)
@@ -49,9 +48,14 @@ class Analyser:
         self.round_table = None
         self.reverse_round_table = None
         self.match_id = None
-        self.event_id = None
+        self.series_id = None
 
     def set_config(self, **kwargs):
+        """
+        Set the many configurations of the analysis
+        :param kwargs: chosen_map → map id to be analysed
+                       chosen_round → round id to be analysed
+        """
         self.chosen_map: str = kwargs["map"]
         self.chosen_round: int = kwargs["round"]
         self.attacking_team: int = self.data["series"]["seriesById"]["matches"][self.chosen_map][
@@ -60,7 +64,7 @@ class Analyser:
         self.current_status: dict = self.generate_player_table()
         self.map_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
         self.match_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["id"]
-        self.event_id: int = self.data["series"]["seriesById"]["id"]
+        self.series_id: int = self.data["series"]["seriesById"]["id"]
         self.map_name: str = self.maps_data[str(self.map_id)]
         self.round_table: dict = self.get_round_table()
         self.reverse_round_table: dict = self.get_reverse_round_table()
@@ -75,6 +79,17 @@ class Analyser:
         if round_pos >= 13:
             self.attacking_team = new_attack
 
+    def trim_trash_code(self, code_string: str):
+        """
+        Trim the trash code from the json file, making the json readable
+        """
+        first_segment = code_string[0:24]
+        if first_segment == "window.__INITIAL_STATE__":
+            new_format = code_string[45:]
+            self.data = json.loads(new_format)
+        else:
+            self.data = json.loads(code_string)
+
     def get_plant_timestamp(self):
         for h in self.round_events.values():
             if h["event"] == "plant":
@@ -82,6 +97,11 @@ class Analyser:
         return None
 
     def generate_player_table(self) -> dict:
+        """
+        Generate a table of player IDs and their respective infos
+        :return: name, agentId, combatScore, weaponId, shieldId, loadoutValue, spent credits,
+                 remaining credits, side, team number, isAlive
+        """
         ign_table = {
             b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
             for b in self.data["series"]["seriesById"]["matches"][self.chosen_map]["players"]
@@ -107,6 +127,10 @@ class Analyser:
         return player_dict
 
     def get_round_events(self) -> dict:
+        """
+        Get the events of the round (kills, deaths, plants, defuses, etc)
+        :return:
+        """
         return {
             m["roundTimeMillis"]: {
                 "round_number": m["roundNumber"],
@@ -207,8 +231,7 @@ class Analyser:
                 def_agents['initiator'], def_agents['duelist'], def_agents['sentinel'], def_agents['controller'],
                 atk_shields, def_shields,
                 self.map_name["name"], self.match_id,
-                self.event_id, self.best_of, round_winner)
-
+                self.series_id, self.best_of, round_winner)
 
     @staticmethod
     def evaluate_spike_beeps(current_stamp: int, spike_stamp: int) -> dict:
@@ -243,22 +266,36 @@ class Analyser:
         return round_array
 
     def get_round_table(self) -> dict:
+        """
+        Returns a dictionary of rounds raw order and their IDs
+        :return: round[6] = 509225
+        """
         return {
-            round_data["number"]: round_data["id"]
-            for round_data in self.data["series"]["seriesById"]["matches"][
-                self.chosen_map
-            ]["rounds"]
+            round_data["roundNumber"]: round_data["roundId"]
+            # for round_data in self.data["series"]["seriesById"]["matches"][
+            #     self.chosen_map
+            # ]["rounds"]
+            for round_data in self.data["matches"]["matchDetails"]["events"]
         }
 
     def get_reverse_round_table(self) -> dict:
         return {
-            round_data["id"]: round_data["number"]
-            for round_data in self.data["series"]["seriesById"]["matches"][
-                self.chosen_map
-            ]["rounds"]
+            # round_data["id"]: round_data["number"]
+            # for round_data in self.data["series"]["seriesById"]["matches"][
+            #     self.chosen_map
+            # ]["rounds"]
+            round_data["roundId"]: round_data["roundNumber"]
+            for round_data in self.data["matches"]["matchDetails"]["events"]
         }
 
+    def get_map_table(self) -> dict:
+        aux = self.data["series"]["seriesById"]["matches"]
+        return {aux[index]["id"]: index+1 for index in range(len(aux))}
+
     def generate_map_metrics(self) -> list:
+        """
+        Generates the dataframe body. See get_feature_labels().
+        """
         map_events = []
         round_table = self.get_round_table()
         for i in round_table.values():
@@ -270,6 +307,9 @@ class Analyser:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
     def get_feature_labels(self) -> List[str]:
+        """
+        Returns a list of all the features used in the model
+        """
         comparison_test = self.generate_map_metrics()
         return ['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
                 'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
@@ -298,8 +338,42 @@ class Analyser:
         report = self.generate_map_metrics()
         return pd.DataFrame(report, columns=features)
 
+    def export_round_events(self, round_number: int) -> dict:
+        self.chosen_map = self.get_map_table()[self.raw_match_id]
+        self.chosen_round = self.get_round_table()[round_number]
+        self.set_config(map=self.chosen_map, round=self.chosen_round)
+        export_events = self.data["matches"]["matchDetails"]["events"]
 
-# a = Analyser("26426.json")
+        for event in export_events:
+            killer_id = event["playerId"]
+            victim_id = event["referencePlayerId"]
+            killer_name = self.current_status[killer_id]["name"]["ign"]
+            killer_agent_id = self.current_status[killer_id]["agentId"]
+            killer_agent_name = self.agent_data[str(killer_agent_id)]["name"]
+
+            if event["eventType"] == "kill":
+                victim_name = self.current_status[victim_id]["name"]["ign"]
+                victim_agent_id = self.current_status[victim_id]["agentId"]
+                victim_agent_name = self.agent_data[str(victim_agent_id)]["name"]
+                event["victim_agent_name"] = victim_agent_name
+                event["victim_name"] = victim_name
+            if event["weaponId"] is not None:
+                weapon = self.weapon_data[str(event["weaponId"])]
+            else:
+                weapon = "NA"
+            event["killer_name"] = killer_name
+            event["killer_agent_name"] = killer_agent_name
+            event["weapon"] = weapon
+
+        return export_events
+
+
+if __name__ == "__main__":
+    a = Analyser("32387.json")
+    dm = a.export_round_events(1)
+    apple = 5 + 1
+
+
 # a.set_config(map=1, round=414368)
 # a.get_round_positions()
 # q = a.generate_full_round()

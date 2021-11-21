@@ -15,7 +15,7 @@ class RoundReplay:
         self.df = input_df
         self.match_id = match_id
         verification = "MatchID" in self.df
-        self.query = input_df.query("MatchID == {}".format(39944))
+        self.query = input_df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
 
         self.model = input_model
@@ -294,9 +294,10 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
     smd.download_full_series()
 
     raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
+    analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match_id), index_col=False)
     model = generate_prediction_model(raw_df)
 
-    return RoundReplay(match_id, raw_df, model)
+    return RoundReplay(match_id, analysis_df, model)
 
 
 if __name__ == "__main__":

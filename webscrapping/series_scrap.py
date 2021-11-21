@@ -1,13 +1,21 @@
 import os
+import time
+from time import sleep
+
 from selenium import webdriver
 import selenium.webdriver.firefox.webdriver as FirefoxWebDriver
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-
 # page = requests.get("https://runitback.gg/series/12728?match=25608&round=3&tab=round-stats")
+from selenium.webdriver.support.wait import WebDriverWait
+
 from webscrapping.wrapper.folder_fixer import fix_current_folder
 
 
@@ -24,6 +32,9 @@ class RIBScrapper:
         self.current_path = os.getcwd()
 
     def late_open(self):
+        """
+        Open the driver if it is not already open
+        """
         if self.driver is None:
             self.driver = webdriver.Firefox()
 
@@ -55,11 +66,22 @@ class RIBScrapper:
 
     @staticmethod
     def generate_single_link(series_id: int, match_id: int) -> str:
+        """
+        Generate a single link to a match, based on the series ID and the match ID.
+        :param series_id:
+        :param match_id:
+        :return: Full link string
+        """
         return "https://runitback.gg/series/{}?match={}&round=1&tab=round-stats".format(
             series_id, match_id)
 
     @staticmethod
     def seconds_to_time(time_in_seconds: int) -> str:
+        """
+        Convert seconds to a string
+        :param time_in_seconds:
+        :return: String formatted as "HH:MM:SS"
+        """
         hours = time_in_seconds // 3600
         minutes = (time_in_seconds % 3600) // 60
         seconds = time_in_seconds % 60
@@ -121,10 +143,50 @@ class RIBScrapper:
             fp.write(first_half)
         return output_location
 
-    def export_json_using_selenium(self, input_link: str, current_driver=None, **kwargs):
-        if current_driver is None:
-            current_driver = self.driver
-        current_driver.get(input_link)
+    def handle_map_buttons(self) -> dict:
+        """
+        :return: Returns a dict with all clickable map buttons across the series.
+        """
+        button_mapping = {}
+        current_driver = self.driver
+        best_of_text = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div[1]/div["
+                                                            "2]/div[2]").text
+        best_of = int(best_of_text.split(" ")[-1])
+        first_map_button = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div["
+                                                                "2]/div/div[2]/div/div[2]")
+        button_mapping[1] = first_map_button
+        if best_of > 1:
+            second_map_button = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div["
+                                                                     "2]/div/div[3]")
+            button_mapping[2] = second_map_button
+            try:
+                third_map_button = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div["
+                                                                        "2]/div/div[4]")
+                button_mapping[3] = third_map_button
+            except NoSuchElementException:
+                print("BO3 but 3rd map does not exist")
+        if best_of > 3:
+            try:
+                fourth_map_button = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div["
+                                                                         "2]/div/div[5]/div")
+                button_mapping[4] = fourth_map_button
+            except NoSuchElementException:
+                print("BO5 but 4th map does not exist")
+            try:
+                fifth_map_button = current_driver.find_element_by_xpath("/html/body/div[1]/div/div[2]/div/div[2]/div["
+                                                                        "2]/div/div[6]/div")
+                button_mapping[5] = fifth_map_button
+            except NoSuchElementException:
+                print("BO5 but 5th map does not exist")
+        button_mapping["best_of"] = best_of
+        return button_mapping
+
+    def handle_single_html_source_code(self) -> str:
+        """
+        :return: Returns a single string with a json containing all the data from 2D Replay of that link
+        """
+        current_driver = self.driver
+
         html = current_driver.page_source
         soup = BeautifulSoup(html, "html.parser")
         scripts = soup.findAll('script')
@@ -132,6 +194,40 @@ class RIBScrapper:
         match_tag = content_filter[1]
         match_script = match_tag.contents[0].string
         script = match_script[:match_script.find("?{}:")]
+        trash_script = 'window.__INITIAL_STATE__="undefined"==typeof '
+        return script[45:]
+
+    def handle_whole_series(self) -> dict:
+        """
+        :return: Returns a dict containing the 2D Replay JSON for all maps in the series
+        """
+        start = time.time()
+        all_maps = self.handle_map_buttons()
+        map_jsons = {}
+        map_ids = {}
+        id_to_json = {}
+
+        for i in range(1, all_maps["best_of"] + 1):
+            if i in all_maps:
+                all_maps[i].click()
+                self.driver.refresh()
+                all_maps = self.handle_map_buttons()
+                map_jsons[i] = self.handle_single_html_source_code()
+                map_ids[i] = int(self.driver.current_url.split("=")[-1])
+            else:
+                break
+
+        end = time.time()
+        running_time = end - start
+        print("That series took {} to scrap".format(running_time))
+
+        return {value: map_jsons[key] for key, value in map_ids.items()}
+
+    def export_json_using_selenium(self, input_link: str, current_driver=None, **kwargs):
+        if current_driver is None:
+            current_driver = self.driver
+        current_driver.get(input_link)
+        script = self.handle_single_html_source_code()
         output_index = self.scrap_match_link(input_link)
 
         if "folder_location" in kwargs:
@@ -143,19 +239,33 @@ class RIBScrapper:
             f.write(script)
             print("File downloaded at {}".format(output_location))
 
+    def export_json_of_whole_series(self, input_link: str, current_driver=None, **kwargs):
+        if current_driver is None:
+            current_driver = self.driver
+        current_driver.get(input_link)
+        script_dict = self.handle_whole_series()
+
+        current_folder = os.getcwd()
+
+        for key, value in script_dict.items():
+            json_name = "{}.json".format(key)
+            if "folder_location" in kwargs:
+                output_location = "matches/json/{}".format(json_name)
+            else:
+                output_location = "matches/{}/{}.json".format(kwargs["folder_location"], json_name)
+
+            with open(output_location, "w", encoding='utf-8') as f:
+                f.write(value)
+                print("File downloaded at {}".format(output_location))
+                f.close()
 
 
-    @staticmethod
-    def selenium_threads(link_table: str):
-        fix_current_folder()
-        match_db = pd.read_csv("matches/events/{}".format(link_table))
-        thread_driver_a = webdriver.Firefox()
-        thread_driver_b = webdriver.Firefox()
-        # for link in match_db.iterrows():
-        #     match_link = link[1]["match_link"]
-        #     self.export_json_using_selenium(match_link, current_driver=thread_driver_a)
-            # t = Thread(target=self.export_json_using_selenium, args=(link, thread_driver_a,))
-            # t.start()
+
+
+
+
+
+
 
 
 if __name__ == '__main__':

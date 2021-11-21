@@ -52,6 +52,10 @@ class CsvSplitter:
         return chr(number + 96)
 
     def split(self):
+        """
+        Split the CSV file into multiple smaller files.
+        :return: Small csv files ordered alphabetically.
+        """
         k = self.k
         size = self.size
 
@@ -64,6 +68,9 @@ class CsvSplitter:
             self.files.append(export)
 
     def cleanup(self):
+        """
+        Delete all CSV files except the last one.
+        """
         for file in os.listdir():
             if self.filename in file and file != "{}.csv".format(self.filename):
                 os.remove(file)
@@ -75,6 +82,9 @@ class CsvMerger:
         self.delete_jsons = kwargs["delete_jsons"]
 
     def merge(self):
+        """
+        Merge all csv files into one.
+        """
         self.merge_all_csv(self.output_name)
         if self.delete_jsons:
             self.delete_jsons()

@@ -290,8 +290,8 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
 
 def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
     print("match → {} series → {}".format(match_id, series_id))
-    # smd = SingleMatchDownloader(match_id, series_id)
-    # smd.download()
+    smd = SingleMatchDownloader(series_id)
+    smd.download_full_series()
 
     raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
     model = generate_prediction_model(raw_df)
@@ -300,11 +300,15 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    match = 39944
-    series = 18674
+    # https://rib.gg/series/4103 Sentinels BO5 score 3-2
+    # https://rib.gg/series/18716 Liquid BO5 score 3-1
+    # https://rib.gg/series/18718 Furia BO5 score 3-0
+    # https://rib.gg/series/3173 Sentinels BO1
+    match = 40057
+    series = 19728
     rr = generate_round_replay_example(match, series)
-    q = rr.get_round_probability(4, side="atk")
-    apple = 5 + 1
+    # q = rr.get_round_probability(4, side="atk")
+    # apple = 5 + 1
 
 
     # rr.plot_round(4, side="atk")
@@ -314,8 +318,3 @@ if __name__ == "__main__":
     #
     # mr = MatchReplay(match, data)
     # mr.export_big_dataframe()
-
-d1 = {5: 1, 62: 2, 17: 3}
-
-# Get the maximum key of d1
-print(max(d1, key=d1.get))

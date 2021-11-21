@@ -15,7 +15,6 @@ begin_time = datetime.datetime.now()
 
 class Analyser:
     def __init__(self, input_file: str):
-
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "Classification_datascience":
             os.chdir("webscrapping")
@@ -29,7 +28,7 @@ class Analyser:
             new_format = body_txt[45:]
             self.data = json.loads(new_format)
         else:
-            self.data = json.load(data_file)
+            self.data = json.loads(body_txt)
 
         self.raw_match_id = int(input_file.split(".")[0])
 

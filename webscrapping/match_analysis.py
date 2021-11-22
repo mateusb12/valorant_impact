@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import List
 import pandas as pd
@@ -19,6 +20,8 @@ class RoundReplay:
         self.query = input_df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
         self.analyser = Analyser("{}.json".format(match_id))
+        self.player_impact = self.analyser.export_player_names()
+        self.round_amount = self.analyser.get_last_round()
         self.model = input_model
         self.chosen_round = None
 
@@ -111,7 +114,6 @@ class RoundReplay:
         table["Final Winner"] = tag_dict[winner]
         table["Round"] = round_number
         table["Integer time"] = integer_timings
-        # table["Stamp"] = [chr(x) for x in range(65, 65 + len(integer_timings))]
         table = table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round",
                        "Integer time"]]
         if "add_events" in kwargs and kwargs["add_events"]:
@@ -127,6 +129,7 @@ class RoundReplay:
             table = table[["Round", "Round time", "Stamps", "Difference (%)", "Actors", "Means", "Victims",
                            "Win_probability", "Final Winner"]]
 
+        table = table.fillna(0)
         return table
 
     def round_events_dataframe(self) -> pd.DataFrame:
@@ -167,13 +170,61 @@ class RoundReplay:
                 elif i["eventType"] == "revival":
                     output = "{} revived {}".format(i["killer_name"], i["victim_name"])
                 else:
-                    apple = 5
                     output = "{} {}".format(i["killer_name"], "exception")
                 round_story.append(output)
         rs_dict = {"A": "Round start"}
         for i, x in enumerate(round_story):
             rs_dict[self.letterify(i + 1, displace=True)] = x
         return rs_dict
+
+    def get_round_impact(self) -> dict:
+        prob_table = self.get_round_probability(side="def", add_events=True)
+        player_impact_table = copy.deepcopy(self.player_impact)
+        for i in prob_table.iterrows():
+            stamp = i[1]["Stamps"]
+            means = i[1]["Means"]
+            if stamp != "A" and means != "spike":
+                actor_diff = i[1]["Difference (%)"]
+                actor = i[1]["Actors"]
+                victim = i[1]["Victims"]
+                victim_diff = 0 if means == "revived" else -actor_diff
+                if actor_diff >= 0:
+                    player_impact_table[actor]["gained"] += actor_diff
+                else:
+                    player_impact_table[actor]["gained"] += -actor_diff
+                player_impact_table[victim]["lost"] += abs(victim_diff)
+        for key, value in player_impact_table.items():
+            value["delta"] = value["gained"] - value["lost"]
+        return player_impact_table
+
+    def get_map_impact(self) -> dict:
+        pi = copy.deepcopy(self.player_impact)
+        impact_list = []
+        for i in range(1, self.round_amount + 1):
+            self.choose_round(i)
+            impact_list.append(self.get_round_impact())
+
+        for round_impact in impact_list:
+            for key, value in round_impact.items():
+                pi[key]["gained"] += value["gained"]
+                pi[key]["lost"] += value["lost"]
+                pi[key]["delta"] += value["delta"]
+
+        return dict(sorted(pi.items(), key=lambda item: item[1]["delta"], reverse=True))
+
+    def get_map_impact_dataframe(self) -> pd.DataFrame:
+        igns = []
+        gains = []
+        losses = []
+        deltas = []
+        for key, value in self.get_map_impact().items():
+            igns.append(key)
+            gains.append(value["gained"])
+            losses.append(value["lost"])
+            deltas.append(value["delta"])
+
+        impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas}
+        return pd.DataFrame(impact_table)
 
     @staticmethod
     def letterify(number: int, **kwargs):
@@ -260,123 +311,6 @@ class RoundReplay:
         # plt.gca().annotate('FURIA only has 20% chance \n of winning this round', xy=(0, 17), xytext=(10, 5), arrowprops=arrow, fontsize=13, color='red', weight='bold')
 
 
-class MatchReplay:
-    def __init__(self, match_id: int, input_df: pd.DataFrame):
-        self.df: pd.DataFrame = input_df
-        self.match_id: int = match_id
-        self.query: pd.DataFrame = input_df.query('MatchID == {}'.format(match_id))
-
-    def get_round_table(self) -> dict:
-        g = self.query[["RoundNumber", "RoundID"]]
-        g.drop_duplicates()
-        return dict(zip(g.RoundNumber, g.RoundID))
-
-    def get_atk_scores(self) -> List[int]:
-        dfm = list(self.get_round_winners().values())
-        score_dict = {'atk': 0, 'def': 0}
-        atk_scores = []
-
-        for i in dfm[:12]:
-            if i == 1:
-                score_dict['atk'] += 1
-            atk_scores.append(score_dict['atk'])
-        for j in dfm[12:24]:
-            if j == 0:
-                score_dict['atk'] += 1
-            atk_scores.append(score_dict['atk'])
-
-        return atk_scores
-
-    def get_round_winners(self) -> dict:
-        g = self.query[["RoundNumber", "FinalWinner"]]
-        g.drop_duplicates()
-        return dict(zip(g.RoundNumber, g.FinalWinner))
-
-    def get_def_scores(self) -> List[int]:
-        dfm = list(self.get_round_winners().values())
-        score_dict = {'atk': 0, 'def': 0}
-        def_scores = []
-
-        for i in dfm[:12]:
-            if i == 0:
-                score_dict['def'] += 1
-            def_scores.append(score_dict['def'])
-        for j in dfm[12:24]:
-            if j == 1:
-                score_dict['def'] += 1
-            def_scores.append(score_dict['def'])
-
-        return def_scores
-
-    def get_match_winner(self) -> int:
-        atks = self.get_atk_scores()
-        defs = self.get_def_scores()
-
-        winner = 0
-        if atks[-1] == 12 and defs[-1] == 12:
-            winner = 2
-        elif atks[-1] == 13:
-            winner = 1
-        elif defs[-1] == 13:
-            winner = 0
-        return winner
-
-    def generate_match_dataframe(self) -> pd.DataFrame:
-        r_number = pd.Series(self.get_round_table().keys())
-        r_atk = pd.Series(self.get_atk_scores())
-        r_def = pd.Series(self.get_def_scores())
-        r_winner = pd.Series([self.get_match_winner()] * len(r_number))
-        r_ids = pd.Series([self.match_id] * len(r_number))
-        r_atk_bank = pd.Series(self.get_atk_bank())
-        r_def_bank = pd.Series(self.get_def_bank())
-
-        frame = {'MatchID': r_ids, 'RoundNumber': r_number, 'AtkScore': r_atk, 'DefScore': r_def,
-                 'ATK_Bank': r_atk_bank, 'DEF_Bank': r_def_bank,
-                 'FinalWinner': r_winner}
-
-        d_frame = pd.DataFrame(frame)
-        d_frame.dropna()
-
-        return d_frame
-
-    def get_all_matches(self) -> set:
-        return set(self.df.MatchID)
-
-    def get_atk_bank(self) -> List[int]:
-        return [
-            max(self.query.query('RoundNumber == {}'.format(r)).ATK_bank)
-            for r in self.get_round_table().keys()
-        ]
-
-    def get_def_bank(self) -> List[int]:
-        return [
-            max(self.query.query('RoundNumber == {}'.format(r)).DEF_bank)
-            for r in self.get_round_table().keys()
-        ]
-
-    def get_big_dataframe(self):
-        df_list = []
-        match_indexes = list(self.get_all_matches())
-
-        for i in match_indexes:
-            self.match_id = i
-            print(i)
-            self.query: pd.DataFrame = self.df.query('MatchID == {}'.format(i))
-            df_list.append(self.generate_match_dataframe())
-
-        merged = pd.concat(df_list)
-        merged.dropna(inplace=True)
-        merged["AtkScore"] = merged["AtkScore"].astype(int)
-        merged["DefScore"] = merged["DefScore"].astype(int)
-
-        return merged
-
-    def export_big_dataframe(self):
-        big_df = self.get_big_dataframe()
-        big_df.to_csv(r'matches\rounds\matches_csv.csv', index=False)
-        print('SUCCESS!')
-
-
 def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClassifier:
     params = pd.read_csv('model_params.csv', index_col=False)
     params = params.to_dict('records')[0]
@@ -396,14 +330,21 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
     return model
 
 
-def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
+def download_missing_matches(match_id: int, series_id: int):
     print("match → {} series → {}".format(match_id, series_id))
     smd = SingleMatchDownloader(series_id)
     smd.download_full_series()
 
+
+def train_model() -> lightgbm.LGBMClassifier:
     raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
+    return generate_prediction_model(raw_df)
+
+
+def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
+    download_missing_matches(match_id, series_id)
+    model = train_model()
     analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match_id), index_col=False)
-    model = generate_prediction_model(raw_df)
 
     return RoundReplay(match_id, analysis_df, model)
 
@@ -413,12 +354,13 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 42039
+    match = 42038
     series = 19728
     rr = generate_round_replay_example(match, series)
-    rr.choose_round(2)
-    rr.get_round_probability(side="atk", add_events=True)
-    #rr.plot_round(side="atk")
+    rr.choose_round(28)
+    rr.get_round_impact()
+    # rr.get_round_probability(side="atk", add_events=True)
+    # rr.plot_round(side="atk")
 
     # q = rr.get_round_probability(4, side="atk")
     # apple = 5 + 1

@@ -41,12 +41,18 @@ class Analyser:
         self.match_id = None
         self.series_id = None
 
+    def implicit_set_config(self, **kwargs):
+        map_index = self.get_valid_maps()[self.raw_match_id] + 1
+        round_index = self.get_round_table()[kwargs["round"]]
+        self.set_config(map=map_index, round=round_index)
+
     def set_config(self, **kwargs):
         """
         Set the many configurations of the analysis
         :param kwargs: chosen_map → map id to be analysed
                        chosen_round → round id to be analysed
         """
+
         self.chosen_map: str = kwargs["map"]
         self.chosen_round: int = kwargs["round"]
         self.attacking_team: int = self.data["series"]["seriesById"]["matches"][self.chosen_map][
@@ -134,12 +140,15 @@ class Analyser:
         }
 
     def get_round_winner(self) -> int:
-        for q in self.data["series"]["seriesById"]["matches"][self.chosen_map]["rounds"]:
-            if q["id"] == self.chosen_round:
-                if q["winningTeamNumber"] == self.attacking_team:
-                    return 1
-                else:
-                    return 0
+        for match in self.data["series"]["seriesById"]["matches"]:
+            if match["id"] == self.raw_match_id:
+                current_map = match
+                for r in current_map["rounds"]:
+                    if r["id"] == self.chosen_round:
+                        if r["winningTeamNumber"] == self.attacking_team:
+                            return 1
+                        else:
+                            return 0
 
     def get_valid_maps(self) -> dict:
         match_list = enumerate(self.data["series"]["seriesById"]["matches"])
@@ -249,6 +258,7 @@ class Analyser:
             if value["victim"] is not None:
                 self.current_status[value["victim"]]["alive"] = False
             if value["event"] == "revival":
+                self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
             beep_table = self.evaluate_spike_beeps(timestamp, plant)
             event = self.generate_single_event(timestamp=key, winner=round_winner,
@@ -271,10 +281,6 @@ class Analyser:
 
     def get_reverse_round_table(self) -> dict:
         return {
-            # round_data["id"]: round_data["number"]
-            # for round_data in self.data["series"]["seriesById"]["matches"][
-            #     self.chosen_map
-            # ]["rounds"]
             round_data["roundId"]: round_data["roundNumber"]
             for round_data in self.data["matches"]["matchDetails"]["events"]
         }
@@ -296,6 +302,9 @@ class Analyser:
 
     def get_first_round(self) -> list:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
+
+    def get_last_round(self) -> int:
+        return self.data["matches"]["matchDetails"]["economies"][-1]["roundNumber"]
 
     def get_feature_labels(self) -> List[str]:
         """
@@ -328,6 +337,12 @@ class Analyser:
         features = self.get_feature_labels()
         report = self.generate_map_metrics()
         return pd.DataFrame(report, columns=features)
+
+    def export_player_names(self) -> dict:
+        self.implicit_set_config(round=1)
+        return {
+            value["name"]["ign"]: {"gained": 0, "lost": 0, "delta": 0} for item, value in self.current_status.items()
+        }
 
     def export_round_events(self) -> dict:
         self.chosen_map = self.get_map_table()[self.raw_match_id]
@@ -363,13 +378,14 @@ class Analyser:
 
 
 if __name__ == "__main__":
-    a = Analyser("32387.json")
-    dm = a.export_round_events()
+    a = Analyser("42038.json")
+    a.implicit_set_config(round=28)
+    q = a.export_df(42038)
+    # q = a.generate_full_round()
+    # dm = a.export_round_events()
     apple = 5 + 1
 
-    buy_list = ["apple", "banana", "orange", "pear", "pineapple", "strawberry", "watermelon"]
-    # enumerate buy_list into a indexed dict
-    buy_dict = {i: x for i, x in enumerate(buy_list)}
+
 
 # a.set_config(map=1, round=414368)
 # a.get_round_positions()
@@ -379,23 +395,3 @@ if __name__ == "__main__":
 # w = a.export_df(26426)
 # print(w.columns)
 # apple = 5 + 3
-
-
-# def merge_all_csv(csv_name: str):
-#     file_list = os.listdir('matches/json')
-#     match_list = [int(x[:-5]) for x in file_list]
-#
-#     df_list = []
-#
-#     for i in match_list:
-#         print(i)
-#         a = Analyser("{}.json".format(i))
-#         df_list.append(a.export_df(i))
-#
-#     print("Append done")
-#     print(os.getcwd())
-#     merged = pd.concat(df_list)
-#     merged.to_csv(r'{}\matches\rounds\{}'.format(os.getcwd(), csv_name), index=False)
-#
-#
-# merge_all_csv('combined_br.csv')

@@ -140,8 +140,7 @@ class RoundReplay:
         story = self.get_round_story()
         for key, value in story.items():
             action_list = value.split(" ")
-            # 'spike' not in action_list
-            if 'Round' not in action_list and 'spike' not in action_list:
+            if 'Round' not in action_list and 'spike' not in action_list and '[None]' not in action_list:
                 stamps.append(key)
                 actors.append(action_list[0])
                 if "[" in action_list[1]:
@@ -154,6 +153,11 @@ class RoundReplay:
                 actors.append(action_list[0])
                 means.append("spike")
                 victims.append("spike")
+            elif '[None]' in action_list:
+                stamps.append(key)
+                actors.append(action_list[0])
+                means.append("spike")
+                victims.append(action_list[0])
         return pd.DataFrame({"Stamps": stamps, "Actors": actors, "Means": means, "Victims": victims})
 
     def get_round_story(self) -> dict:
@@ -196,6 +200,29 @@ class RoundReplay:
         for key, value in player_impact_table.items():
             value["delta"] = value["gained"] - value["lost"]
         return player_impact_table
+
+    def get_round_impact_dataframe(self) -> pd.DataFrame:
+        impact_dict = self.get_round_impact()
+        impact_df = pd.DataFrame(impact_dict).T
+        impact_df["delta"] = impact_df["gained"] - impact_df["lost"]
+        impact_df = impact_df[["gained", "lost", "delta"]]
+        return impact_df
+
+    def get_player_most_impactful_rounds(self, player_name: str) -> pd.DataFrame:
+        pot = []
+        for i in range(1, self.round_amount + 1):
+            self.choose_round(i)
+            cr = self.get_round_impact_dataframe()
+            aux = cr.iloc[cr.index.get_loc(player_name)]
+            aux["RoundNumber"] = i
+            pot.append(aux)
+        res = pd.DataFrame(pot)
+        res["RoundNumber"] = res["RoundNumber"].astype(int)
+        res['Name'] = res.index
+        res = res[["Name", "RoundNumber", "gained", "lost", "delta"]]
+        res = res.sort_values("delta", ascending=False)
+        res = res.reset_index(drop=True)
+        return res
 
     def get_map_impact(self) -> dict:
         pi = copy.deepcopy(self.player_impact)
@@ -354,11 +381,11 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 42038
-    series = 19728
+    match = 37813
+    series = 17710
     rr = generate_round_replay_example(match, series)
-    rr.choose_round(28)
-    rr.get_round_impact()
+    rr.choose_round(27)
+    rr.round_events_dataframe()
     # rr.get_round_probability(side="atk", add_events=True)
     # rr.plot_round(side="atk")
 

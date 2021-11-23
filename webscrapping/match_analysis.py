@@ -357,7 +357,7 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
     return model
 
 
-def download_missing_matches(match_id: int, series_id: int):
+def download_missing_matches(match_id: int, series_id: int, **kwargs):
     print("match → {} series → {}".format(match_id, series_id))
     smd = SingleMatchDownloader(series_id)
     smd.download_full_series()
@@ -381,9 +381,11 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 37813
-    series = 17710
+    match = 37852
+    series = 17723
+    # download_missing_matches(match, series)
     rr = generate_round_replay_example(match, series)
+    q = rr.get_player_most_impactful_rounds("nAts")
     rr.choose_round(27)
     rr.round_events_dataframe()
     # rr.get_round_probability(side="atk", add_events=True)

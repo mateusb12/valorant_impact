@@ -55,7 +55,7 @@ class SingleMatchDownloader:
         query = sliced_series.query('`Series Id`=={}'.format(self.series_id))
         return list(query["Match Id"])
 
-    def download_full_series(self):
+    def download_full_series(self, **kwargs):
         match_id_list = self.get_match_id_by_series()
         if not match_id_list:
             Exception("No matches found for series {}".format(self.series_id))

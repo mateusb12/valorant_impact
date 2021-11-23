@@ -87,7 +87,9 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        table = old_table[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
+        table = old_table[["ATK_wealth", "DEF_wealth",
+                           "ATK_alive", "DEF_alive",
+                           "ATK_Shields", "DEF_Shields",
                            "DEF_has_OP", "Def_has_Odin",
                            "RegularTime", "SpikeTime", "MapName"]]
         current_map = table.MapName.max()
@@ -341,7 +343,9 @@ class RoundReplay:
 def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClassifier:
     params = pd.read_csv('model_params.csv', index_col=False)
     params = params.to_dict('records')[0]
-    df = input_dataset[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive", "DEF_has_OP", "Def_has_Odin",
+    df = input_dataset[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
+                        "ATK_Shields", "DEF_Shields",
+                        "DEF_has_OP", "Def_has_Odin",
                         "RegularTime", "SpikeTime", "MapName", "FinalWinner"]]
     df = pd.get_dummies(df, columns=['MapName'])
     X = df.drop(['FinalWinner'], axis='columns')
@@ -385,19 +389,7 @@ if __name__ == "__main__":
     series = 17723
     # download_missing_matches(match, series)
     rr = generate_round_replay_example(match, series)
-    q = rr.get_player_most_impactful_rounds("nAts")
+    q = rr.get_map_impact_dataframe()
+    # q = rr.get_player_most_impactful_rounds("nAts")
     rr.choose_round(27)
     rr.round_events_dataframe()
-    # rr.get_round_probability(side="atk", add_events=True)
-    # rr.plot_round(side="atk")
-
-    # q = rr.get_round_probability(4, side="atk")
-    # apple = 5 + 1
-
-    # rr.plot_round(4, side="atk")
-
-    # path2 = 'D:\\Documents\\GitHub\\Classification_datascience\\webscrapping\\matches\\rounds\\combined_csv.csv'
-    # data = pd.read_csv('{}'.format(path2))
-    #
-    # mr = MatchReplay(match, data)
-    # mr.export_big_dataframe()

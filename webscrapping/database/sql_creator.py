@@ -3,7 +3,7 @@ from typing import Tuple, List
 import psycopg2
 
 
-class ValorantDB:
+class ValorantCreator:
     def __init__(self, database_name: str = "postgres"):
         self.conn = psycopg2.connect(
             database=database_name, user='postgres', password='password', host='127.0.0.1', port='5432'
@@ -57,19 +57,58 @@ class ValorantDB:
         else:
             print(f"Could not drop it. Table [{table_name}] does not exist.")
 
-    def create_map_table(self):
+    def create_maps_table(self):
         self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS map (
+            CREATE TABLE IF NOT EXISTS Maps(
                 map_id SERIAL PRIMARY KEY,
                 map_name VARCHAR(40) NOT NULL);""")
+        print("Map table created successfully")
+        self.conn.commit()
+
+    def create_match_table(self):
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Matches(
+                match_id SERIAL PRIMARY KEY,
+                series_order INTEGER NOT NULL,
+                map_id INTEGER NOT NULL,
+                FOREIGN KEY (map_id) REFERENCES maps (map_id));""")
+        print("Match table created successfully")
+        self.conn.commit()
+
+    def create_cities(self):
+        self.cursor.execute("""
+        CREATE TABLE Cities(id bigint, cityname varchar(128), latitude numeric, longitude numeric);""")
+        self.conn.commit()
+
+    def insert_map(self, input_map_id: int, input_map_name: str):
+        instruction = f"""
+            INSERT INTO Maps(map_id, map_name) VALUES ({input_map_id}, '{input_map_name}') 
+            """
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print("Map id = [{}], Map Name = [{}] inserted successfully".format(input_map_id, input_map_name))
+
+    def delete_map(self, input_map_id: int):
+        instruction = f"""
+            DELETE FROM Maps WHERE map_id = {input_map_id}
+            """
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print("Map [#{}] was deleted successfully".format(input_map_id))
 
 
-v = ValorantDB("valorant")
-v.create_map_table()
+v = ValorantCreator("valorant")
+# v.create_maps_table()
+# v.create_match_table()
+# v.create_cities()
 print(v.get_all_tables())
+v.insert_map(4, "Bind")
+# v.delete_map(4)
+# v.drop_table("matches")
+# v.drop_table("maps")
 # print(v.get_all_databases())
 # print(v.existing_table("map"))
-# print(v.drop_table("map"))
+
 
 # v.create_map_table()
 # print(v.get_all_tables())

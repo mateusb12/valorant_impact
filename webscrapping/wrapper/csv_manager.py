@@ -41,7 +41,7 @@ class CsvCreator:
 class CsvSplitter:
     def __init__(self, filename: str, **kwargs):
         self.filename = filename.split(".")[0]
-        os.chdir("..\\matches\\events")
+        os.chdir("matches\\events")
         self.data = pd.read_csv(filename)
         self.k = kwargs["file_amount"]
         self.size = len(self.data) // self.k
@@ -117,11 +117,11 @@ class CsvMerger:
 
 
 if __name__ == "__main__":
-    # cc = CsvCreator("na.csv")
-    # cc.generate_link_table()
+    cc = CsvCreator("na.csv")
+    cc.generate_link_table()
 
-    # cp = CsvSplitter("na_links.csv", file_amount=20)
-    # cp.split()
+    cp = CsvSplitter("na_links.csv", file_amount=15)
+    cp.split()
 
-    cm = CsvMerger("na_merged.csv", delete_jsons=False)
-    cm.merge()
+    # cm = CsvMerger("na_merged.csv", delete_jsons=False)
+    # cm.merge()

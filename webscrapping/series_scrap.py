@@ -99,6 +99,7 @@ class RIBScrapper:
     def download_links(self, link_table: str):
         """
         Get a .csv file containing all matches links and download all matches json files.
+        If you don't want to download a given match, you should change its ID in the .csv file to "none" or "null".
         :param link_table: .csv file containing all matches links
         """
         print("Reading links from [{}]".format(link_table))
@@ -110,13 +111,15 @@ class RIBScrapper:
             remaining_seconds = int(total_time_seconds - (index * 131 / 50))
             total_time_date = self.seconds_to_time(remaining_seconds)
             match_id = i[1]["match_ID"]
-            match_link = i[1]["match_link"]
-
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))
-            # t = Thread(target=self.export_json_using_selenium, args=(match_link,))
-            # t.start()
-            self.export_json_using_selenium(match_link)
+            if match_id not in ["none", "null"]:
+                match_link = i[1]["match_link"]
+                exist = self.existing_file("{}.json".format(match_id), "json")
+                # t = Thread(target=self.export_json_using_selenium, args=(match_link,))
+                # t.start()
+                if not exist:
+                    self.export_json_using_selenium(match_link)
 
     def export_json(self, input_link: str, input_session: requests.Session):
         """
@@ -231,9 +234,9 @@ class RIBScrapper:
         output_index = self.scrap_match_link(input_link)
 
         if "folder_location" in kwargs:
-            output_location = "matches/json/{}.json".format(output_index)
-        else:
             output_location = "matches/{}/{}.json".format(kwargs["folder_location"], output_index)
+        else:
+            output_location = "matches/json/{}.json".format(output_index)
 
         with open(output_location, "w", encoding='utf-8') as f:
             f.write(script)

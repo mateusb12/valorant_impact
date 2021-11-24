@@ -21,8 +21,6 @@ class MatchScrapper:
 
     def download_all_matches(self, **kwargs):
         os.chdir("../")
-        # csv_link = self.generate_csv_table()
-        # print("File [{}] generated!".format(csv_link))
         self.rbs.fix_current_folder()
         filename = kwargs["filename"]
         if "thread" in kwargs:
@@ -45,7 +43,7 @@ def download_run(filename: str, tag: str):
 
 
 if __name__ == "__main__":
-    download_run("na_links", "t")
+    download_run("na_links", "f")
     # os.remove("../matches/rounds/na_links_a.csv")
     # ms = MatchScrapper("na.csv")
     # ms.generate_csv_table()

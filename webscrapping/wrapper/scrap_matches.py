@@ -43,7 +43,7 @@ def download_run(filename: str, tag: str):
 
 
 if __name__ == "__main__":
-    download_run("na_links", "f")
+    download_run("na_links", "o")
     # os.remove("../matches/rounds/na_links_a.csv")
     # ms = MatchScrapper("na.csv")
     # ms.generate_csv_table()

@@ -4,7 +4,7 @@ from time import sleep
 
 from selenium import webdriver
 import selenium.webdriver.firefox.webdriver as FirefoxWebDriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -29,7 +29,9 @@ class RIBScrapper:
             self.driver = None
         else:
             self.driver: FirefoxWebDriver = webdriver.Firefox()
+            self.driver.set_page_load_timeout(10)
         self.current_path = os.getcwd()
+        self.current_match_id = None
 
     def late_open(self):
         """
@@ -37,6 +39,7 @@ class RIBScrapper:
         """
         if self.driver is None:
             self.driver = webdriver.Firefox()
+            self.driver.set_page_load_timeout(10)
 
     def close_driver(self):
         if self.driver is not None:
@@ -111,6 +114,7 @@ class RIBScrapper:
             remaining_seconds = int(total_time_seconds - (index * 131 / 50))
             total_time_date = self.seconds_to_time(remaining_seconds)
             match_id = i[1]["match_ID"]
+            self.current_match_id = match_id
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))
             if match_id not in ["none", "null"]:
@@ -229,6 +233,11 @@ class RIBScrapper:
     def export_json_using_selenium(self, input_link: str, current_driver=None, **kwargs):
         if current_driver is None:
             current_driver = self.driver
+        try:
+            current_driver.get(input_link)
+        except TimeoutException:
+            print("Impossible to download match [{}]. Server timeout".format(self.current_match_id))
+            return
         current_driver.get(input_link)
         script = self.handle_single_html_source_code()
         output_index = self.scrap_match_link(input_link)

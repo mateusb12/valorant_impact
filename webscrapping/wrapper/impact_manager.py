@@ -81,13 +81,24 @@ class PlayerImpact:
         return aux
 
 
-if __name__ == "__main__":
+def analyse_tourney(file_output: str):
     match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
     matches = match_csv["MatchID"].tolist()
 
     pi = PlayerImpact(matches)
     q = pi.analyse_full_impact()
-    q.to_csv("matches\\analysis\\full_impact.csv", index=False)
-    print("Full impact.csv generated!")
+    q.to_csv(f"matches\\analysis\\{file_output}", index=False)
+    print(f"{file_output} generated!")
+
+
+if __name__ == "__main__":
+    analyse_tourney("berlim.csv")
+    # match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
+    # matches = match_csv["MatchID"].tolist()
+    #
+    # pi = PlayerImpact(matches)
+    # q = pi.analyse_full_impact()
+    # q.to_csv("matches\\analysis\\full_impact.csv", index=False)
+    # print("Full impact.csv generated!")
 
     # apple = 5 + 1

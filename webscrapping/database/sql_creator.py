@@ -129,15 +129,17 @@ class ValorantCreator:
                 round_event_id SERIAL PRIMARY KEY,
                 round_id INTEGER NOT NULL,
                 round_number INTEGER NOT NULL,
-                round_time_milis INTEGER NOT NULL,
-                actor_id INTEGER,
+                round_time_millis INTEGER NOT NULL,
+                player_id INTEGER,
                 victim_id INTEGER,
                 event_type VARCHAR(40) NOT NULL,
                 damage_type VARCHAR(40) NOT NULL,
                 weapon_id INTEGER,
                 ability VARCHAR(40),
                 attacking_team_number INTEGER NOT NULL,
-                FOREIGN KEY (round_id) REFERENCES Rounds (round_id));""")
+                FOREIGN KEY (round_id) REFERENCES Rounds (round_id), 
+                FOREIGN KEY (player_id) REFERENCES Players(player_id),
+                FOREIGN KEY (victim_id) REFERENCES Players(player_id));""")
         print("Round event table created successfully")
         self.conn.commit()
 
@@ -147,12 +149,13 @@ class ValorantCreator:
                 round_location_id SERIAL PRIMARY KEY,
                 round_id INTEGER NOT NULL,
                 round_number INTEGER NOT NULL,
-                round_time_milis INTEGER NOT NULL,
-                actor_id INTEGER NOT NULL,
+                round_time_millis INTEGER NOT NULL,
+                player_id INTEGER NOT NULL,
                 location_x FLOAT(30) NOT NULL,
                 location_y FLOAT(30) NOT NULL,
                 view_radians VARCHAR(40) NOT NULL,
-                FOREIGN KEY (round_id) REFERENCES Rounds (round_id));""")
+                FOREIGN KEY (round_id) REFERENCES Rounds (round_id), 
+                FOREIGN KEY (player_id) REFERENCES Players(player_id));""")
         print("Round location table created successfully")
         self.conn.commit()
 
@@ -162,7 +165,7 @@ class ValorantCreator:
                 round_economy_id SERIAL PRIMARY KEY,
                 round_id INTEGER NOT NULL,
                 round_number INTEGER NOT NULL,
-                actor_id INTEGER NOT NULL,
+                player_id INTEGER NOT NULL,
                 agent_id INTEGER NOT NULL,
                 score INTEGER NOT NULL,
                 weapon_id INTEGER NOT NULL,
@@ -170,7 +173,8 @@ class ValorantCreator:
                 remaining_creds INTEGER NOT NULL,
                 spent_creds INTEGER NOT NULL,
                 loadout_value INTEGER NOT NULL,
-                FOREIGN KEY (round_id) REFERENCES Rounds (round_id));""")
+                FOREIGN KEY (round_id) REFERENCES Rounds (round_id),
+                FOREIGN KEY (player_id) REFERENCES Players(player_id));""")
         print("Round location table created successfully")
         self.conn.commit()
 
@@ -312,44 +316,43 @@ class ValorantCreator:
         self.conn.commit()
         print(f"Series [#{i_series_id}] inserted successfully")
 
-    def insert_round_event(self, i_round_event_id: int, i_round_id: int, i_round_number: int, i_round_time_millis: int,
+    def insert_round_event(self, i_round_id: int, i_round_number: int, i_round_time_millis: int,
                            i_actor_id: int, i_victim_id: int, i_event_type: str, i_damage_type: str, i_weapon_id: int,
                            i_ability: str, i_attacking_team_number: int):
         instruction = f"""
-        INSERT INTO RoundEvents(round_event_id, round_id, round_number, round_time_millis, actor_id, victim_id,
+        INSERT INTO RoundEvents(round_id, round_number, round_time_millis, player_id, victim_id,
         event_type, damage_type, weapon_id, ability, attacking_team_number)
-        VALUES({i_round_event_id}, {i_round_id}, {i_round_number}, {i_round_time_millis}, {i_actor_id}, {i_victim_id},
+        VALUES({i_round_id}, {i_round_number}, {i_round_time_millis}, {i_actor_id}, {i_victim_id},
         '{i_event_type}', '{i_damage_type}', {i_weapon_id}, '{i_ability}', {i_attacking_team_number})"""
         self.cursor.execute(instruction)
         self.conn.commit()
         print(f"Round Event [#{i_round_time_millis}] inserted successfully")
 
+    def insert_round_location(self, i_round_id: int, i_round_number: int, i_round_time_millis: int, i_actor_id: int,
+                              i_location_x: float, i_location_y: float, i_view_radians: str):
+        instruction = f"""
+        INSERT INTO RoundLocations(round_id, round_number, round_time_millis, player_id, location_x, location_y,
+        view_radians)
+        VALUES({i_round_id}, {i_round_number}, {i_round_time_millis}, {i_actor_id}, {i_location_x}, {i_location_y}, 
+        '{i_view_radians}')"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Round Location [#{i_round_time_millis}] inserted successfully")
 
-def create_placeholder():
-    v = ValorantCreator("valorant")
-    v.drop_all_tables()
-    v.create_all_tables()
-    v.insert_event(779, "VCT North America 2021 - Last Chance Qualifier", "2020-06-01", 4, "losers")
-    v.insert_player(3187, "b0i", 226)
-    v.insert_player(355, "Hiko", 226)
-    v.insert_player(1132, "nitr0", 226)
-    v.insert_player(763, "Asuna", 226)
-    v.insert_player(10253, "Ethan", 226)
-    v.insert_player(1961, "xeta", 113)
-    v.insert_player(13591, "Xeppaa", 226)
-    v.insert_player(3599, "leaf", 226)
-    v.insert_player(2213, "mitch", 226)
-    v.insert_player(4639, "vanity", 226)
-    v.insert_team(305, "100 Thieves", "https://i.imgur.com/xQvJdtJ.png", 226, 2, 6, 3, 3187, 355, 1132, 763, 10253)
-    v.insert_team(141, "Cloud9 Blue", "https://i.imgur.com/xQvJdtJ.png", 226, 2, 30, 8, 1961, 13591, 3599, 2213, 4639)
-    v.insert_map(4, "Bind")
-    v.insert_series(19408, 779, 3, 305, 141)
-    v.insert_match(41362, 19408, 1, 4, "2020-06-01", 4607106, 1, 1, 1, 14, 12)
-    v.insert_round(642213, 41362, 5, 1, 4, 4, "kills", "default")
-    v.insert_round_event(17, 642213, 5, 7969, 763, 13591, "kill", "weapon", 4, " ", 1)
+    def insert_round_economy(self, i_round_id: int, i_round_number: int, i_actor_id: int,
+                             i_agent_id: int, i_score: int, i_weapon_id: int, i_armor_id: int, i_remaining_creds: int,
+                             i_spent_creds: int, i_loadout_value: int):
+        instruction = f"""
+        INSERT INTO RoundEconomies(round_id, round_number, player_id, agent_id, score,
+        weapon_id, armor_id, remaining_creds, spent_creds, loadout_value)
+        VALUES({i_round_id}, {i_round_number}, {i_actor_id}, {i_agent_id}, {i_score},
+        {i_weapon_id}, {i_armor_id}, {i_remaining_creds}, {i_spent_creds}, {i_loadout_value})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Round Economy [#{i_round_number}] inserted successfully")
 
 
-create_placeholder()
+
 # v.insert_event(779, "VCT North America 2021 - Last Chance Qualifier", "2020-06-01", 4, "losers")
 # v.drop_all_tables()
 # v.create_all_tables()

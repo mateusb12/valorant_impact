@@ -13,6 +13,7 @@ class PlayerImpact:
         print(os.getcwd())
         self.model = train_model()
         self.available = self.create_queue()
+        self.failed_matches = []
 
     @staticmethod
     def fix_current_folder():
@@ -49,27 +50,44 @@ class PlayerImpact:
         rr.choose_round(1)
         return rr.get_map_impact_dataframe()
 
-    def export_full_impact(self):
+    def export_full_impact(self) -> List[pd.DataFrame]:
         impacts = []
-        for key in self.available:
-            rr = RoundReplay(key, self.available[key], self.model)
-            rr.choose_round(1)
-            print(f"appendind key {key}")
-            impacts.append(rr.get_map_impact_dataframe())
+        total_len = len(self.available)
+        for index, key in enumerate(self.available):
+            if key != 0:
+                rr = RoundReplay(key, self.available[key], self.model)
+                rr.choose_round(1)
+                percentage = round((index + 1) / total_len * 100, 2)
+                print(f"Analysing match {key}. Total: #{index}/{total_len}.    {percentage}%")
+                try:
+                    impacts.append(rr.get_map_impact_dataframe())
+                except KeyError:
+                    print("→ → → Match {} failed!".format(key))
+                    self.failed_matches.append(key)
         return impacts
+
+    def analyse_full_impact(self) -> pd.DataFrame:
+        raw_dfs = self.export_full_impact()
+        raw_dfs_concat = pd.concat(raw_dfs)
+        raw_dfs_concat = raw_dfs_concat.drop(["MatchID"], axis=1)
+        aux = raw_dfs_concat.groupby('Name').agg({'Delta': ['sum', 'count'], "Gain": "sum", "Lost": "sum"})
+        aux.columns = aux.columns.map("_".join)
+        aux["Name"] = aux.index
+        aux = aux.reset_index(drop=True)
+        aux = aux[["Name", "Gain_sum", "Lost_sum", "Delta_sum", "Delta_count"]]
+        aux = aux.rename(columns={"Delta_count": "Matches"})
+        aux = aux.sort_values("Delta_sum", ascending=False)
+        aux['Delta_avg'] = aux['Delta_sum'] / aux['Matches']
+        return aux
 
 
 if __name__ == "__main__":
-    matches = [41930, 41929, 41872, 41870, 41868, 39658, 39657, 39656, 39617, 39616, 39587, 39491, 39431, 37854,
-               37853, 37852, 37829, 37828, 37818, 37817, 37816, 37726, 37725, 37610, 37609, 37608, 37460, 37459,
-               35950, 35949, 35948, 35947, 35945, 35944, 35943, 35942, 35835, 35834, 35833, 35589, 35588, 35587,
-               35245, 35244, 35243, 35083, 35082, 33879, 33880, 33877, 33875, 33866, 33861, 33746, 33745, 33744,
-               33868, 33867, 30495, 30494, 30493, 30235, 30234, 30151, 30150, 29808, 29807, 28830, 28829, 28622,
-               28621, 23633, 23632, 23562, 23561, 22878, 22877, 22339, 22338, 22115, 22109, 22108, 22107, 21829,
-               21828, 21291, 21290, 21016, 21015, 20940, 20939, 20938, 21163, 21162, 20889, 20888, 19333, 19332,
-               19197, 19196, 19182, 19181, 18534, 18533, 18531, 18530, 16287, 16286, 16285, 16277, 16276, 15775,
-               15774, 15553, 15552, 14282, 14281, 12434, 12433, 12369, 12368, 11135, 11134, 11068, 11067, 11071,
-               11070, 11047, 7446, 7439, 7427, 7403]
+    match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
+    matches = match_csv["MatchID"].tolist()
+
     pi = PlayerImpact(matches)
-    q = pi.export_full_impact()
-    apple = 5 + 1
+    q = pi.analyse_full_impact()
+    q.to_csv("matches\\analysis\\full_impact.csv", index=False)
+    print("Full impact.csv generated!")
+
+    # apple = 5 + 1

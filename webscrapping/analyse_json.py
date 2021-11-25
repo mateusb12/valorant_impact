@@ -56,15 +56,14 @@ class Analyser:
         :param kwargs: chosen_map → map id to be analysed
                        chosen_round → round id to be analysed
         """
-
         self.chosen_map: str = kwargs["map"]
+        match_json = self.get_series_by_id_match()
         self.chosen_round: int = kwargs["round"]
-        self.attacking_team: int = self.data["series"]["seriesById"]["matches"][self.chosen_map][
-            "attackingFirstTeamNumber"]
+        self.attacking_team: int = match_json["attackingFirstTeamNumber"]
         self.round_events = self.get_round_events()
         self.current_status: dict = self.generate_player_table()
-        self.map_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["mapId"]
-        self.match_id: int = self.data["series"]["seriesById"]["matches"][self.chosen_map]["id"]
+        self.map_id: int = match_json["mapId"]
+        self.match_id: int = match_json["id"]
         self.series_id: int = self.data["series"]["seriesById"]["id"]
         self.map_name: str = self.maps_data[str(self.map_id)]
         self.round_table: dict = self.get_round_table()
@@ -105,16 +104,22 @@ class Analyser:
                 return h["timing"]
         return None
 
+    def get_series_by_id_match(self):
+        for match in self.data["series"]["seriesById"]["matches"]:
+            if match["seriesMatchNumber"] == self.chosen_map:
+                return match
+
     def generate_player_table(self) -> dict:
         """
         Generate a table of player IDs and their respective infos
         :return: name, agentId, combatScore, weaponId, shieldId, loadoutValue, spent credits,
                  remaining credits, side, team number, isAlive
         """
+
         ign_table = {
             b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
-            for b in self.data["series"]["seriesById"]["matches"][self.chosen_map]["players"]
-        }
+            for b in self.get_series_by_id_match()["players"]
+        }  # for b in self.data["series"]["seriesById"]["matches"][self.chosen_map]["players"]
 
         player_dict = {}
 
@@ -408,8 +413,6 @@ if __name__ == "__main__":
     # q = a.generate_full_round()
     # dm = a.export_round_events()
     apple = 5 + 1
-
-
 
 # a.set_config(map=1, round=414368)
 # a.get_round_positions()

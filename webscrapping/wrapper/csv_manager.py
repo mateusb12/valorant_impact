@@ -135,6 +135,8 @@ class CsvConverter:
             os.chdir("..\\matches\\exports")
         elif self.get_current_folder() == "json":
             os.chdir("..\\exports")
+        elif self.get_current_folder() == "webscrapping":
+            os.chdir("matches\\exports")
 
     def get_json_list(self):
         self.go_to_json_folder()
@@ -144,10 +146,12 @@ class CsvConverter:
         not_downloaded = [i for i in all_jsons if i not in all_csvs]
         os.chdir("..\\..\\wrapper")
         for index, item in enumerate(not_downloaded):
-            print(f"Loading {item}.json. Progress: {index}/{len(not_downloaded)} %: {(index/len(not_downloaded))*100}")
             a = Analyser("{}.json".format(item))
+            print(f"Loading {item}.json. Series: {a.series_id}"
+                  f" Progress: {index}/{len(not_downloaded)} %: {(index/len(not_downloaded))*100}")
             new_match_frame = a.export_df(int(item))
-            # new_match_frame.to_csv(r'{}.csv'.format(item), index=False)
+            self.go_to_csv_folder()
+            new_match_frame.to_csv(r'{}.csv'.format(item), index=False)
         # print(not_downloaded)
 
 

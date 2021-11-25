@@ -40,7 +40,10 @@ class Analyser:
         self.round_table = None
         self.reverse_round_table = None
         self.match_id = None
-        self.series_id = None
+        self.series_id = self.data["series"]["seriesById"]["id"]
+
+        self.team_a = self.get_team_a()
+        self.team_b = self.get_team_b()
 
     def implicit_set_config(self, **kwargs):
         map_index = self.get_valid_maps()[self.raw_match_id] + 1
@@ -87,6 +90,14 @@ class Analyser:
             self.data = json.loads(new_format)
         else:
             self.data = json.loads(code_string)
+
+    def get_team_a(self):
+        aux = self.data["series"]["seriesById"]
+        return {"id": aux["team1"]["id"], "name": aux["team1"]["name"]}
+
+    def get_team_b(self):
+        aux = self.data["series"]["seriesById"]
+        return {"id": aux["team2"]["id"], "name": aux["team2"]["name"]}
 
     def get_plant_timestamp(self):
         for h in self.round_events.values():
@@ -274,9 +285,6 @@ class Analyser:
         """
         return {
             round_data["roundNumber"]: round_data["roundId"]
-            # for round_data in self.data["series"]["seriesById"]["matches"][
-            #     self.chosen_map
-            # ]["rounds"]
             for round_data in self.data["matches"]["matchDetails"]["events"]
         }
 
@@ -337,7 +345,22 @@ class Analyser:
         self.set_config(map=map_index, round=r)
         features = self.get_feature_labels()
         report = self.generate_map_metrics()
-        return pd.DataFrame(report, columns=features)
+        raw = pd.DataFrame(report, columns=features)
+        raw = self.add_teams_to_df(raw)
+        return raw
+
+    def add_teams_to_df(self, input_df: pd.DataFrame) -> pd.DataFrame:
+        new = input_df.copy()
+        dataframe_height = len(new["RoundID"])
+        team_a_id = [self.team_a["id"]] * dataframe_height
+        team_a_name = [self.team_a["name"]] * dataframe_height
+        team_b_id = [self.team_b["id"]] * dataframe_height
+        team_b_name = [self.team_b["name"]] * dataframe_height
+        new["Team_A_ID"] = team_a_id
+        new["Team_A_Name"] = team_a_name
+        new["Team_B_ID"] = team_b_id
+        new["Team_B_Name"] = team_b_name
+        return new
 
     def export_player_names(self) -> dict:
         self.implicit_set_config(round=1)

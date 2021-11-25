@@ -17,16 +17,19 @@ class RoundReplay:
     def __init__(self, match_id: int, input_df: pd.DataFrame, input_model: lightgbm.LGBMClassifier):
         self.df = input_df
         self.match_id = match_id
-        self.query = input_df.query("MatchID == {}".format(match_id))
-        self.round_table = self.get_round_table()
         self.analyser = Analyser("{}.json".format(match_id))
         self.player_impact = self.analyser.export_player_names()
         self.round_amount = self.analyser.get_last_round()
+        self.query = input_df.query("MatchID == {}".format(match_id))
+        self.round_table = self.get_round_table()
         self.model = input_model
         self.chosen_round = None
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
+
+    def is_player_in_this_match(self, player_name: str) -> bool:
+        return player_name in self.player_impact
 
     def get_round_table(self) -> dict:
         g = self.query[["RoundNumber", "RoundID"]]
@@ -251,8 +254,9 @@ class RoundReplay:
             gains.append(value["gained"])
             losses.append(value["lost"])
             deltas.append(value["delta"])
+        match_id = [self.match_id]*len(igns)
 
-        impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas}
+        impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas, "MatchID": match_id}
         return pd.DataFrame(impact_table)
 
     @staticmethod

@@ -11,7 +11,8 @@ class Analyser:
             os.chdir("webscrapping")
         elif current_folder == "wrapper":
             os.chdir("..")
-
+        elif current_folder == "exports":
+            os.chdir("..\\..")
         data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
         body_txt = data_file.read()
         self.data = None

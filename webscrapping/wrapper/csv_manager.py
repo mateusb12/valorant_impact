@@ -116,12 +116,50 @@ class CsvMerger:
             os.remove(file)
 
 
-if __name__ == "__main__":
-    cc = CsvCreator("na.csv")
-    cc.generate_link_table()
+class CsvConverter:
+    def __init__(self):
+        pass
 
-    cp = CsvSplitter("na_links.csv", file_amount=15)
-    cp.split()
+    @staticmethod
+    def get_current_folder():
+        return os.getcwd().split("\\")[-1]
+
+    def go_to_json_folder(self):
+        if self.get_current_folder() == "wrapper":
+            os.chdir("..\\matches\\json")
+        elif self.get_current_folder() == "exports":
+            os.chdir("..\\json")
+
+    def go_to_csv_folder(self):
+        if self.get_current_folder() == "wrapper":
+            os.chdir("..\\matches\\exports")
+        elif self.get_current_folder() == "json":
+            os.chdir("..\\exports")
+
+    def get_json_list(self):
+        self.go_to_json_folder()
+        all_jsons = [i.split(".")[0] for i in os.listdir()]
+        self.go_to_csv_folder()
+        all_csvs = [i.split(".")[0] for i in os.listdir()]
+        not_downloaded = [i for i in all_jsons if i not in all_csvs]
+        os.chdir("..\\..\\wrapper")
+        for index, item in enumerate(not_downloaded):
+            print(f"Loading {item}.json. Progress: {index}/{len(not_downloaded)} %: {(index/len(not_downloaded))*100}")
+            a = Analyser("{}.json".format(item))
+            new_match_frame = a.export_df(int(item))
+            # new_match_frame.to_csv(r'{}.csv'.format(item), index=False)
+        # print(not_downloaded)
+
+
+if __name__ == "__main__":
+    ccv = CsvConverter()
+    ccv.get_json_list()
+
+    # cc = CsvCreator("na.csv")
+    # cc.generate_link_table()
+    #
+    # cp = CsvSplitter("na_links.csv", file_amount=15)
+    # cp.split()
 
     # cm = CsvMerger("na_merged.csv", delete_jsons=False)
     # cm.merge()

@@ -1,5 +1,5 @@
 from typing import Tuple, List
-
+from dateutil import parser
 import psycopg2
 
 
@@ -96,8 +96,8 @@ class ValorantCreator:
                 series_id INTEGER NOT NULL,
                 series_order INTEGER NOT NULL,
                 map_id INTEGER NOT NULL,
-                start_date DATE NOT NULL,
-                length_milis INTEGER NOT NULL,
+                start_date VARCHAR(40) NOT NULL,
+                length_millis INTEGER NOT NULL,
                 attacking_first_team INTEGER NOT NULL,
                 red_team INTEGER NOT NULL,
                 winning_team INTEGER NOT NULL,
@@ -182,7 +182,9 @@ class ValorantCreator:
                 best_of INTEGER NOT NULL,
                 team_a_id INTEGER NOT NULL,
                 team_b_id INTEGER NOT NULL,
-                FOREIGN KEY (event_id) REFERENCES Events (event_id));""")
+                FOREIGN KEY (event_id) REFERENCES Events(event_id),
+                FOREIGN KEY (team_a_id) REFERENCES Teams(team_id),
+                FOREIGN KEY (team_b_id) REFERENCES Teams(team_id));""")
         print("Series table created successfully")
         self.conn.commit()
 
@@ -190,8 +192,8 @@ class ValorantCreator:
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS Events(
                 event_id SERIAL PRIMARY KEY,
-                event_name VARCHAR(40) NOT NULL,
-                event_starting_date DATE NOT NULL,
+                event_name VARCHAR(300) NOT NULL,
+                event_starting_date VARCHAR(300) NOT NULL,
                 stage INTEGER NOT NULL,
                 bracket VARCHAR(40) NOT NULL);""")
         print("Event table created successfully")
@@ -211,8 +213,6 @@ class ValorantCreator:
             CREATE TABLE IF NOT EXISTS Teams(
                 team_id SERIAL PRIMARY KEY,
                 team_name VARCHAR(40),
-                short_name VARCHAR(40),
-                website VARCHAR(40),
                 logo VARCHAR(40),
                 country_id INTEGER,
                 region_id INTEGER,
@@ -253,14 +253,17 @@ class ValorantCreator:
         self.conn.commit()
         print("Map id = [{}], Map Name = [{}] inserted successfully".format(input_map_id, input_map_name))
 
-    def insert_match(self, input_match_id: int, input_series_order: int, input_map_id: int):
+    def insert_match(self, i_match_id: int, i_series_id: int, i_series_order: int, i_map_id: int, i_start_date: str,
+                     i_length_millis: int, i_attacking_first_team: int, i_red_team: int, i_winning_team: int,
+                     team_a_score: int, team_b_score: int):
         instruction = f"""
-            INSERT INTO Matches(match_id, series_order, map_id)
-             VALUES ({input_match_id}, {input_series_order}, {input_map_id})"""
+            INSERT INTO Matches(match_id, series_id, series_order, map_id, start_date, length_millis,
+             attacking_first_team, red_team, winning_team, team_a_score, team_b_score)
+             VALUES ({i_match_id}, {i_series_id}, {i_series_order}, {i_map_id}, '{i_start_date}', {i_length_millis},
+             {i_attacking_first_team}, {i_red_team}, {i_winning_team}, {team_a_score}, {team_b_score})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print("Match id = [{}], Series Order = [{}], Map id = [{}] inserted successfully"
-              .format(input_match_id, input_series_order, input_map_id))
+        print(f"Match #{i_match_id} inserted successfully")
 
     def insert_round(self, i_round_id: int, i_match_id: int, i_round_number: int, i_winning_team: int,
                      i_team_a_economy: int, i_team_b_economy: int, i_win_condition: str, i_ceremony: str):
@@ -270,15 +273,86 @@ class ValorantCreator:
         {i_team_a_economy}, {i_team_b_economy}, '{i_win_condition}', '{i_ceremony}')"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Round id = [{i_round_id}], Match id = [{i_match_id}], Round number = [{i_round_number}],"
-              f" Winning team = [{i_winning_team}], Team A Economy = [{i_team_a_economy}], "
-              f"Team B Economy = [{i_team_b_economy}], Win condition = [{i_win_condition}], Ceremony = [{i_ceremony}],"
-              f" inserted successfully.")
+        print(f"Round [#{i_round_id}] inserted successfully")
+
+    def insert_player(self, i_player_id: int, i_player_name: str, i_country_id: int):
+        instruction = f"""
+        INSERT INTO Players(player_id, player_name, country_id)
+         VALUES({i_player_id}, '{i_player_name}', {i_country_id})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Player [#{i_player_name}] inserted successfully")
+
+    def insert_event(self, i_event_id: int, i_event_name: str, i_event_date: str, i_event_stage: int,
+                     i_event_bracket: str):
+        instruction = f"""
+        INSERT INTO Events(event_id, event_name, event_starting_date, stage, bracket)
+        VALUES({i_event_id}, '{i_event_name}', '{i_event_date}', '{i_event_stage}', '{i_event_bracket}')"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Event [#{i_event_name}] inserted successfully")
+
+    def insert_team(self, i_team_id: int, i_team_name: str, i_logo: str, i_country_id: int, i_region_id: int,
+                    i_rank: int, i_region_rank: int, i_player_a: int, i_player_b: int, i_player_c: int,
+                    i_player_d: int, i_player_e: int):
+        instruction = f"""
+        INSERT INTO Teams(team_id, team_name, logo, country_id, region_id, rank, region_rank, player_a, player_b,
+        player_c, player_d, player_e)
+        VALUES({i_team_id}, '{i_team_name}', '{i_logo}', {i_country_id}, {i_region_id}, {i_rank}, {i_region_rank},
+        {i_player_a}, {i_player_b}, {i_player_c}, {i_player_d}, {i_player_e})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Team [#{i_team_name}] inserted successfully")
+
+    def insert_series(self, i_series_id: int, i_event_id: int, i_best_of: int, i_team_a_id: int, i_team_b_id: int):
+        instruction = f"""
+        INSERT INTO Series(series_id, event_id, best_of, team_a_id, team_b_id)
+        VALUES({i_series_id}, {i_event_id}, {i_best_of}, {i_team_a_id}, {i_team_b_id})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Series [#{i_series_id}] inserted successfully")
+
+    def insert_round_event(self, i_round_event_id: int, i_round_id: int, i_round_number: int, i_round_time_millis: int,
+                           i_actor_id: int, i_victim_id: int, i_event_type: str, i_damage_type: str, i_weapon_id: int,
+                           i_ability: str, i_attacking_team_number: int):
+        instruction = f"""
+        INSERT INTO RoundEvents(round_event_id, round_id, round_number, round_time_millis, actor_id, victim_id,
+        event_type, damage_type, weapon_id, ability, attacking_team_number)
+        VALUES({i_round_event_id}, {i_round_id}, {i_round_number}, {i_round_time_millis}, {i_actor_id}, {i_victim_id},
+        '{i_event_type}', '{i_damage_type}', {i_weapon_id}, '{i_ability}', {i_attacking_team_number})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Round Event [#{i_round_time_millis}] inserted successfully")
 
 
-v = ValorantCreator("valorant")
-v.drop_all_tables()
-v.create_all_tables()
+def create_placeholder():
+    v = ValorantCreator("valorant")
+    v.drop_all_tables()
+    v.create_all_tables()
+    v.insert_event(779, "VCT North America 2021 - Last Chance Qualifier", "2020-06-01", 4, "losers")
+    v.insert_player(3187, "b0i", 226)
+    v.insert_player(355, "Hiko", 226)
+    v.insert_player(1132, "nitr0", 226)
+    v.insert_player(763, "Asuna", 226)
+    v.insert_player(10253, "Ethan", 226)
+    v.insert_player(1961, "xeta", 113)
+    v.insert_player(13591, "Xeppaa", 226)
+    v.insert_player(3599, "leaf", 226)
+    v.insert_player(2213, "mitch", 226)
+    v.insert_player(4639, "vanity", 226)
+    v.insert_team(305, "100 Thieves", "https://i.imgur.com/xQvJdtJ.png", 226, 2, 6, 3, 3187, 355, 1132, 763, 10253)
+    v.insert_team(141, "Cloud9 Blue", "https://i.imgur.com/xQvJdtJ.png", 226, 2, 30, 8, 1961, 13591, 3599, 2213, 4639)
+    v.insert_map(4, "Bind")
+    v.insert_series(19408, 779, 3, 305, 141)
+    v.insert_match(41362, 19408, 1, 4, "2020-06-01", 4607106, 1, 1, 1, 14, 12)
+    v.insert_round(642213, 41362, 5, 1, 4, 4, "kills", "default")
+    v.insert_round_event(17, 642213, 5, 7969, 763, 13591, "kill", "weapon", 4, " ", 1)
+
+
+create_placeholder()
+# v.insert_event(779, "VCT North America 2021 - Last Chance Qualifier", "2020-06-01", 4, "losers")
+# v.drop_all_tables()
+# v.create_all_tables()
 # v.drop_table("roundeconomies")
 # v.drop_table("roundevents")
 # v.drop_table("roundlocations")

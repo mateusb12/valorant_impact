@@ -10,6 +10,8 @@ class ValorantCreator:
         )
         self.conn.autocommit = True
         self.cursor = self.conn.cursor()
+        print(f"Connected to database {database_name} successfully")
+        print(f"{self.get_all_tables()}")
 
     def close(self):
         self.conn.close()
@@ -26,6 +28,10 @@ class ValorantCreator:
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
         )
         return self.cursor.fetchall()
+
+    def rebuild_database(self):
+        self.drop_all_tables()
+        self.create_all_tables()
 
     def create_database(self, database_name: str):
         existing = self.existing_database(database_name)
@@ -57,6 +63,14 @@ class ValorantCreator:
         else:
             print(f"Could not drop it. Table [{table_name}] does not exist.")
 
+    def select_from_table(self, table_name: str):
+        existing = self.existing_table(table_name)
+        if existing:
+            self.cursor.execute(f"SELECT * FROM {table_name};")
+            return self.cursor.fetchall()
+        else:
+            print(f"Could not select from it. Table [{table_name}] does not exist.")
+
     def drop_all_tables(self):
         self.drop_table("roundlocations")
         self.drop_table("roundevents")
@@ -66,20 +80,22 @@ class ValorantCreator:
         self.drop_table("maps")
         self.drop_table("series")
         self.drop_table("events")
-        self.drop_table("teams")
+        self.drop_table("playermapinstance")
         self.drop_table("players")
+        self.drop_table("teams")
 
     def create_all_tables(self):
-        self.create_players_table()
         self.create_event_table()
         self.create_maps_table()
         self.create_teams_table()
+        self.create_players_table()
         self.create_series_table()
         self.create_match_table()
         self.create_round_table()
         self.create_round_economy_table()
         self.create_round_event_table()
         self.create_round_location_table()
+        self.create_player_map_instance_table()
 
     def create_maps_table(self):
         self.cursor.execute("""
@@ -87,6 +103,22 @@ class ValorantCreator:
                 map_id SERIAL PRIMARY KEY,
                 map_name VARCHAR(40) NOT NULL);""")
         print("Map table created successfully")
+        self.conn.commit()
+
+    def create_player_map_instance_table(self):
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PlayerMapInstance(
+                player_instance_id SERIAL PRIMARY KEY,
+                player_id INTEGER NOT NULL,
+                agent_id INTEGER NOT NULL,
+                map_played INTEGER NOT NULL,
+                score INTEGER NOT NULL,
+                rounds_played INTEGER NOT NULL,
+                kills INTEGER NOT NULL,
+                deaths INTEGER NOT NULL,
+                assists INTEGER NOT NULL,
+                FOREIGN KEY (player_id) REFERENCES Players(player_id));""")
+        print("Map instance table created successfully")
         self.conn.commit()
 
     def create_match_table(self):
@@ -208,6 +240,8 @@ class ValorantCreator:
             CREATE TABLE IF NOT EXISTS Players(
                 player_id SERIAL PRIMARY KEY,
                 player_name VARCHAR(40) NOT NULL,
+                team_id INTEGER NOT NULL,
+                FOREIGN KEY (team_id) REFERENCES Teams(team_id),
                 country_id INTEGER NOT NULL);""")
         print("Players table created successfully")
         self.conn.commit()
@@ -221,17 +255,7 @@ class ValorantCreator:
                 country_id INTEGER,
                 region_id INTEGER,
                 rank INTEGER,
-                region_rank INTEGER,
-                player_A INTEGER NOT NULL,
-                player_B INTEGER NOT NULL,
-                player_C INTEGER NOT NULL,
-                player_D INTEGER NOT NULL,
-                player_E INTEGER NOT NULL,
-                FOREIGN KEY (player_A) REFERENCES Players(player_id),
-                FOREIGN KEY (player_B) REFERENCES Players(player_id),
-                FOREIGN KEY (player_C) REFERENCES Players(player_id),
-                FOREIGN KEY (player_D) REFERENCES Players(player_id),
-                FOREIGN KEY (player_E) REFERENCES Players(player_id));""")
+                region_rank INTEGER);""")
         print("Teams table created successfully")
         self.conn.commit()
 
@@ -279,10 +303,10 @@ class ValorantCreator:
         self.conn.commit()
         print(f"Round [#{i_round_id}] inserted successfully")
 
-    def insert_player(self, i_player_id: int, i_player_name: str, i_country_id: int):
+    def insert_player(self, i_player_id: int, i_player_name: str, i_team_id: int, i_country_id: int):
         instruction = f"""
         INSERT INTO Players(player_id, player_name, country_id)
-         VALUES({i_player_id}, '{i_player_name}', {i_country_id})"""
+         VALUES({i_player_id}, '{i_player_name}', {i_team_id}, {i_country_id})"""
         self.cursor.execute(instruction)
         self.conn.commit()
         print(f"Player [#{i_player_name}] inserted successfully")
@@ -297,13 +321,10 @@ class ValorantCreator:
         print(f"Event [#{i_event_name}] inserted successfully")
 
     def insert_team(self, i_team_id: int, i_team_name: str, i_logo: str, i_country_id: int, i_region_id: int,
-                    i_rank: int, i_region_rank: int, i_player_a: int, i_player_b: int, i_player_c: int,
-                    i_player_d: int, i_player_e: int):
+                    i_rank: int, i_region_rank: int):
         instruction = f"""
-        INSERT INTO Teams(team_id, team_name, logo, country_id, region_id, rank, region_rank, player_a, player_b,
-        player_c, player_d, player_e)
-        VALUES({i_team_id}, '{i_team_name}', '{i_logo}', {i_country_id}, {i_region_id}, {i_rank}, {i_region_rank},
-        {i_player_a}, {i_player_b}, {i_player_c}, {i_player_d}, {i_player_e})"""
+        INSERT INTO Teams(team_id, team_name, logo, country_id, region_id, rank, region_rank)
+        VALUES({i_team_id}, '{i_team_name}', '{i_logo}', {i_country_id}, {i_region_id}, {i_rank}, {i_region_rank})"""
         self.cursor.execute(instruction)
         self.conn.commit()
         print(f"Team [#{i_team_name}] inserted successfully")
@@ -352,6 +373,11 @@ class ValorantCreator:
         print(f"Round Economy [#{i_round_number}] inserted successfully")
 
 
+if __name__ == "__main__":
+    vc = ValorantCreator("valorant")
+    print(vc.select_from_table("players"))
+    # vc.drop_all_tables()
+    # vc.create_all_tables()
 
 # v.insert_event(779, "VCT North America 2021 - Last Chance Qualifier", "2020-06-01", 4, "losers")
 # v.drop_all_tables()

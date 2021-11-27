@@ -389,8 +389,8 @@ if __name__ == "__main__":
     # https://rib.gg/series/18716 Liquid BO5 score 3-1
     # https://rib.gg/series/18718 Furia BO5 score 3-0
     # https://rib.gg/series/3173 Sentinels BO1
-    match = 39437
-    series = 18406
+    match = 42041
+    series = 19728
     download_missing_matches(match, series)
     # smd.download_full_series(match_list=[43118, 43119])
     # rr = generate_round_replay_example(match, series)

@@ -73,22 +73,36 @@ class SingleMatchDownloader:
                 break
 
         if json_download:
-            download_link = "https://rib.gg/series/{}".format(self.series_id)
-            self.rb.late_open()
-            self.rb.export_json_of_whole_series(download_link, folder_location="exports")
-            self.rb.close_driver()
-            print("JSONs successfully downloaded!")
+            self.download_jsons()
 
         if csv_download:
-            for m in match_id_list:
-                a = Analyser("{}.json".format(m))
-                new_match_frame = a.export_df(m)
-                new_match_frame.to_csv(r'matches\exports\{}.csv'.format(m), index=False)
-                print("CSV downloaded at matches\\exports\\{}.csv".format(m))
+            self.download_csvs(match_id_list)
+
+    def download_jsons(self):
+        download_link = "https://rib.gg/series/{}".format(self.series_id)
+        self.rb.late_open()
+        self.rb.export_json_of_whole_series(download_link, folder_location="exports")
+        self.rb.close_driver()
+        print("JSONs successfully downloaded!")
+
+    @staticmethod
+    def download_csvs(input_id_list: List[int]):
+        for m in input_id_list:
+            anl = Analyser("{}.json".format(m))
+            new_match_frame = anl.export_df(m)
+            new_match_frame.to_csv(r'matches\exports\{}.csv'.format(m), index=False)
+            print("CSV downloaded at matches\\exports\\{}.csv".format(m))
 
 
 if __name__ == "__main__":
-    match = int(input("Enter match number: "))
-    series = int(input("Enter series number: "))
-    smd = SingleMatchDownloader(match, series)
-    smd.download()
+    a = Analyser("{}.json".format(42038))
+    csv_list = a.all_matches
+    print(csv_list)
+    match = 42041
+    series = 19728
+    smd = SingleMatchDownloader(series, match_id=42041)
+    smd.download_csvs(csv_list)
+    # match = int(input("Enter match number: "))
+    # series = int(input("Enter series number: "))
+    # smd = SingleMatchDownloader(match, series)
+    # smd.download()

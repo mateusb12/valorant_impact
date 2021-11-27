@@ -50,8 +50,8 @@ class SingleMatchDownloader:
             return pd.read_csv(r'matches\exports\{}.csv'.format(self.match_id))
 
     def get_match_id_by_series(self) -> List[int]:
-        a = Analyser("{}.json".format(self.match_id))
-        return a.all_matches
+        an = Analyser("{}.json".format(self.match_id))
+        return an.all_matches
         # sliced_series = self.series_table[["Match Id", "Series Id"]]
         # query = sliced_series.query('`Series Id`=={}'.format(self.series_id))
         # return list(query["Match Id"])

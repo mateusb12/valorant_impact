@@ -48,12 +48,10 @@ class Analyser:
 
     def get_all_matches_ids(self) -> List[int]:
         matches = self.data["series"]["seriesById"]["matches"]
-        return [match["id"] for match in matches if "id" in match]
-
-
+        return [match["id"] for match in matches if "id" in match and match["riotId"] is not None]
 
     def implicit_set_config(self, **kwargs):
-        map_index = self.get_valid_maps()[self.raw_match_id] + 1
+        map_index = self.get_valid_maps()[self.raw_match_id]
         round_index = self.get_round_table()[kwargs["round"]]
         self.set_config(map=map_index, round=round_index)
 
@@ -175,9 +173,10 @@ class Analyser:
                             return 0
 
     def get_valid_maps(self) -> dict:
-        match_list = enumerate(self.data["series"]["seriesById"]["matches"])
+        match_list = self.data["series"]["seriesById"]["matches"]
+        return {i["id"]: i["seriesMatchNumber"] for i in match_list if i["riotId"] is not None}
 
-        return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
+        # return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
 
     @staticmethod
     def generate_spike_timings(round_millis: int, plant_millis: int) -> Tuple:

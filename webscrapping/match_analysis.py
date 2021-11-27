@@ -378,10 +378,10 @@ def train_model() -> lightgbm.LGBMClassifier:
 
 def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
     download_missing_matches(match_id, series_id)
-    model = train_model()
-    analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match_id), index_col=False)
+    model_ = train_model()
+    analysis_df_ = pd.read_csv('matches\\exports\\{}.csv'.format(match_id), index_col=False)
 
-    return RoundReplay(match_id, analysis_df, model)
+    return RoundReplay(match_id, analysis_df_, model_)
 
 
 if __name__ == "__main__":
@@ -391,7 +391,10 @@ if __name__ == "__main__":
     # https://rib.gg/series/3173 Sentinels BO1
     match = 42041
     series = 19728
-    download_missing_matches(match, series)
+    # download_missing_matches(match, series)
+    model = train_model()
+    analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match), index_col=False)
+    rr = RoundReplay(match, analysis_df, model)
     # smd.download_full_series(match_list=[43118, 43119])
     # rr = generate_round_replay_example(match, series)
     # q = rr.get_map_impact_dataframe()

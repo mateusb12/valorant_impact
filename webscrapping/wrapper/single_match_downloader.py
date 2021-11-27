@@ -8,14 +8,13 @@ from webscrapping.analyse_json import Analyser
 
 
 class SingleMatchDownloader:
-    def __init__(self, series_id: int):
-        match_id = 0
-        self.match_id = match_id
+    def __init__(self, series_id: int, **kwargs):
+        self.match_id = kwargs["match_id"] if "match_id" in kwargs else 0
         self.series_id = series_id
         self.rb = RIBScrapper(open=False)
         self.series_table = self.get_series_table()
-        self.existing_json = self.rb.existing_file("{}.json".format(match_id), "json")
-        self.existing_csv = self.rb.existing_file("{}.csv".format(match_id), "exports")
+        self.existing_json = self.rb.existing_file("{}.json".format(self.match_id), "json")
+        self.existing_csv = self.rb.existing_file("{}.csv".format(self.match_id), "exports")
 
     @staticmethod
     def get_series_table() -> pd.DataFrame:
@@ -51,9 +50,11 @@ class SingleMatchDownloader:
             return pd.read_csv(r'matches\exports\{}.csv'.format(self.match_id))
 
     def get_match_id_by_series(self) -> List[int]:
-        sliced_series = self.series_table[["Match Id", "Series Id"]]
-        query = sliced_series.query('`Series Id`=={}'.format(self.series_id))
-        return list(query["Match Id"])
+        a = Analyser("{}.json".format(self.match_id))
+        return a.all_matches
+        # sliced_series = self.series_table[["Match Id", "Series Id"]]
+        # query = sliced_series.query('`Series Id`=={}'.format(self.series_id))
+        # return list(query["Match Id"])
 
     def download_full_series(self, **kwargs):
         match_id_list = self.get_match_id_by_series()

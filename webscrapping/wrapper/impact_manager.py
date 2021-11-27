@@ -50,6 +50,13 @@ class PlayerImpact:
         rr.choose_round(1)
         return rr.get_map_impact_dataframe()
 
+    def get_player_impact_throughout_all_matches(self, player_name: str) -> pd.DataFrame:
+        raw_impact = self.export_full_impact()
+        raw_dfs_concat = pd.concat(raw_impact)
+        player_df = raw_dfs_concat[raw_dfs_concat["Name"] == f"{player_name}"]
+        player_df = player_df.sort_values("Delta", ascending=False)
+        return player_df
+
     def export_full_impact(self) -> List[pd.DataFrame]:
         impacts = []
         total_len = len(self.available)
@@ -92,7 +99,20 @@ def analyse_tourney(file_output: str):
 
 
 if __name__ == "__main__":
-    analyse_tourney("berlim.csv")
+    gmd_matches = ["43119", "43118", "43093", "43092", "43091", "42906", "42905", "41261", "41260", "41259", "39940",
+                   "39939", "39439", "39438", "39437", "33683", "33682", "33672", "33671", "33670", "33112", "33111",
+                   "33110", "30507", "30506", "30409", "30408", "30407", "29826", "29825", "29824", "29394", "29393",
+                   "29392", "29242", "29241", "29240", "29139", "29138", "28992", "28991", "21859", "21858", "21842",
+                   "21841", "21840", "21782", "21781", "21780", "21631", "21630", "21622", "21621", "18667", "18666",
+                   "18579", "18578", "18355", "18354", "18358", "18357", "16363", "16362", "16267", "16266", "16265",
+                   "16133", "16132", "15597", "15596", "15474", "15473", "15472", "14973", "14972", "14971", "14963",
+                   "14962", "14715", "14714", "13874", "13873", "12291", "12290", "11216", "11215", "10785", "10784",
+                   "10783", "10755", "10754", "10753", "10736", "10735", "10494", "10493", "10479", "10478", "9688",
+                   "9687", "9686", "9379", "9378", "8756", "8755", "8277", "8276", "8262", "8261", "8211", "8210",
+                   "8792", "8791", "8028", "8027"]
+    pi = PlayerImpact(gmd_matches)
+    pi.analyse_full_impact()
+    # analyse_tourney("berlim.csv")
     # match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
     # matches = match_csv["MatchID"].tolist()
     #

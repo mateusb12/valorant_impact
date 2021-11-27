@@ -15,7 +15,7 @@ class Analyser:
             os.chdir("..\\..")
         data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
         body_txt = data_file.read()
-        self.data = None
+        self.data = {}
         self.trim_trash_code(body_txt)
 
         self.raw_match_id = int(input_file.split(".")[0])
@@ -41,9 +41,16 @@ class Analyser:
         self.reverse_round_table = None
         self.match_id = None
         self.series_id = self.data["series"]["seriesById"]["id"]
+        self.all_matches = self.get_all_matches_ids()
 
         self.team_a = self.get_team_a()
         self.team_b = self.get_team_b()
+
+    def get_all_matches_ids(self) -> List[int]:
+        matches = self.data["series"]["seriesById"]["matches"]
+        return [match["id"] for match in matches if "id" in match]
+
+
 
     def implicit_set_config(self, **kwargs):
         map_index = self.get_valid_maps()[self.raw_match_id] + 1

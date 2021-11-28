@@ -24,7 +24,17 @@ class ValorantConsumer:
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
         body_txt = data_file.read()
         self.data = json.loads(body_txt)
-        apple = 5 + 1
+
+    def get_team_table_data(self) -> dict:
+        team_table_data = self.data["series"]["seriesById"]
+        return {1: team_table_data["team1Id"], 2: team_table_data["team2Id"]}
+
+    def get_player_data(self) -> dict:
+        match_data = self.data["series"]["seriesById"]["matches"]
+        return match_data[0]["players"]
+
+    def get_valid_maps(self):
+        return [item for item in self.data["series"]["seriesById"]["matches"] if item["riotId"] is not None]
 
     def add_event(self):
         event_data = self.data["series"]["seriesById"]
@@ -54,14 +64,47 @@ class ValorantConsumer:
                 print(colored(f'{dbe}', 'red'))
 
     def add_players(self):
-        series_data = self.data["series"]["seriesById"]
-        players_data = series_data["matches"][0]["players"]
+        players_data = self.get_player_data()
+        team_table_data = self.get_team_table_data()
+
         for player in players_data:
-            player_id = player["player"]["id"]
-            player_name = player["player"]["ign"]
-            country_id = player["player"]["countryId"]
+            aux = player["player"]
+            player_id = aux["id"]
+            player_name = aux["ign"]
+            team_id = team_table_data[player["teamNumber"]]
+            country_id = aux["countryId"]
             try:
-                self.db.insert_player(player_id, player_name, country_id)
+                self.db.insert_player(player_id, player_name, team_id, country_id)
+            except psycopg2.DatabaseError as dbe:
+                print(colored(f'{dbe}', 'red'))
+
+    def add_maps(self):
+        for key, value in self.maps_data.items():
+            if value["name"] != "NA":
+                try:
+                    self.db.insert_map(int(key), value["name"])
+                except psycopg2.DatabaseError as dbe:
+                    print(colored(f'{dbe}', 'red'))
+
+    def add_matches(self):
+        maps_data = self.get_valid_maps()
+        team_table_data = self.get_team_table_data()
+        for map_played in maps_data:
+            match_id = map_played["id"]
+            series_id = map_played["seriesId"]
+            series_order = map_played["seriesMatchNumber"]
+            map_id = map_played["mapId"]
+            map_name = self.maps_data[f"{map_id}"]["name"]
+            start_date = map_played["startDate"]
+            length_millis = map_played["lengthMillis"]
+            attacking_first_team = team_table_data[map_played["attackingFirstTeamNumber"]]
+            red_team = team_table_data[map_played["redTeamNumber"]]
+            winning_team = team_table_data[map_played["winningTeamNumber"]]
+            team_a_score = map_played["team1Score"]
+            team_b_score = map_played["team2Score"]
+            try:
+                self.db.insert_match(match_id, series_id, series_order, map_id, map_name, start_date, length_millis,
+                                     attacking_first_team, red_team, winning_team, team_a_score, team_b_score)
             except psycopg2.DatabaseError as dbe:
                 print(colored(f'{dbe}', 'red'))
 
@@ -75,11 +118,15 @@ if __name__ == "__main__":
     vc.add_event()
     vc.add_all_teams()
     vc.add_series()
-    # vc.add_players()
+    vc.add_players()
+    vc.add_maps()
+    vc.add_matches()
     print("")
     print(vc.db.select_from_table("events"))
     print(vc.db.select_from_table("series"))
     print(vc.db.select_from_table("teams"))
     print(vc.db.select_from_table("players"))
+    print(vc.db.select_from_table("maps"))
+    print(vc.db.select_from_table("matches"))
     # vc.add_series()
     # vc.add_players()

@@ -59,7 +59,7 @@ class ValorantCreator:
         existing = self.existing_table(table_name)
         if existing:
             self.cursor.execute(f"DROP TABLE {table_name};")
-            print(f"Table [{table_name}] dropped successfully")
+            print(f"Table [{table_name}] dropped")
         else:
             print(f"Could not drop it. Table [{table_name}] does not exist.")
 
@@ -128,6 +128,7 @@ class ValorantCreator:
                 series_id INTEGER NOT NULL,
                 series_order INTEGER NOT NULL,
                 map_id INTEGER NOT NULL,
+                map_name VARCHAR(40) NOT NULL,
                 start_date VARCHAR(40) NOT NULL,
                 length_millis INTEGER NOT NULL,
                 attacking_first_team INTEGER NOT NULL,
@@ -281,14 +282,15 @@ class ValorantCreator:
         self.conn.commit()
         print("Map id = [{}], Map Name = [{}] inserted successfully".format(input_map_id, input_map_name))
 
-    def insert_match(self, i_match_id: int, i_series_id: int, i_series_order: int, i_map_id: int, i_start_date: str,
-                     i_length_millis: int, i_attacking_first_team: int, i_red_team: int, i_winning_team: int,
-                     team_a_score: int, team_b_score: int):
+    def insert_match(self, i_match_id: int, i_series_id: int, i_series_order: int, i_map_id: int, i_map_name: str,
+                     i_start_date: str, i_length_millis: int, i_attacking_first_team: int, i_red_team: int,
+                     i_winning_team: int, team_a_score: int, team_b_score: int):
         instruction = f"""
-            INSERT INTO Matches(match_id, series_id, series_order, map_id, start_date, length_millis,
+            INSERT INTO Matches(match_id, series_id, series_order, map_id, map_name, start_date, length_millis,
              attacking_first_team, red_team, winning_team, team_a_score, team_b_score)
-             VALUES ({i_match_id}, {i_series_id}, {i_series_order}, {i_map_id}, '{i_start_date}', {i_length_millis},
-             {i_attacking_first_team}, {i_red_team}, {i_winning_team}, {team_a_score}, {team_b_score})"""
+             VALUES ({i_match_id}, {i_series_id}, {i_series_order}, {i_map_id}, '{i_map_name}', '{i_start_date}',
+              {i_length_millis}, {i_attacking_first_team}, {i_red_team}, {i_winning_team}, {team_a_score},
+               {team_b_score})"""
         self.cursor.execute(instruction)
         self.conn.commit()
         print(f"Match #{i_match_id} inserted successfully")
@@ -305,7 +307,7 @@ class ValorantCreator:
 
     def insert_player(self, i_player_id: int, i_player_name: str, i_team_id: int, i_country_id: int):
         instruction = f"""
-        INSERT INTO Players(player_id, player_name, country_id)
+        INSERT INTO Players(player_id, player_name, team_id, country_id)
          VALUES({i_player_id}, '{i_player_name}', {i_team_id}, {i_country_id})"""
         self.cursor.execute(instruction)
         self.conn.commit()

@@ -22,6 +22,7 @@ class ValorantConsumer:
 
         self.attack_first_table = {}
         self.map_side_table = {}
+        self.round_table = {}
 
     def setup_json(self, filename: str):
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
@@ -82,6 +83,8 @@ class ValorantConsumer:
             except psycopg2.DatabaseError as dbe:
                 print(colored(f'{dbe}', 'red'))
 
+        self.db.insert_team(0, "None", "None", 0, 0, 0, 0)
+
     def add_players(self):
         players_data = self.get_player_data()
         team_table_data = self.get_team_table_data()
@@ -96,6 +99,8 @@ class ValorantConsumer:
                 self.db.insert_player(player_id, player_name, team_id, country_id)
             except psycopg2.DatabaseError as dbe:
                 print(colored(f'{dbe}', 'red'))
+
+        self.db.insert_player(0, "None", 0, 0)
 
     def add_maps(self):
         for key, value in self.maps_data.items():
@@ -172,11 +177,84 @@ class ValorantConsumer:
                         print(colored(f'Round #{round_id}', 'red'))
                         print(colored(f'{dbe}', 'red'))
 
+    def add_rounds_economies(self):
+        economies_data = self.data["matches"]["matchDetails"]["economies"]
+        for economy in economies_data:
+            round_id = economy["roundId"]
+            round_number = economy["roundNumber"]
+            self.round_table[round_number] = round_id
+            player_id = economy["playerId"]
+            agent_id = economy["agentId"]
+            score = economy["score"]
+            weapon_id = economy["weaponId"]
+            armor_id = 0 if economy["armorId"] is None else economy["armorId"]
+            remaining_creds = economy["remainingCreds"]
+            spent_creds = economy["spentCreds"]
+            loadout_value = economy["loadoutValue"]
+            try:
+                self.db.insert_round_economy(round_id, round_number, player_id, agent_id, score, weapon_id, armor_id,
+                                             remaining_creds, spent_creds, loadout_value)
+            except psycopg2.DatabaseError as dbe:
+                print(colored(f'Economy #{economy["id"]}', 'red'))
+                print(colored(f'{dbe}', 'red'))
+
+    def add_round_locations(self):
+        location_data = self.data["matches"]["matchDetails"]["locations"]
+        for location in location_data:
+            round_number = location["roundNumber"]
+            round_id = self.round_table[round_number]
+            round_time_millis = location["roundTimeMillis"]
+            player_id = location["playerId"]
+            location_x = location["locationX"]
+            location_y = location["locationY"]
+            view_radians = location["viewRadians"]
+            try:
+                self.db.insert_round_location(round_id, round_number, round_time_millis, player_id, location_x,
+                                              location_y, view_radians)
+            except psycopg2.DatabaseError as dbe:
+                print(colored(f'Location #{location["id"]}', 'red'))
+                print(colored(f'{dbe}', 'red'))
+
+    def add_round_events(self):
+        event_data = self.data["matches"]["matchDetails"]["events"]
+        assist_db = {}
+        for event in event_data:
+            round_id = event["roundId"]
+            round_number = event["roundNumber"]
+            round_time_millis = event["roundTimeMillis"]
+            player_id = event["playerId"]
+            unique_id = int(f"{round_number}{player_id}{round_time_millis}")
+            victim_id = 0 if event["referencePlayerId"] is None else event["referencePlayerId"]
+            event_type = event["eventType"]
+            damage_type = event["damageType"]
+            weapon_id = 0 if event["weaponId"] is None else event["weaponId"]
+            ability = 0 if event["ability"] is None else event["ability"]
+            attacking_team = event["attackingTeamNumber"]
+            assists = event["assists"]
+            try:
+                self.db.insert_round_event(round_id, round_number, round_time_millis, player_id, victim_id,
+                                           event_type, damage_type, weapon_id, ability, attacking_team)
+            except psycopg2.DatabaseError as dbe:
+                print(colored(f'Event #{event["id"]}', 'red'))
+                print(colored(f'{dbe}', 'red'))
+
+            if assists:
+                instruction = "Select currval(pg_get_serial_sequence('roundevents', 'round_event_id')) as new_id;"
+                self.db.cursor.execute(instruction)
+                current_primary_key = self.db.cursor.fetchall()[0][0]
+                for assist in assists:
+                    actor_id = assist["assistantId"]
+                    damage = assist["damage"]
+                    try:
+                        self.db.insert_assist(current_primary_key, actor_id, damage)
+                    except psycopg2.DatabaseError as dbe:
+                        print(colored(f'Assist #{assist["id"]}', 'red'))
+                        print(colored(f'{dbe}', 'red'))
+
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
     vc.setup_json('37853.json')
-    q = vc.generate_attacking_round_format(attackers=255, defenders=75, round_amount=28)
     print("")
     vc.db.rebuild_database()
     print("")
@@ -187,14 +265,16 @@ if __name__ == "__main__":
     vc.add_maps()
     vc.add_matches()
     vc.add_rounds()
-    apple = 5 + 1
+    vc.add_rounds_economies()
+    vc.add_round_events()
+    vc.add_round_locations()
     print("")
-    print(vc.db.select_from_table("events"))
-    print(vc.db.select_from_table("series"))
-    print(vc.db.select_from_table("teams"))
-    print(vc.db.select_from_table("players"))
-    print(vc.db.select_from_table("maps"))
-    print(vc.db.select_from_table("matches"))
-    print(vc.db.select_from_table("rounds"))
-    # vc.add_series()
-    # vc.add_players()
+    # print(vc.db.select_from_table("events"))
+    # print(vc.db.select_from_table("series"))
+    # print(vc.db.select_from_table("teams"))
+    # print(vc.db.select_from_table("players"))
+    # print(vc.db.select_from_table("maps"))
+    # print(vc.db.select_from_table("matches"))
+    # print(vc.db.select_from_table("rounds"))
+    # print(vc.db.select_from_table("roundeconomies"))
+    # print(vc.db.select_from_table("roundlocations"))

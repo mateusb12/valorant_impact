@@ -72,6 +72,7 @@ class ValorantCreator:
             print(f"Could not select from it. Table [{table_name}] does not exist.")
 
     def drop_all_tables(self):
+        self.drop_table("assists")
         self.drop_table("roundlocations")
         self.drop_table("roundevents")
         self.drop_table("roundeconomies")
@@ -96,6 +97,7 @@ class ValorantCreator:
         self.create_round_event_table()
         self.create_round_location_table()
         self.create_player_map_instance_table()
+        self.create_assist_table()
 
     def create_maps_table(self):
         self.cursor.execute("""
@@ -160,7 +162,7 @@ class ValorantCreator:
     def create_round_event_table(self):
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS RoundEvents(
-                round_event_id SERIAL PRIMARY KEY,
+                round_event_id BIGSERIAL PRIMARY KEY,
                 round_id INTEGER NOT NULL,
                 round_number INTEGER NOT NULL,
                 round_time_millis INTEGER NOT NULL,
@@ -176,6 +178,16 @@ class ValorantCreator:
                 FOREIGN KEY (victim_id) REFERENCES Players(player_id));""")
         print("Round event table created successfully")
         self.conn.commit()
+
+    def create_assist_table(self):
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS Assists(
+                assist_id SERIAL PRIMARY KEY,
+                round_event_id INTEGER NOT NULL,
+                assistant_id INTEGER NOT NULL,
+                damage INTEGER NOT NULL,
+                FOREIGN KEY (round_event_id) REFERENCES RoundEvents(round_event_id),
+                FOREIGN KEY (assistant_id) REFERENCES Players(player_id));""")
 
     def create_round_location_table(self):
         self.cursor.execute("""
@@ -352,6 +364,14 @@ class ValorantCreator:
         self.cursor.execute(instruction)
         self.conn.commit()
         print(f"Round Event [#{i_round_time_millis}] inserted successfully")
+
+    def insert_assist(self, i_round_event_id: int, i_assistant_id: int, i_damage: int):
+        instruction = f"""
+        INSERT INTO Assists(round_event_id, assistant_id, damage)
+        VALUES({i_round_event_id}, {i_assistant_id}, {i_damage})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        print(f"Assist [#{i_assistant_id}] inserted successfully")
 
     def insert_round_location(self, i_round_id: int, i_round_number: int, i_round_time_millis: int, i_actor_id: int,
                               i_location_x: float, i_location_y: float, i_view_radians: str):

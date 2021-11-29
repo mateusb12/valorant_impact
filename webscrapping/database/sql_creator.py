@@ -147,6 +147,7 @@ class ValorantCreator:
                 round_id SERIAL PRIMARY KEY,
                 match_id INTEGER NOT NULL,
                 round_number INTEGER NOT NULL,
+                attacking_team INTEGER NOT NULL,
                 winning_team INTEGER NOT NULL,
                 team_a_economy INTEGER NOT NULL,
                 team_b_economy INTEGER NOT NULL,
@@ -295,11 +296,12 @@ class ValorantCreator:
         self.conn.commit()
         print(f"Match #{i_match_id} inserted successfully")
 
-    def insert_round(self, i_round_id: int, i_match_id: int, i_round_number: int, i_winning_team: int,
-                     i_team_a_economy: int, i_team_b_economy: int, i_win_condition: str, i_ceremony: str):
+    def insert_round(self, i_round_id: int, i_match_id: int, i_round_number: int, i_attacking_team: int,
+                     i_winning_team: int, i_team_a_economy: int, i_team_b_economy: int, i_win_condition: str, i_ceremony: str):
         instruction = f"""
-        INSERT INTO Rounds(round_id, match_id, round_number, winning_team, team_a_economy, team_b_economy,
-        win_condition, ceremony) VALUES({i_round_id}, {i_match_id}, {i_round_number}, {i_winning_team},
+        INSERT INTO Rounds(round_id, match_id, round_number, attacking_team, winning_team, team_a_economy,
+         team_b_economy, win_condition, ceremony)
+        VALUES({i_round_id}, {i_match_id}, {i_round_number}, {i_attacking_team}, {i_winning_team},
         {i_team_a_economy}, {i_team_b_economy}, '{i_win_condition}', '{i_ceremony}')"""
         self.cursor.execute(instruction)
         self.conn.commit()

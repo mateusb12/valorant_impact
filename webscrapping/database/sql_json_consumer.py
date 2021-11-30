@@ -25,6 +25,7 @@ class ValorantConsumer:
         self.round_table = {}
 
         self.match_id = 0
+        self.broken_json = set()
 
     def extract_full_json(self):
         self.add_event()
@@ -45,7 +46,6 @@ class ValorantConsumer:
         clean_txt = self.trim_trash_code(body_txt)
         self.data = json.loads(clean_txt)
         self.match_id = int(filename.split(".")[0])
-        print(f"{filename} loaded!")
 
     @staticmethod
     def trim_trash_code(code_string: str):
@@ -69,6 +69,12 @@ class ValorantConsumer:
     def get_valid_maps(self):
         return [item for item in self.data["series"]["seriesById"]["matches"] if item["riotId"] is not None]
 
+    def handle_postgres_exception(self, input_exception: psycopg2):
+        error_tag = input_exception.diag.source_function
+        if error_tag != "_bt_check_unique":
+            print(colored(f'{input_exception}', 'red'))
+            self.broken_json.add(self.match_id)
+
     @staticmethod
     def generate_attacking_round_format(**kwargs) -> dict:
         attacking_first = kwargs["attackers"]
@@ -86,26 +92,26 @@ class ValorantConsumer:
         return dict(zip(round_indexes, side_indexes))
 
     def add_event(self):
-        print("Adding events")
+        # print("Adding events")
         event_data = self.data["series"]["seriesById"]
         event_id = event_data["eventId"]
         try:
             self.db.insert_event(event_data["eventId"], event_data["eventName"], event_data["startDate"],
                                  event_data["stage"], event_data["bracket"])
         except psycopg2.IntegrityError as dbe:
-            print(colored(f'{dbe}', 'red'))
+            self.handle_postgres_exception(dbe)
 
     def add_series(self):
-        print("Adding series")
+        # print("Adding series")
         series_data = self.data["series"]["seriesById"]
         try:
             self.db.insert_series(series_data["id"], series_data["eventId"], series_data["bestOf"],
                                   series_data["team1Id"], series_data["team2Id"])
         except psycopg2.DatabaseError as dbe:
-            print(colored(f'{dbe}', 'red'))
+            self.handle_postgres_exception(dbe)
 
     def add_all_teams(self):
-        print("Adding teams")
+        # print("Adding teams")
         teams_data = self.data["series"]["seriesById"]
         teams = [teams_data["team1"], teams_data["team2"]]
         for team in teams:
@@ -120,12 +126,14 @@ class ValorantConsumer:
                 self.db.insert_team(team_id, team_name, team_logo, team_country_id, team_region_id,
                                     team_rank, team_region_rank)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'{dbe}', 'red'))
+                error_tag = dbe.diag.source_function
+                if error_tag != "_bt_check_unique":
+                    print(colored(f'{dbe}', 'red'))
 
         try:
             self.db.insert_team(0, "None", "None", 0, 0, 0, 0)
         except psycopg2.IntegrityError as dbe:
-            print(colored('Void team already exists', 'grey'))
+            pass
 
     def get_player_instance_source(self, input_match_id: int) -> dict:
         data_source = self.data["series"]["seriesById"]["matches"]
@@ -148,7 +156,7 @@ class ValorantConsumer:
         return output_players
 
     def add_players(self):
-        print("Adding players")
+        # print("Adding players")
         players_data = self.get_player_data()
         team_table_data = self.get_team_table_data()
 
@@ -161,23 +169,23 @@ class ValorantConsumer:
             try:
                 self.db.insert_player(player_id, player_name, team_id, country_id)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
         try:
             self.db.insert_player(0, "None", 0, 0)
         except psycopg2.IntegrityError as dbe:
-            print(colored('Void player already exists', 'grey'))
+            pass
 
     def add_maps(self):
-        print("Adding maps")
+        # print("Adding maps")
         for key, value in self.maps_data.items():
             if value["name"] != "NA":
                 try:
                     self.db.insert_map(int(key), value["name"])
                 except psycopg2.DatabaseError as dbe:
-                    print(colored(f'{dbe}', 'red'))
+                    self.handle_postgres_exception(dbe)
 
     def add_matches(self):
-        print("Adding matches")
+        # print("Adding matches")
         maps_data = self.get_valid_maps()
         team_table_data = self.get_team_table_data()
         convert_side_table = {1: 2, 2: 1}
@@ -207,11 +215,11 @@ class ValorantConsumer:
                 self.db.insert_match(match_id, series_id, series_order, map_id, map_name, start_date, length_millis,
                                      attacking_first_team, red_team, winning_team, team_a_score, team_b_score)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
         self.attack_first_table = attack_first_table
 
     def add_rounds(self):
-        print("Adding rounds")
+        # print("Adding rounds")
         matches_data = self.data["series"]["seriesById"]["matches"]
         team_table_data = self.get_team_table_data()
         for match in matches_data:
@@ -242,11 +250,10 @@ class ValorantConsumer:
                         self.db.insert_round(round_id, match_id, round_number, attacking_team, winning_team,
                                              team_a_economy, team_b_economy, win_condition, ceremony)
                     except psycopg2.DatabaseError as dbe:
-                        print(colored(f'Round #{round_id}', 'red'))
-                        print(colored(f'{dbe}', 'red'))
+                        self.handle_postgres_exception(dbe)
 
     def add_rounds_economies(self):
-        print("Adding round economies")
+        # print("Adding round economies")
         economies_data = self.data["matches"]["matchDetails"]["economies"]
         for economy in economies_data:
             round_id = economy["roundId"]
@@ -266,11 +273,10 @@ class ValorantConsumer:
                 self.db.insert_round_economy(round_id, round_number, player_id, agent_id, score, weapon_id, armor_id,
                                              remaining_creds, spent_creds, loadout_value)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'Economy error! #{economy["id"]}', 'red'))
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
 
     def add_round_locations(self):
-        print("Adding round locations")
+        # print("Adding round locations")
         location_data = self.data["matches"]["matchDetails"]["locations"]
         for location in location_data:
             round_number = location["roundNumber"]
@@ -284,11 +290,10 @@ class ValorantConsumer:
                 self.db.insert_round_location(round_id, round_number, round_time_millis, player_id, location_x,
                                               location_y, view_radians)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'Location #{location["id"]}', 'red'))
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
 
     def add_round_events(self):
-        print("Adding round events")
+        # print("Adding round events")
         event_data = self.data["matches"]["matchDetails"]["events"]
         for event in event_data:
             round_id = event["roundId"]
@@ -306,8 +311,7 @@ class ValorantConsumer:
                 self.db.insert_round_event(round_id, round_number, round_time_millis, player_id, victim_id,
                                            event_type, damage_type, weapon_id, ability, attacking_team)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'Event #{event["id"]}', 'red'))
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
 
             if assists:
                 instruction = "Select currval(pg_get_serial_sequence('roundevents', 'round_event_id')) as new_id;"
@@ -319,11 +323,10 @@ class ValorantConsumer:
                     try:
                         self.db.insert_assist(current_primary_key, actor_id, damage)
                     except psycopg2.DatabaseError as dbe:
-                        print(colored(f'Assist #{assist["id"]}', 'red'))
-                        print(colored(f'{dbe}', 'red'))
+                        self.handle_postgres_exception(dbe)
 
     def add_player_instances(self):
-        print("Adding player instances")
+        # print("Adding player instances")
         raw_data = self.get_player_instance_source(self.match_id)
 
         for key, value in raw_data.items():
@@ -337,8 +340,7 @@ class ValorantConsumer:
             try:
                 self.db.insert_player_map_instance(player_id, agent_id, map_played, score, rounds_played)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'Player Instance #{player_id}', 'red'))
-                print(colored(f'{dbe}', 'red'))
+                self.handle_postgres_exception(dbe)
 
 
 if __name__ == "__main__":

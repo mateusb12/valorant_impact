@@ -1,6 +1,8 @@
 from typing import List, Tuple
 import os
 
+from termcolor import colored
+
 from webscrapping.database.sql_json_consumer import ValorantConsumer
 
 
@@ -17,11 +19,13 @@ class ValorantPopulator:
     def populate(self):
         vc = ValorantConsumer()
         vc.db.rebuild_database()
-        vc.setup_json(self.files[2])
-        vc.extract_full_json()
-        # for file in self.files[:5]:
-        #     vc.setup_json(f'{file}')
-        #     vc.extract_full_json()
+        sample = self.files
+        size = len(sample)
+        for index, file in enumerate(sample):
+            vc.setup_json(f'{file}')
+            vc.extract_full_json()
+            ratio = round((index + 1) / size, 3)
+            print(colored(f'{file}.json was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
 
 
 vp = ValorantPopulator()

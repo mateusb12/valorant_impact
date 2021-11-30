@@ -24,10 +24,39 @@ class ValorantConsumer:
         self.map_side_table = {}
         self.round_table = {}
 
+        self.match_id = 0
+
+    def extract_full_json(self):
+        self.add_event()
+        self.add_all_teams()
+        self.add_series()
+        self.add_players()
+        self.add_maps()
+        self.add_matches()
+        self.add_rounds()
+        self.add_rounds_economies()
+        self.add_round_events()
+        self.add_round_locations()
+        self.add_player_instances()
+
     def setup_json(self, filename: str):
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
         body_txt = data_file.read()
-        self.data = json.loads(body_txt)
+        clean_txt = self.trim_trash_code(body_txt)
+        self.data = json.loads(clean_txt)
+        self.match_id = int(filename.split(".")[0])
+        print(f"{filename} loaded!")
+
+    @staticmethod
+    def trim_trash_code(code_string: str):
+        """
+        Trim the trash code from the json file, making the json readable
+        """
+        first_segment = code_string[0:24]
+        if first_segment == "window.__INITIAL_STATE__":
+            return code_string[45:]
+        else:
+            return code_string
 
     def get_team_table_data(self) -> dict:
         team_table_data = self.data["series"]["seriesById"]
@@ -57,15 +86,17 @@ class ValorantConsumer:
         return dict(zip(round_indexes, side_indexes))
 
     def add_event(self):
+        print("Adding events")
         event_data = self.data["series"]["seriesById"]
         event_id = event_data["eventId"]
         try:
             self.db.insert_event(event_data["eventId"], event_data["eventName"], event_data["startDate"],
                                  event_data["stage"], event_data["bracket"])
-        except psycopg2.DatabaseError as dbe:
+        except psycopg2.IntegrityError as dbe:
             print(colored(f'{dbe}', 'red'))
 
     def add_series(self):
+        print("Adding series")
         series_data = self.data["series"]["seriesById"]
         try:
             self.db.insert_series(series_data["id"], series_data["eventId"], series_data["bestOf"],
@@ -74,18 +105,50 @@ class ValorantConsumer:
             print(colored(f'{dbe}', 'red'))
 
     def add_all_teams(self):
+        print("Adding teams")
         teams_data = self.data["series"]["seriesById"]
         teams = [teams_data["team1"], teams_data["team2"]]
         for team in teams:
             try:
-                self.db.insert_team(team["id"], team["name"], team["logoUrl"], team["countryId"], team["regionId"],
-                                    team["rank"], team["regionRank"])
+                team_id = team["id"]
+                team_name = team["name"] if team["name"] is not None else "Unknown"
+                team_logo = team["logoUrl"] if team["logoUrl"] is not None else "No logo"
+                team_country_id = team["countryId"] if team["countryId"] is not None else 0
+                team_region_id = team["regionId"] if team["regionId"] is not None else 0
+                team_rank = team["rank"] if team["rank"] is not None else 0
+                team_region_rank = team["regionRank"] if team["regionRank"] is not None else 0
+                self.db.insert_team(team_id, team_name, team_logo, team_country_id, team_region_id,
+                                    team_rank, team_region_rank)
             except psycopg2.DatabaseError as dbe:
                 print(colored(f'{dbe}', 'red'))
 
-        self.db.insert_team(0, "None", "None", 0, 0, 0, 0)
+        try:
+            self.db.insert_team(0, "None", "None", 0, 0, 0, 0)
+        except psycopg2.IntegrityError as dbe:
+            print(colored('Void team already exists', 'grey'))
+
+    def get_player_instance_source(self, input_match_id: int) -> dict:
+        data_source = self.data["series"]["seriesById"]["matches"]
+        chosen_data = None
+        for match in data_source:
+            if match["id"] == input_match_id:
+                chosen_data = {"players": match["players"], "stats": match["stats"], "rounds": match["rounds"]}
+                break
+
+        round_amount = len(chosen_data["rounds"])
+        output_players = {}
+        for player in chosen_data["players"]:
+            if player["playerId"] not in output_players:
+                output_players[player["playerId"]] = {}
+            output_players[player["playerId"]]["player"] = player
+
+        for stat in chosen_data["stats"]:
+            output_players[stat["playerId"]]["stats"] = stat
+            output_players[stat["playerId"]]["rounds"] = round_amount
+        return output_players
 
     def add_players(self):
+        print("Adding players")
         players_data = self.get_player_data()
         team_table_data = self.get_team_table_data()
 
@@ -99,10 +162,13 @@ class ValorantConsumer:
                 self.db.insert_player(player_id, player_name, team_id, country_id)
             except psycopg2.DatabaseError as dbe:
                 print(colored(f'{dbe}', 'red'))
-
-        self.db.insert_player(0, "None", 0, 0)
+        try:
+            self.db.insert_player(0, "None", 0, 0)
+        except psycopg2.IntegrityError as dbe:
+            print(colored('Void player already exists', 'grey'))
 
     def add_maps(self):
+        print("Adding maps")
         for key, value in self.maps_data.items():
             if value["name"] != "NA":
                 try:
@@ -111,6 +177,7 @@ class ValorantConsumer:
                     print(colored(f'{dbe}', 'red'))
 
     def add_matches(self):
+        print("Adding matches")
         maps_data = self.get_valid_maps()
         team_table_data = self.get_team_table_data()
         convert_side_table = {1: 2, 2: 1}
@@ -144,6 +211,7 @@ class ValorantConsumer:
         self.attack_first_table = attack_first_table
 
     def add_rounds(self):
+        print("Adding rounds")
         matches_data = self.data["series"]["seriesById"]["matches"]
         team_table_data = self.get_team_table_data()
         for match in matches_data:
@@ -178,6 +246,7 @@ class ValorantConsumer:
                         print(colored(f'{dbe}', 'red'))
 
     def add_rounds_economies(self):
+        print("Adding round economies")
         economies_data = self.data["matches"]["matchDetails"]["economies"]
         for economy in economies_data:
             round_id = economy["roundId"]
@@ -186,19 +255,22 @@ class ValorantConsumer:
             player_id = economy["playerId"]
             agent_id = economy["agentId"]
             score = economy["score"]
-            weapon_id = economy["weaponId"]
+            weapon_id = economy["weaponId"] if economy["weaponId"] is not None else 0
             armor_id = 0 if economy["armorId"] is None else economy["armorId"]
             remaining_creds = economy["remainingCreds"]
             spent_creds = economy["spentCreds"]
             loadout_value = economy["loadoutValue"]
+            pot = (round_id, round_number, player_id, agent_id, score, weapon_id, armor_id, remaining_creds,
+                   spent_creds, loadout_value)
             try:
                 self.db.insert_round_economy(round_id, round_number, player_id, agent_id, score, weapon_id, armor_id,
                                              remaining_creds, spent_creds, loadout_value)
             except psycopg2.DatabaseError as dbe:
-                print(colored(f'Economy #{economy["id"]}', 'red'))
+                print(colored(f'Economy error! #{economy["id"]}', 'red'))
                 print(colored(f'{dbe}', 'red'))
 
     def add_round_locations(self):
+        print("Adding round locations")
         location_data = self.data["matches"]["matchDetails"]["locations"]
         for location in location_data:
             round_number = location["roundNumber"]
@@ -216,14 +288,13 @@ class ValorantConsumer:
                 print(colored(f'{dbe}', 'red'))
 
     def add_round_events(self):
+        print("Adding round events")
         event_data = self.data["matches"]["matchDetails"]["events"]
-        assist_db = {}
         for event in event_data:
             round_id = event["roundId"]
             round_number = event["roundNumber"]
             round_time_millis = event["roundTimeMillis"]
             player_id = event["playerId"]
-            unique_id = int(f"{round_number}{player_id}{round_time_millis}")
             victim_id = 0 if event["referencePlayerId"] is None else event["referencePlayerId"]
             event_type = event["eventType"]
             damage_type = event["damageType"]
@@ -251,30 +322,29 @@ class ValorantConsumer:
                         print(colored(f'Assist #{assist["id"]}', 'red'))
                         print(colored(f'{dbe}', 'red'))
 
+    def add_player_instances(self):
+        print("Adding player instances")
+        raw_data = self.get_player_instance_source(self.match_id)
+
+        for key, value in raw_data.items():
+            player_data = value["player"]
+            stats_data = value["stats"]
+            player_id = key
+            agent_id = player_data["agentId"]
+            score = stats_data["score"]
+            map_played = self.match_id
+            rounds_played = value["rounds"]
+            try:
+                self.db.insert_player_map_instance(player_id, agent_id, map_played, score, rounds_played)
+            except psycopg2.DatabaseError as dbe:
+                print(colored(f'Player Instance #{player_id}', 'red'))
+                print(colored(f'{dbe}', 'red'))
+
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
-    vc.setup_json('37853.json')
-    print("")
     vc.db.rebuild_database()
-    print("")
-    vc.add_event()
-    vc.add_all_teams()
-    vc.add_series()
-    vc.add_players()
-    vc.add_maps()
-    vc.add_matches()
-    vc.add_rounds()
-    vc.add_rounds_economies()
-    vc.add_round_events()
-    vc.add_round_locations()
-    print("")
-    # print(vc.db.select_from_table("events"))
-    # print(vc.db.select_from_table("series"))
-    # print(vc.db.select_from_table("teams"))
-    # print(vc.db.select_from_table("players"))
-    # print(vc.db.select_from_table("maps"))
-    # print(vc.db.select_from_table("matches"))
-    # print(vc.db.select_from_table("rounds"))
-    # print(vc.db.select_from_table("roundeconomies"))
-    # print(vc.db.select_from_table("roundlocations"))
+    vc.setup_json('37853.json')
+    vc.extract_full_json()
+    vc.setup_json('37854.json')
+    vc.extract_full_json()

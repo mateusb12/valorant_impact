@@ -116,9 +116,6 @@ class ValorantCreator:
                 map_played INTEGER NOT NULL,
                 score INTEGER NOT NULL,
                 rounds_played INTEGER NOT NULL,
-                kills INTEGER NOT NULL,
-                deaths INTEGER NOT NULL,
-                assists INTEGER NOT NULL,
                 FOREIGN KEY (player_id) REFERENCES Players(player_id));""")
         print("Map instance table created successfully")
         self.conn.commit()
@@ -293,7 +290,7 @@ class ValorantCreator:
             """
         self.cursor.execute(instruction)
         self.conn.commit()
-        print("Map id = [{}], Map Name = [{}] inserted successfully".format(input_map_id, input_map_name))
+        # print("Map id = [{}], Map Name = [{}] inserted successfully".format(input_map_id, input_map_name))
 
     def insert_match(self, i_match_id: int, i_series_id: int, i_series_order: int, i_map_id: int, i_map_name: str,
                      i_start_date: str, i_length_millis: int, i_attacking_first_team: int, i_red_team: int,
@@ -306,10 +303,11 @@ class ValorantCreator:
                {team_b_score})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Match #{i_match_id} inserted successfully")
+        # print(f"Match #{i_match_id} inserted successfully")
 
     def insert_round(self, i_round_id: int, i_match_id: int, i_round_number: int, i_attacking_team: int,
-                     i_winning_team: int, i_team_a_economy: int, i_team_b_economy: int, i_win_condition: str, i_ceremony: str):
+                     i_winning_team: int, i_team_a_economy: int, i_team_b_economy: int, i_win_condition: str,
+                     i_ceremony: str):
         instruction = f"""
         INSERT INTO Rounds(round_id, match_id, round_number, attacking_team, winning_team, team_a_economy,
          team_b_economy, win_condition, ceremony)
@@ -317,7 +315,7 @@ class ValorantCreator:
         {i_team_a_economy}, {i_team_b_economy}, '{i_win_condition}', '{i_ceremony}')"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Round [#{i_round_id}] inserted successfully")
+        # print(f"Round [#{i_round_id}] inserted successfully")
 
     def insert_player(self, i_player_id: int, i_player_name: str, i_team_id: int, i_country_id: int):
         instruction = f"""
@@ -325,7 +323,7 @@ class ValorantCreator:
          VALUES({i_player_id}, '{i_player_name}', {i_team_id}, {i_country_id})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Player [#{i_player_name}] inserted successfully")
+        # print(f"Player [#{i_player_name}] inserted successfully")
 
     def insert_event(self, i_event_id: int, i_event_name: str, i_event_date: str, i_event_stage: int,
                      i_event_bracket: str):
@@ -334,7 +332,7 @@ class ValorantCreator:
         VALUES({i_event_id}, '{i_event_name}', '{i_event_date}', '{i_event_stage}', '{i_event_bracket}')"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Event [#{i_event_name}] inserted successfully")
+        # print(f"Event [#{i_event_name}] inserted successfully")
 
     def insert_team(self, i_team_id: int, i_team_name: str, i_logo: str, i_country_id: int, i_region_id: int,
                     i_rank: int, i_region_rank: int):
@@ -343,7 +341,7 @@ class ValorantCreator:
         VALUES({i_team_id}, '{i_team_name}', '{i_logo}', {i_country_id}, {i_region_id}, {i_rank}, {i_region_rank})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Team [#{i_team_name}] inserted successfully")
+        # print(f"Team [#{i_team_name}] inserted successfully")
 
     def insert_series(self, i_series_id: int, i_event_id: int, i_best_of: int, i_team_a_id: int, i_team_b_id: int):
         instruction = f"""
@@ -351,7 +349,7 @@ class ValorantCreator:
         VALUES({i_series_id}, {i_event_id}, {i_best_of}, {i_team_a_id}, {i_team_b_id})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Series [#{i_series_id}] inserted successfully")
+        # print(f"Series [#{i_series_id}] inserted successfully")
 
     def insert_round_event(self, i_round_id: int, i_round_number: int, i_round_time_millis: int,
                            i_actor_id: int, i_victim_id: int, i_event_type: str, i_damage_type: str, i_weapon_id: int,
@@ -363,7 +361,7 @@ class ValorantCreator:
         '{i_event_type}', '{i_damage_type}', {i_weapon_id}, '{i_ability}', {i_attacking_team_number})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Round Event [#{i_round_time_millis}] inserted successfully")
+        # print(f"Round Event [#{i_round_time_millis}] inserted successfully")
 
     def insert_assist(self, i_round_event_id: int, i_assistant_id: int, i_damage: int):
         instruction = f"""
@@ -371,7 +369,7 @@ class ValorantCreator:
         VALUES({i_round_event_id}, {i_assistant_id}, {i_damage})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Assist [#{i_assistant_id}] inserted successfully")
+        # print(f"Assist [#{i_assistant_id}] inserted successfully")
 
     def insert_round_location(self, i_round_id: int, i_round_number: int, i_round_time_millis: int, i_actor_id: int,
                               i_location_x: float, i_location_y: float, i_view_radians: str):
@@ -382,7 +380,7 @@ class ValorantCreator:
         '{i_view_radians}')"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Round Location [#{i_round_time_millis}] inserted successfully")
+        # print(f"Round Location [#{i_round_time_millis}] inserted successfully")
 
     def insert_round_economy(self, i_round_id: int, i_round_number: int, i_actor_id: int,
                              i_agent_id: int, i_score: int, i_weapon_id: int, i_armor_id: int, i_remaining_creds: int,
@@ -394,7 +392,16 @@ class ValorantCreator:
         {i_weapon_id}, {i_armor_id}, {i_remaining_creds}, {i_spent_creds}, {i_loadout_value})"""
         self.cursor.execute(instruction)
         self.conn.commit()
-        print(f"Round Economy [#{i_round_number}] inserted successfully")
+        # print(f"Round Economy [#{i_round_number}] inserted successfully")
+
+    def insert_player_map_instance(self, i_player_id: int, i_agent_id: int, i_map_played: int, i_score: int,
+                                   i_rounds_played: int):
+        instruction = f"""
+        INSERT INTO PlayerMapInstance(player_id, agent_id, map_played, score, rounds_played)
+        VALUES({i_player_id}, {i_agent_id}, {i_map_played}, {i_score}, {i_rounds_played})"""
+        self.cursor.execute(instruction)
+        self.conn.commit()
+        # print(f"Map Instance [#{i_player_id}] inserted successfully")
 
 
 if __name__ == "__main__":

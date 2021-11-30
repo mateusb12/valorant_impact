@@ -1,38 +1,28 @@
 from typing import List, Tuple
+import os
 
-import psycopg2
-
-
-class ValorantCore:
-    def __init__(self, database_name: str = "postgres"):
-        self.conn = psycopg2.connect(
-            database=database_name, user='postgres', password='password', host='127.0.0.1', port='5432'
-        )
-        self.conn.autocommit = True
-        self.cursor = self.conn.cursor()
-
-    def close(self):
-        self.conn.close()
+from webscrapping.database.sql_json_consumer import ValorantConsumer
 
 
-class ValorantPopulator(ValorantCore):
+class ValorantPopulator:
 
-    def get_all_databases(self) -> List[Tuple[str]]:
-        self.cursor.execute("SELECT datname FROM pg_database;")
-        return self.cursor.fetchall()
+    def __init__(self):
+        current_folder = os.getcwd().split("\\")[-1]
+        if current_folder == "database":
+            os.chdir("..\\matches\\json")
+        # Get all files in the current folder
+        self.files = os.listdir()
+        os.chdir("..\\..\\database")
 
-    def change_current_database(self, database_to_connect: str):
-        self.__init__(database_to_connect)
-
-    def insert_map(self):
-        self.cursor.execute("""
-            INSERT INTO Cities(map_id, map_name) VALUES (4, 'Bind') 
-            """)
-        self.conn.commit()
-        print("Map inserted")
-
+    def populate(self):
+        vc = ValorantConsumer()
+        vc.db.rebuild_database()
+        vc.setup_json(self.files[2])
+        vc.extract_full_json()
+        # for file in self.files[:5]:
+        #     vc.setup_json(f'{file}')
+        #     vc.extract_full_json()
 
 
-
-vp = ValorantPopulator("valorant")
-vp.insert_map()
+vp = ValorantPopulator()
+vp.populate()

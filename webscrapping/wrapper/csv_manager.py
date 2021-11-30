@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 
+from termcolor import colored
+
 from webscrapping.analyse_json import Analyser
 from webscrapping.wrapper.folder_fixer import fix_current_folder
 
@@ -93,18 +95,25 @@ class CsvMerger:
     def merge_all_csv(csv_name: str):
         file_list = os.listdir('../matches/json')
         match_list = [int(x[:-5]) for x in file_list]
+        size = len(match_list)
 
         df_list = []
+        error_list = []
 
-        for i in match_list:
-            print(i)
+        for index, i in enumerate(match_list):
+            completion = round(index / size * 100, 2)
+            print(f"{index}/{size} ({completion}%)")
             a = Analyser("{}.json".format(i))
-            df_list.append(a.export_df(i))
+            try:
+                df_list.append(a.export_df(i))
+            except KeyError:
+                error_list.append(i)
 
         print("Append done")
         print(os.getcwd())
         merged = pd.concat(df_list)
         merged.to_csv(r'{}\matches\rounds\{}'.format(os.getcwd(), csv_name), index=False)
+        print(colored(f'Error in {df_list}', 'red'))
 
     @staticmethod
     def delete_jsons():
@@ -157,7 +166,9 @@ class CsvConverter:
 
 if __name__ == "__main__":
     ccv = CsvConverter()
-    ccv.get_json_list()
+    cm = CsvMerger("vct_merged.csv", delete_jsons=False)
+    cm.merge()
+    # ccv.get_json_list()
 
     # cc = CsvCreator("na.csv")
     # cc.generate_link_table()

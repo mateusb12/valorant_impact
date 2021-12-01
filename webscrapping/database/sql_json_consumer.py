@@ -26,6 +26,7 @@ class ValorantConsumer:
 
         self.match_id = 0
         self.broken_json = set()
+        self.broken_match = False
 
     def extract_full_json(self):
         existing = self.existing_match(self.match_id)
@@ -41,6 +42,7 @@ class ValorantConsumer:
             self.add_round_events()
             self.add_round_locations()
             self.add_player_instances()
+            self.broken_match = False
 
     def setup_json(self, filename: str):
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
@@ -105,8 +107,30 @@ class ValorantConsumer:
             side_indexes += ot_round_teams
         return dict(zip(round_indexes, side_indexes))
 
+    def get_player_instance_source(self, input_match_id: int) -> dict:
+        data_source = self.data["series"]["seriesById"]["matches"]
+        chosen_data = None
+        for match in data_source:
+            if match["id"] == input_match_id:
+                chosen_data = {"players": match["players"], "stats": match["stats"], "rounds": match["rounds"]}
+                break
+
+        round_amount = len(chosen_data["rounds"])
+        output_players = {}
+        for player in chosen_data["players"]:
+            if player["playerId"] not in output_players:
+                output_players[player["playerId"]] = {}
+            output_players[player["playerId"]]["player"] = player
+
+        for stat in chosen_data["stats"]:
+            output_players[stat["playerId"]]["stats"] = stat
+            output_players[stat["playerId"]]["rounds"] = round_amount
+        return output_players
+
     def add_event(self):
         # print("Adding events")
+        if self.broken_match:
+            return
         event_data = self.data["series"]["seriesById"]
         event_id = event_data["eventId"]
         try:
@@ -117,6 +141,8 @@ class ValorantConsumer:
 
     def add_series(self):
         # print("Adding series")
+        if self.broken_match:
+            return
         series_data = self.data["series"]["seriesById"]
         try:
             self.db.insert_series(series_data["id"], series_data["eventId"], series_data["bestOf"],
@@ -126,6 +152,8 @@ class ValorantConsumer:
 
     def add_all_teams(self):
         # print("Adding teams")
+        if self.broken_match:
+            return
         teams_data = self.data["series"]["seriesById"]
         teams = [teams_data["team1"], teams_data["team2"]]
         for team in teams:
@@ -149,28 +177,10 @@ class ValorantConsumer:
         except psycopg2.IntegrityError as dbe:
             pass
 
-    def get_player_instance_source(self, input_match_id: int) -> dict:
-        data_source = self.data["series"]["seriesById"]["matches"]
-        chosen_data = None
-        for match in data_source:
-            if match["id"] == input_match_id:
-                chosen_data = {"players": match["players"], "stats": match["stats"], "rounds": match["rounds"]}
-                break
-
-        round_amount = len(chosen_data["rounds"])
-        output_players = {}
-        for player in chosen_data["players"]:
-            if player["playerId"] not in output_players:
-                output_players[player["playerId"]] = {}
-            output_players[player["playerId"]]["player"] = player
-
-        for stat in chosen_data["stats"]:
-            output_players[stat["playerId"]]["stats"] = stat
-            output_players[stat["playerId"]]["rounds"] = round_amount
-        return output_players
-
     def add_players(self):
         # print("Adding players")
+        if self.broken_match:
+            return
         players_data = self.get_player_data()
         team_table_data = self.get_team_table_data()
 
@@ -191,6 +201,8 @@ class ValorantConsumer:
 
     def add_maps(self):
         # print("Adding maps")
+        if self.broken_match:
+            return
         for key, value in self.maps_data.items():
             if value["name"] != "NA":
                 try:
@@ -200,6 +212,8 @@ class ValorantConsumer:
 
     def add_matches(self):
         # print("Adding matches")
+        if self.broken_match:
+            return
         maps_data = self.get_valid_maps()
         team_table_data = self.get_team_table_data()
         convert_side_table = {1: 2, 2: 1}
@@ -234,6 +248,8 @@ class ValorantConsumer:
 
     def add_rounds(self):
         # print("Adding rounds")
+        if self.broken_match:
+            return
         matches_data = self.data["series"]["seriesById"]["matches"]
         team_table_data = self.get_team_table_data()
         for match in matches_data:
@@ -268,6 +284,8 @@ class ValorantConsumer:
 
     def add_rounds_economies(self):
         # print("Adding round economies")
+        if self.broken_match:
+            return
         economies_data = self.data["matches"]["matchDetails"]["economies"]
         for economy in economies_data:
             round_id = economy["roundId"]
@@ -291,6 +309,8 @@ class ValorantConsumer:
 
     def add_round_locations(self):
         # print("Adding round locations")
+        if self.broken_match:
+            return
         location_data = self.data["matches"]["matchDetails"]["locations"]
         for location in location_data:
             round_number = location["roundNumber"]
@@ -308,6 +328,8 @@ class ValorantConsumer:
 
     def add_round_events(self):
         # print("Adding round events")
+        if self.broken_match:
+            return
         event_data = self.data["matches"]["matchDetails"]["events"]
         for event in event_data:
             round_id = event["roundId"]
@@ -341,7 +363,14 @@ class ValorantConsumer:
 
     def add_player_instances(self):
         # print("Adding player instances")
-        raw_data = self.get_player_instance_source(self.match_id)
+        if self.broken_match:
+            return
+        try:
+            raw_data = self.get_player_instance_source(self.match_id)
+        except KeyError:
+            self.broken_json.add(self.match_id)
+            self.broken_match = True
+            return
 
         for key, value in raw_data.items():
             player_data = value["player"]

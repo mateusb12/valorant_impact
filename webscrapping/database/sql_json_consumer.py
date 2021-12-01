@@ -28,17 +28,19 @@ class ValorantConsumer:
         self.broken_json = set()
 
     def extract_full_json(self):
-        self.add_event()
-        self.add_all_teams()
-        self.add_series()
-        self.add_players()
-        self.add_maps()
-        self.add_matches()
-        self.add_rounds()
-        self.add_rounds_economies()
-        self.add_round_events()
-        self.add_round_locations()
-        self.add_player_instances()
+        existing = self.existing_match(self.match_id)
+        if not existing:
+            self.add_event()
+            self.add_all_teams()
+            self.add_series()
+            self.add_players()
+            self.add_maps()
+            self.add_matches()
+            self.add_rounds()
+            self.add_rounds_economies()
+            self.add_round_events()
+            self.add_round_locations()
+            self.add_player_instances()
 
     def setup_json(self, filename: str):
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
@@ -58,6 +60,13 @@ class ValorantConsumer:
         else:
             return code_string
 
+    def existing_match(self, input_match_id: int) -> bool:
+        instruction = (
+            f"""select exists(select 1 from Matches where match_id={input_match_id});"""
+        )
+        self.db.cursor.execute(instruction)
+        return self.db.cursor.fetchall()[0][0]
+
     def get_team_table_data(self) -> dict:
         team_table_data = self.data["series"]["seriesById"]
         return {1: team_table_data["team1Id"], 2: team_table_data["team2Id"]}
@@ -74,6 +83,11 @@ class ValorantConsumer:
         if error_tag != "_bt_check_unique":
             print(colored(f'{input_exception}', 'red'))
             self.broken_json.add(self.match_id)
+
+    def export_broken_matches(self):
+        export_table = list(self.broken_json)
+        with open("broken_matches.txt", "w") as outfile:
+            outfile.write("\n".join(str(item) for item in export_table))
 
     @staticmethod
     def generate_attacking_round_format(**kwargs) -> dict:
@@ -345,8 +359,11 @@ class ValorantConsumer:
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
-    vc.db.rebuild_database()
+    # vc.db.rebuild_database()
     vc.setup_json('37853.json')
-    vc.extract_full_json()
-    vc.setup_json('37854.json')
-    vc.extract_full_json()
+    q = vc.existing_match(37853)
+    apple = 5 + 1
+
+    # vc.extract_full_json()
+    # vc.setup_json('37854.json')
+    # vc.extract_full_json()

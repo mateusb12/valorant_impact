@@ -18,14 +18,15 @@ class ValorantPopulator:
 
     def populate(self):
         vc = ValorantConsumer()
-        vc.db.rebuild_database()
-        sample = self.files
+        # vc.db.rebuild_database()
+        sample = self.files[:1000]
         size = len(sample)
         for index, file in enumerate(sample):
             vc.setup_json(f'{file}')
             vc.extract_full_json()
             ratio = round((index + 1) / size, 3)
             print(colored(f'{file}.json was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
+        vc.export_broken_matches()
 
 
 vp = ValorantPopulator()

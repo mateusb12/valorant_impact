@@ -385,19 +385,20 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    # https://rib.gg/series/4103 Sentinels BO5 score 3-2
-    # https://rib.gg/series/18716 Liquid BO5 score 3-1
-    # https://rib.gg/series/18718 Furia BO5 score 3-0
-    # https://rib.gg/series/3173 Sentinels BO1
-    match = 42041
-    series = 19728
-    # download_missing_matches(match, series)
-    model = train_model()
-    analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match), index_col=False)
-    rr = RoundReplay(match, analysis_df, model)
+    match = 43621
+    series = 20464
+    download_missing_matches(match, series)
+    # model = train_model()
+    # analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match), index_col=False)
+    # rr = RoundReplay(match, analysis_df, model)
     # smd.download_full_series(match_list=[43118, 43119])
     # rr = generate_round_replay_example(match, series)
     # q = rr.get_map_impact_dataframe()
     # # q = rr.get_player_most_impactful_rounds("nAts")
     # rr.choose_round(27)
     # rr.round_events_dataframe()
+
+    # https://rib.gg/series/4103 Sentinels BO5 score 3-2
+    # https://rib.gg/series/18716 Liquid BO5 score 3-1
+    # https://rib.gg/series/18718 Furia BO5 score 3-0
+    # https://rib.gg/series/3173 Sentinels BO1

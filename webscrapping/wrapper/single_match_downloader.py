@@ -36,8 +36,13 @@ class SingleMatchDownloader:
             self.rb.close_driver()
 
         if not self.existing_csv:
-            a = Analyser("{}.json".format(self.match_id))
-            new_match_frame = a.export_df(self.match_id)
+            try:
+                data_file = open(f'matches/json/{self.match_id}.json', encoding="utf-8")
+            except FileNotFoundError:
+                self.download_jsons()
+                data_file = open(f'matches/json/{self.match_id}.json', encoding="utf-8")
+            anl = Analyser("{}.json".format(self.match_id))
+            new_match_frame = anl.export_df(self.match_id)
             new_match_frame.to_csv(r'matches\exports\{}.csv'.format(self.match_id), index=False)
             print("CSV downloaded at matches\\exports\\{}.csv".format(self.match_id))
             return
@@ -50,7 +55,11 @@ class SingleMatchDownloader:
             return pd.read_csv(r'matches\exports\{}.csv'.format(self.match_id))
 
     def get_match_id_by_series(self) -> List[int]:
-        an = Analyser("{}.json".format(self.match_id))
+        try:
+            an = Analyser("{}.json".format(self.match_id))
+        except FileNotFoundError:
+            self.download_jsons()
+            an = Analyser("{}.json".format(self.match_id))
         return an.all_matches
         # sliced_series = self.series_table[["Match Id", "Series Id"]]
         # query = sliced_series.query('`Series Id`=={}'.format(self.series_id))

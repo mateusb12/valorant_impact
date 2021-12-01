@@ -16,18 +16,6 @@ class ValorantPopulator:
         self.files = os.listdir()
         os.chdir("..\\..\\database")
 
-    def populate(self):
-        vc = ValorantConsumer()
-        # vc.db.rebuild_database()
-        sample = self.files[2000:3000]
-        size = len(sample)
-        for index, file in enumerate(sample):
-            vc.setup_json(f'{file}')
-            vc.extract_full_json()
-            ratio = round(100 * index / size, 3)
-            print(colored(f'{file}.json was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
-        vc.export_broken_matches()
-
     @staticmethod
     def delete_broken_files():
         matches_to_delete = []
@@ -45,7 +33,20 @@ class ValorantPopulator:
                 print(f"Deleting {f}")
                 os.remove(f)
 
+    def populate(self):
+        vc = ValorantConsumer()
+        # vc.db.rebuild_database()
+        sample = self.files
+        size = len(sample)
+        for index, file in enumerate(sample):
+            vc.setup_json(f'{file}')
+            vc.extract_full_json()
+            ratio = round(100 * index / size, 3)
+            print(colored(f'{file}.json was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
+        vc.export_broken_matches()
+
 
 if __name__ == "__main__":
     vp = ValorantPopulator()
+    # vp.populate()
     vp.delete_broken_files()

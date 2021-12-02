@@ -115,6 +115,8 @@ class ValorantCreator:
                 agent_id INTEGER NOT NULL,
                 map_played INTEGER NOT NULL,
                 score INTEGER NOT NULL,
+                team_id INTEGER NOT NULL,
+                first_side VARCHAR(40) NOT NULL,
                 rounds_played INTEGER NOT NULL,
                 FOREIGN KEY (player_id) REFERENCES Players(player_id));""")
         print("Map instance table created successfully")
@@ -395,10 +397,11 @@ class ValorantCreator:
         # print(f"Round Economy [#{i_round_number}] inserted successfully")
 
     def insert_player_map_instance(self, i_player_id: int, i_agent_id: int, i_map_played: int, i_score: int,
-                                   i_rounds_played: int):
+                                   i_team_id: int, i_first_side: str, i_rounds_played: int):
         instruction = f"""
-        INSERT INTO PlayerMapInstance(player_id, agent_id, map_played, score, rounds_played)
-        VALUES({i_player_id}, {i_agent_id}, {i_map_played}, {i_score}, {i_rounds_played})"""
+        INSERT INTO PlayerMapInstance(player_id, agent_id, map_played, score, team_id, first_side, rounds_played)
+        VALUES({i_player_id}, {i_agent_id}, {i_map_played}, {i_score}, {i_team_id}, '{i_first_side}',
+         {i_rounds_played})"""
         self.cursor.execute(instruction)
         self.conn.commit()
         # print(f"Map Instance [#{i_player_id}] inserted successfully")

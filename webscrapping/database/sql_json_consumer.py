@@ -80,11 +80,25 @@ class ValorantConsumer:
     def get_valid_maps(self):
         return [item for item in self.data["series"]["seriesById"]["matches"] if item["riotId"] is not None]
 
+    def get_current_map(self) -> dict:
+        for item in self.data["series"]["seriesById"]["matches"]:
+            if item["id"] == self.match_id:
+                return item
+        return {}
+
     def handle_postgres_exception(self, input_exception: psycopg2):
         error_tag = input_exception.diag.source_function
         if error_tag != "_bt_check_unique":
             print(colored(f'{input_exception}', 'red'))
             self.broken_json.add(self.match_id)
+            self.broken_match = True
+            return
+
+    def handle_key_exception(self, input_exception: KeyError):
+        print(colored(f'{input_exception}', 'red'))
+        self.broken_json.add(self.match_id)
+        self.broken_match = True
+        return
 
     def export_broken_matches(self):
         export_table = list(self.broken_json)
@@ -372,26 +386,35 @@ class ValorantConsumer:
             self.broken_match = True
             return
 
+        series_data = self.data["series"]["seriesById"]
+        team_table = {1: series_data["team1Id"], 2: series_data["team2Id"]}
+        current_map = self.get_current_map()
+        attacking_first_team = team_table[current_map["attackingFirstTeamNumber"]]
+
         for key, value in raw_data.items():
             player_data = value["player"]
             stats_data = value["stats"]
             player_id = key
             agent_id = player_data["agentId"]
             score = stats_data["score"]
+            team_id = team_table[player_data["teamNumber"]]
+            first_side = "defender" if team_id == attacking_first_team else "attacker"
             map_played = self.match_id
             rounds_played = value["rounds"]
             try:
-                self.db.insert_player_map_instance(player_id, agent_id, map_played, score, rounds_played)
+                self.db.insert_player_map_instance(player_id, agent_id, map_played, score, team_id, first_side,
+                                                   rounds_played)
             except psycopg2.DatabaseError as dbe:
                 self.handle_postgres_exception(dbe)
 
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
-    # vc.db.rebuild_database()
+    vc.db.rebuild_database()
     vc.setup_json('37853.json')
-    q = vc.existing_match(37853)
-    apple = 5 + 1
+    vc.extract_full_json()
+    # q = vc.existing_match(37853)
+    # apple = 5 + 1
 
     # vc.extract_full_json()
     # vc.setup_json('37854.json')

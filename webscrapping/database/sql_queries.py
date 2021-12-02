@@ -41,6 +41,13 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
+    def get_current_match(self):
+        query = f"""
+        SELECT * FROM Matches WHERE match_id = {self.match_id}
+        """
+        self.db.cursor.execute(query)
+        return self.db.cursor.fetchall()
+
     def get_loadouts(self):
         query = f"""
             SELECT Rounds.match_id, RoundEconomies.round_id, RoundEconomies.Round_number, RoundEconomies.Player_id,
@@ -118,8 +125,8 @@ class ValorantQueries:
     def get_score_table(self):
         round_df = pd.DataFrame(self.get_all_rounds(), columns=['round_number', 'attacking_team', 'winning_team'])
         teams = tuple(round_df['attacking_team'].unique())
-        team_a = teams[0]
-        team_b = teams[1]
+        team_a: int = teams[0]
+        team_b: int = teams[1]
         team_dict = {team_a: 0, team_b: 0}
         team_scores = {team_a: [], team_b: []}
         for team in round_df['winning_team']:
@@ -132,13 +139,21 @@ class ValorantQueries:
         round_df[f"{team_a}_scores"] = team_scores[team_a]
         round_df[f"{team_b}_scores"] = team_scores[team_b]
         economy_table = self.get_economy_table()
-        team_a_economies = {a: economy_table.query(f"Round == {a}").query(f"`Team ID` == {team_a}")
+        team_a_economies = {a: tuple(economy_table.query(f"Round == {a}").query(f"`Team ID` == {team_a}")["Economy"])[0]
                             for a in list(economy_table["Round"])}
-
-        round_df = round_df[["round_number", team_a, team_b, "winning_team"]]
+        team_b_economies = {b: tuple(economy_table.query(f"Round == {b}").query(f"`Team ID` == {team_b}")["Economy"])[0]
+                            for b in list(economy_table["Round"])}
+        round_df[f"{team_a}_economy"] = list(team_a_economies.values())
+        round_df[f"{team_b}_economy"] = list(team_b_economies.values())
+        match_data = self.get_current_match()[0]
+        map_name = match_data[4]
+        winning_team = match_data[9]
+        round_df = round_df.assign(MapName=map_name, WinningTeam=winning_team)
+        apple = 5 + 1
 
 
 if __name__ == "__main__":
     vq = ValorantQueries()
     vq.set_match(10597)
+    apple = vq.get_current_match()
     vq.get_score_table()

@@ -38,19 +38,41 @@ class ValorantPopulator:
         self.vc.db.rebuild_database()
 
     def populate(self, **kwargs):
+        """
+        Populate the database with the json files in the match folder
+        :param kwargs: size: int, number of matches to be populated
+                       rebuild: bool, rebuild the database?
+                       start: int, start index of the matches to be populated
+                       end: int, end index of the matches to be populated
+        :return: populated postgres database
+        """
         size = kwargs["size"] if "size" in kwargs else 0
-        # self.rebuild()
-        sample = self.files if size == 0 else self.files[:size]
+        rebuild = kwargs["rebuild"] if "rebuild" in kwargs else False
+        start = kwargs["start"] if "start" in kwargs else None
+        end = kwargs["end"] if "end" in kwargs else None
+        if rebuild:
+            self.rebuild()
+        sample = self.files
+        if size:
+            sample = self.files[:size]
+        if start and end:
+            sample = self.files[start:end]
         size = len(sample)
         for index, file in enumerate(sample):
             self.vc.setup_json(f'{file}')
             self.vc.extract_full_json()
             ratio = round(100 * index / size, 3)
-            print(colored(f'{file}.json was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
+            print(colored(f'{file} was inserted!    [{index}/{size} ({ratio}%)]', 'green'))
         self.vc.export_broken_matches()
+
+    def populate_single_match(self, filename: str):
+        self.vc.setup_json(f'{filename}')
+        self.vc.extract_full_json()
+        print(colored(f'{filename} was inserted!', 'green'))
 
 
 if __name__ == "__main__":
     vp = ValorantPopulator()
-    vp.populate(size=100)
-    vp.delete_broken_files()
+    vp.populate_single_match("43621.json")
+    # vp.populate(start=7000, end=8000, rebuild=False)
+    # vp.delete_broken_files()

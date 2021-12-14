@@ -18,6 +18,9 @@ class ValorantQueries:
         maps_file = open('..\\matches\\model\\map_table.json')
         self.maps_data = json.load(maps_file)
 
+        agent_roles_file = open('..\\matches\\model\\agent_roles.json')
+        self.agent_roles = json.load(agent_roles_file)
+
     def set_match(self, input_match_id: int):
         self.match_id = input_match_id
 
@@ -96,7 +99,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_kills(self) -> pd.DataFrame:
+    def get_event_table(self) -> pd.DataFrame:
         query = f"""
             SELECT RoundEvents.round_number, round_time_millis, player_id, victim_id, event_type, damage_type, weapon_id, ability
             FROM RoundEvents
@@ -312,5 +315,5 @@ class ValorantQueries:
 
 if __name__ == "__main__":
     vq = ValorantQueries()
-    vq.set_match(10597)
-    vq.generate_current_game_state()
+    vq.set_match(43621)
+    print(vq.get_full_loadouts())

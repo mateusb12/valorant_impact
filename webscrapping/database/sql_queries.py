@@ -96,6 +96,31 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
+    def get_kills(self) -> pd.DataFrame:
+        query = f"""
+            SELECT RoundEvents.round_number, round_time_millis, player_id, victim_id, event_type, damage_type, weapon_id, ability
+            FROM RoundEvents
+            INNER JOIN Rounds ON RoundEvents.round_id = Rounds.round_id
+            INNER JOIN Matches ON Rounds.match_id = Matches.match_id
+            WHERE Matches.match_id = {self.match_id}
+        """
+        self.db.cursor.execute(query)
+        return pd.DataFrame(self.db.cursor.fetchall(), columns=['Round', 'Round_time_millis', 'PlayerID',
+                                                                'VictimID', 'EventType', 'DamageType', 'WeaponID',
+                                                                'Ability'])
+
+    def get_player_names(self) -> dict:
+        query = f"""
+            SELECT PlayerMapInstance.Player_id, Player_name, map_played
+            FROM Players
+            JOIN PlayerMapInstance
+            ON Players.player_id = PlayerMapInstance.player_id
+            WHERE map_played = {self.match_id}
+        """
+        self.db.cursor.execute(query)
+        player_name_df = pd.DataFrame(self.db.cursor.fetchall(), columns=['Player_id', 'Player_name', 'Map_played'])
+        return dict(zip(player_name_df['Player_id'], player_name_df['Player_name']))
+
     def get_locations(self):
         query = f"""
             SELECT 'RoundLocations' as ta, RoundLocations.*, 'Rounds' as td, Rounds.*, 'Matches' as te, Matches.*
@@ -147,9 +172,9 @@ class ValorantQueries:
         old_column = input_dataframe.pop(column_name)
         input_dataframe.insert(new_position, old_column.name, old_column)
 
-    def get_player_economy(self):
+    def get_initial_state(self):
         """
-        Returns a list of all players loadouts for a given match
+        Returns a list of all players states for a given match
         :return: Round, Player ID, Team ID, Remaining Creds, Loadout Value, Agent ID, Weapon ID, Armor ID,
         Shield, Shield Price, Weapon Name, Weapon Price, Utility Value
         """
@@ -179,6 +204,8 @@ class ValorantQueries:
         side_dict = {side_table["attacking_first"]: "attack", side_table["defending_first"]: "defense"}
         loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
         self.reposition_column(loadout_df, "Starting Side", 5)
+        loadout_df["Player Name"] = loadout_df['Player ID'].map(self.get_player_names())
+        self.reposition_column(loadout_df, "Player Name", 4)
         return loadout_df
 
     def get_team_economy(self) -> pd.DataFrame:
@@ -187,7 +214,7 @@ class ValorantQueries:
         :return: Round, Team ID, Team Remaining Creds, Team Loadout Value, Team Economy
          Shield Total Amount, Shield Total Price, Weapon Total Price
         """
-        loadout_df = self.get_player_economy()
+        loadout_df = self.get_initial_state()
         round_amount = loadout_df["Round"].max()
         split_aux = {i: [] for i in range(1, round_amount + 1)}
         for row in loadout_df.iterrows():

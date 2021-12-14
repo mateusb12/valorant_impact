@@ -116,13 +116,78 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_economy_table(self) -> pd.DataFrame:
+    def get_player_instances(self):
+        query = f"""
+        SELECT PlayerMapInstance.player_id, player_name, agent_id, first_side, map_played, PlayerMapInstance.team_id
+        FROM PlayerMapInstance
+        INNER JOIN Players
+        ON PlayerMapinstance.player_id = Players.player_id
+        WHERE Map_played = {self.match_id}
+        ORDER BY first_side
         """
-        Returns a dataframe of the economy table for the match
+        self.db.cursor.execute(query)
+        return self.db.cursor.fetchall()
+
+    def get_team_compositions(self) -> pd.DataFrame:
+        """
+        Returns a list of all player compositions for that map
+        :return: PlayerID, Player Name, Agent Name, First Side, Map ID, Agent ID, Team ID
+        """
+        raw_instances = self.get_player_instances()
+        raw_instance_df = pd.DataFrame(raw_instances, columns=['PlayerID', 'PlayerName', 'AgentID', 'FirstSide',
+                                                               'MapID', 'TeamID'])
+        agent_dict = {int(key): value["name"] for key, value in vq.agent_data.items()}
+        raw_instance_df['AgentName'] = raw_instance_df['AgentID'].map(agent_dict)
+        raw_instance_df = raw_instance_df[["PlayerID", "PlayerName", "AgentName", "FirstSide", "MapID",
+                                           "AgentID", "TeamID"]]
+        return raw_instance_df
+
+    @staticmethod
+    def reposition_column(input_dataframe: pd.DataFrame, column_name: str, new_position: int):
+        old_column = input_dataframe.pop(column_name)
+        input_dataframe.insert(new_position, old_column.name, old_column)
+
+    def get_player_economy(self):
+        """
+        Returns a list of all players loadouts for a given match
+        :return: Round, Player ID, Team ID, Remaining Creds, Loadout Value, Agent ID, Weapon ID, Armor ID,
+        Shield, Shield Price, Weapon Name, Weapon Price, Utility Value
+        """
+        loadouts = self.get_full_loadouts()
+        shield_table = {0: 0, 1: 25, 2: 50}
+        shield_price = {0: 0, 1: 400, 2: 1000}
+        gun_table = self.weapon_data
+        gun_names = {int(key): value["name"] for key, value in gun_table.items()}
+        gun_prices = {int(key): int(value["price"]) for key, value in gun_table.items()}
+        loadout_df = pd.DataFrame(loadouts, columns=['Match ID', 'Round ID', 'Round', 'Player ID', 'Team ID',
+                                                     'Remaining Creds', 'Loadout Value', 'Agent ID', 'Weapon ID',
+                                                     'Armor ID'])
+        loadout_df["Shield"] = loadout_df["Armor ID"].map(shield_table)
+        loadout_df["Shield Price"] = loadout_df["Armor ID"].map(shield_price)
+        loadout_df["Weapon Name"] = loadout_df["Weapon ID"].map(gun_names)
+        loadout_df["Weapon Price"] = loadout_df["Weapon ID"].map(gun_prices)
+        loadout_df["Utility Value"] = \
+            loadout_df["Loadout Value"] - loadout_df["Shield Price"] - loadout_df["Weapon Price"]
+        loadout_df["Utility Value"] = loadout_df["Utility Value"].where(loadout_df["Utility Value"] > 0, 0)
+        agent_dict = {int(key): value["name"] for key, value in self.agent_data.items()}
+        loadout_df["Agent Name"] = loadout_df['Agent ID'].map(agent_dict)
+        column_order = ["Match ID", "Round ID", "Round", "Player ID", "Team ID", "Agent Name", "Weapon Name",
+                        "Weapon Price", "Shield", "Shield Price", "Utility Value", "Remaining Creds", "Agent ID",
+                        "Weapon ID", "Armor ID"]
+        loadout_df = loadout_df[column_order]
+        side_table = self.get_side_info()
+        side_dict = {side_table["attacking_first"]: "attack", side_table["defending_first"]: "defense"}
+        loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
+        self.reposition_column(loadout_df, "Starting Side", 5)
+        return loadout_df
+
+    def get_team_economy(self) -> pd.DataFrame:
+        """
+        Returns a dataframe of the economy table for each team as a whole
         :return: Round, Team ID, Team Remaining Creds, Team Loadout Value, Team Economy
          Shield Total Amount, Shield Total Price, Weapon Total Price
         """
-        loadout_df = self.get_full_loadout_table()
+        loadout_df = self.get_player_economy()
         round_amount = loadout_df["Round"].max()
         split_aux = {i: [] for i in range(1, round_amount + 1)}
         for row in loadout_df.iterrows():
@@ -171,6 +236,11 @@ class ValorantQueries:
                 "round_df": round_df}
 
     def get_score_table(self) -> pd.DataFrame:
+        """
+        Returns a dataframe of the current score table for each round
+        :return: Attacking team, Round Winner, Team A Score, Team B Score, Team A Economy, Team B Economy,
+                 Map Name, Score Diff, Economy Diff, Match Winner
+        """
         side_info = self.get_side_info()
         team_a: int = side_info["team_a"]
         team_b: int = side_info["team_b"]
@@ -188,7 +258,7 @@ class ValorantQueries:
             team_scores[team_b].append(team_dict[team_b])
         round_df[f"{team_a}_scores"] = team_scores[team_a]
         round_df[f"{team_b}_scores"] = team_scores[team_b]
-        economy_table = self.get_economy_table()
+        economy_table = self.get_team_economy()
         team_a_economies = {a: tuple(economy_table.query(f"Round == {a}").query(f"`Team ID` == {team_a}")["Economy"])[0]
                             for a in list(economy_table["Round"])}
         team_b_economies = {b: tuple(economy_table.query(f"Round == {b}").query(f"`Team ID` == {team_b}")["Economy"])[0]
@@ -203,25 +273,6 @@ class ValorantQueries:
         round_df["economy_diff"] = round_df[f"{attacking_first}_economy"] - round_df[f"{defending_first}_economy"]
         round_df = round_df.assign(MatchWinner=winning_team)
         return round_df
-
-    def get_full_loadout_table(self):
-        loadouts = self.get_full_loadouts()
-        shield_table = {0: 0, 1: 25, 2: 50}
-        shield_price = {0: 0, 1: 400, 2: 1000}
-        gun_table = self.weapon_data
-        gun_names = {int(key): value["name"] for key, value in gun_table.items()}
-        gun_prices = {int(key): int(value["price"]) for key, value in gun_table.items()}
-        loadout_df = pd.DataFrame(loadouts, columns=['Match ID', 'Round ID', 'Round', 'Player ID', 'Team ID',
-                                                     'Remaining Creds', 'Loadout Value', 'Agent ID', 'Weapon ID',
-                                                     'Armor ID'])
-        loadout_df["Shield"] = loadout_df["Armor ID"].map(shield_table)
-        loadout_df["Shield Price"] = loadout_df["Armor ID"].map(shield_price)
-        loadout_df["Weapon Name"] = loadout_df["Weapon ID"].map(gun_names)
-        loadout_df["Weapon Price"] = loadout_df["Weapon ID"].map(gun_prices)
-        loadout_df["Utility Value"] = \
-            loadout_df["Loadout Value"] - loadout_df["Shield Price"] - loadout_df["Weapon Price"]
-        loadout_df["Utility Value"] = loadout_df["Utility Value"].where(loadout_df["Utility Value"] > 0, 0)
-        return loadout_df
 
     def generate_current_game_state(self):
         loadouts = self.get_loadouts()

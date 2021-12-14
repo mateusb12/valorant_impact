@@ -1,4 +1,6 @@
 import json
+from typing import Tuple
+
 import pandas as pd
 
 from webscrapping.database.sql_creator import ValorantCreator
@@ -194,13 +196,12 @@ class ValorantQueries:
         loadout_df["Shield Price"] = loadout_df["Armor ID"].map(shield_price)
         loadout_df["Weapon Name"] = loadout_df["Weapon ID"].map(gun_names)
         loadout_df["Weapon Price"] = loadout_df["Weapon ID"].map(gun_prices)
-        loadout_df["Utility Value"] = \
-            loadout_df["Loadout Value"] - loadout_df["Shield Price"] - loadout_df["Weapon Price"]
-        loadout_df["Utility Value"] = loadout_df["Utility Value"].where(loadout_df["Utility Value"] > 0, 0)
+        loadout_df["Utility Value"] = loadout_df["Loadout Value"]
+        # loadout_df["Utility Value"] = loadout_df["Utility Value"].where(loadout_df["Utility Value"] > 0, 0)
         agent_dict = {int(key): value["name"] for key, value in self.agent_data.items()}
         loadout_df["Agent Name"] = loadout_df['Agent ID'].map(agent_dict)
         column_order = ["Match ID", "Round ID", "Round", "Player ID", "Team ID", "Agent Name", "Weapon Name",
-                        "Weapon Price", "Shield", "Shield Price", "Utility Value", "Remaining Creds", "Agent ID",
+                        "Weapon Price", "Shield", "Shield Price", "Loadout Value", "Remaining Creds", "Agent ID",
                         "Weapon ID", "Armor ID"]
         loadout_df = loadout_df[column_order]
         side_table = self.get_side_info()
@@ -304,6 +305,29 @@ class ValorantQueries:
         round_df = round_df.assign(MatchWinner=winning_team)
         return round_df
 
+    def get_current_gamestate(self, round_state_table: pd.DataFrame, alive_dict: dict,
+                              attacking_players: Tuple[int], defending_players: Tuple[int]) -> dict:
+        atk_data = {"Loadout": 0, "Initiator": 0, "Duelist": 0, "Controller": 0, "Sentinel": 0}
+        def_data = {"Loadout": 0, "Initiator": 0, "Duelist": 0, "Controller": 0, "Sentinel": 0}
+        agent_role_dict = self.agent_roles
+        for index, item in round_state_table.iterrows():
+            player_id = item["Player ID"]
+            alive = alive_dict[player_id]
+            if alive:
+                player_name = item["Player Name"]
+                agent_name = item["Agent Name"]
+                player_role = agent_role_dict[agent_name]["name"]
+                player_loadout = item["Loadout Value"]
+                if player_id in attacking_players:
+                    atk_data[player_role] += 1
+                    atk_data["Loadout"] += player_loadout
+                elif player_id in defending_players:
+                    def_data[player_role] += 1
+                    def_data["Loadout"] += player_loadout
+                else:
+                    Exception("Player ID not in attacking or defending players")
+        return {"atk_data": atk_data, "def_data": def_data}
+
     def generate_current_game_state(self):
         loadouts = self.get_loadouts()
         events = self.get_events()
@@ -314,6 +338,6 @@ class ValorantQueries:
 
 
 if __name__ == "__main__":
-    vq = ValorantQueries()
+    #vq = ValorantQueries()
     vq.set_match(43621)
     print(vq.get_full_loadouts())

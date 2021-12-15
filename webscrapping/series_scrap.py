@@ -113,7 +113,8 @@ class RIBScrapper:
         for index, i in enumerate(match_db.iterrows(), start=1):
             remaining_seconds = int(total_time_seconds - (index * 131 / 50))
             total_time_date = self.seconds_to_time(remaining_seconds)
-            match_id = i[1]["match_ID"]
+            aux = i[1]
+            match_id = aux["match_ID"]
             self.current_match_id = match_id
             print("Downloading match ID → {}      ({}/{})   → [Remaining time: {}]"
                   .format(match_id, index, size, total_time_date))

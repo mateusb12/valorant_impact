@@ -307,8 +307,9 @@ class ValorantQueries:
 
     def get_current_gamestate(self, round_state_table: pd.DataFrame, alive_dict: dict,
                               attacking_players: Tuple[int], defending_players: Tuple[int]) -> dict:
-        atk_data = {"Loadout": 0, "Initiator": 0, "Duelist": 0, "Controller": 0, "Sentinel": 0}
-        def_data = {"Loadout": 0, "Initiator": 0, "Duelist": 0, "Controller": 0, "Sentinel": 0}
+        variables = ["Loadout Value", "Shield", "Weapon Price", "Initiator", "Duelist", "Controller", "Sentinel"]
+        atk_data = {i: 0 for i in variables}
+        def_data = atk_data.copy()
         agent_role_dict = self.agent_roles
         for index, item in round_state_table.iterrows():
             player_id = item["Player ID"]
@@ -317,27 +318,75 @@ class ValorantQueries:
                 player_name = item["Player Name"]
                 agent_name = item["Agent Name"]
                 player_role = agent_role_dict[agent_name]["name"]
-                player_loadout = item["Loadout Value"]
                 if player_id in attacking_players:
                     atk_data[player_role] += 1
-                    atk_data["Loadout"] += player_loadout
+                    atk_data["Loadout Value"] += item["Loadout Value"]
+                    atk_data["Shield"] += item["Shield"]
+                    atk_data["Weapon Price"] += item["Weapon Price"]
                 elif player_id in defending_players:
                     def_data[player_role] += 1
-                    def_data["Loadout"] += player_loadout
+                    def_data["Loadout Value"] += item["Loadout Value"]
+                    def_data["Shield"] += item["Shield"]
+                    def_data["Weapon Price"] += item["Weapon Price"]
                 else:
                     Exception("Player ID not in attacking or defending players")
         return {"atk_data": atk_data, "def_data": def_data}
 
-    def generate_current_game_state(self):
-        loadouts = self.get_loadouts()
-        events = self.get_events()
-        loadout_df = pd.DataFrame(loadouts, columns=['Match ID', 'Round ID', 'Round', 'Player ID',
-                                                     'Team ID', 'Remaining Creds', 'Loadout Value'])
-        loadout_df = loadout_df.sort_values(by=['Round'])
-        round_amount = loadout_df["Round"].max()
+    def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
+        """
+        Create a dataframe of the current gamestate for a given round
+        Variables are set within get_current_gamestate function
+        :param chosen_round:
+        :return:
+        """
+        states = self.get_initial_state()
+        events = self.get_event_table()
+        player_alive_dict = {item: True for item in states["Player ID"].unique()}
+
+        current_round_alive_dict = player_alive_dict.copy()
+        current_round_states = states[states['Round'] == chosen_round]
+        current_round_events = events[events['Round'] == chosen_round]
+
+        attacking_players = tuple(current_round_states[current_round_states['Starting Side'] == 'attack'][
+                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
+            current_round_states[current_round_states['Starting Side'] == 'defense']['Player ID'].unique())
+        defending_players = tuple(current_round_states[current_round_states['Starting Side'] == 'defense'][
+                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
+            current_round_states[current_round_states['Starting Side'] == 'attack']['Player ID'].unique())
+
+        current_gamestate_list = []
+
+        first_state = self.get_current_gamestate(current_round_states, current_round_alive_dict, attacking_players,
+                                                 defending_players)
+        current_gamestate_list.append(first_state)
+        for event in current_round_events.iterrows():
+            event_type = event[1]["EventType"]
+            victim_id = event[1]["VictimID"]
+            if event_type == "kill":
+                current_round_alive_dict[victim_id] = False
+            elif event_type == "revival":
+                current_round_alive_dict[victim_id] = True
+            gs = self.get_current_gamestate(current_round_states, current_round_alive_dict, attacking_players,
+                                            defending_players)
+            current_gamestate_list.append(gs)
+
+        dummy_gamestate_list = []
+        for gamestate in current_gamestate_list:
+            atk_gamestate = {f"ATK {key}".replace(" ", "_"): value for key, value in gamestate["atk_data"].items()}
+            def_gamestate = {f"DEF {key}".replace(" ", "_"): value for key, value in gamestate["def_data"].items()}
+            merged_gamestate = {**atk_gamestate, **def_gamestate}
+            dummy_gamestate_list.append(merged_gamestate)
+        gamestate_df = pd.DataFrame(dummy_gamestate_list)
+        timestamps = list(current_round_events["Round_time_millis"])
+        timestamps.insert(0, 0)
+        gamestate_df.insert(0, "Timestamp", timestamps)
+        event_type_column = list(current_round_events["EventType"])
+        event_type_column.insert(0, "start")
+        gamestate_df.insert(1, "EventType", event_type_column)
+        return gamestate_df
 
 
 if __name__ == "__main__":
-    #vq = ValorantQueries()
+    # vq = ValorantQueries()
     vq.set_match(43621)
     print(vq.get_full_loadouts())

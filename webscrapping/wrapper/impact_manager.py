@@ -4,7 +4,7 @@ from random import choice as random_choice
 import pandas as pd
 
 from webscrapping.match_analysis import RoundReplay, train_model
-from webscrapping.wrapper.csv_manager import CsvCreator, CsvSplitter
+from webscrapping.wrapper.csv_manager import CsvCreator, CsvSplitter, CsvConverter
 from webscrapping.wrapper.scrap_matches import download_run
 
 
@@ -49,6 +49,11 @@ class PlayerImpact:
 
     @staticmethod
     def download_missing_matches(filename: str):
+        """
+        Downloads missing matches from the database.
+        :param filename: championsmatches.csv (example)
+        :return: download all necessary files
+        """
         suffix = filename.split(".")[0]
         ccr = CsvCreator(filename)
         ccr.generate_link_table()
@@ -57,9 +62,11 @@ class PlayerImpact:
         ccp.split()
 
         full_name = f"{suffix}_links"
-
         download_run(full_name, "a")
         download_run(full_name, "b")
+
+        ccv = CsvConverter()
+        ccv.get_json_list()
 
     def export_single_impact(self, input_match: int):
         rr = RoundReplay(input_match, self.available[input_match], self.model)

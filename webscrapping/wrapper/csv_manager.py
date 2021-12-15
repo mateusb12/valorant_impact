@@ -134,17 +134,21 @@ class CsvConverter:
         return os.getcwd().split("\\")[-1]
 
     def go_to_json_folder(self):
-        if self.get_current_folder() == "wrapper":
+        current_folder = self.get_current_folder()
+        if current_folder == "wrapper":
             os.chdir("..\\matches\\json")
-        elif self.get_current_folder() == "exports":
+        elif current_folder == "exports":
             os.chdir("..\\json")
+        elif current_folder == "webscrapping":
+            os.chdir("matches\\json")
 
     def go_to_csv_folder(self):
-        if self.get_current_folder() == "wrapper":
+        current_folder = self.get_current_folder()
+        if current_folder == "wrapper":
             os.chdir("..\\matches\\exports")
-        elif self.get_current_folder() == "json":
+        elif current_folder == "json":
             os.chdir("..\\exports")
-        elif self.get_current_folder() == "webscrapping":
+        elif current_folder == "webscrapping":
             os.chdir("matches\\exports")
 
     def get_json_list(self):

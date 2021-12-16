@@ -37,6 +37,15 @@ class ValorantQueries:
         self.db.cursor.execute(instruction)
         return self.db.cursor.fetchall()
 
+    def get_full_round(self):
+        instruction = f"""
+        SELECT *
+        FROM Rounds
+        where Rounds.match_id = {self.match_id};
+        """
+        self.db.cursor.execute(instruction)
+        return self.db.cursor.fetchall()
+
     def query_all_rounds(self):
         query = f"""
                 SELECT 'Round' as ta, Rounds.*, 'Match' as tb, Matches.*
@@ -174,6 +183,16 @@ class ValorantQueries:
         """
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
+
+    def did_attack_win_that_round(self, round_number: int) -> int:
+        score_table = self.get_full_round()
+        score_table_df = pd.DataFrame(score_table,
+                                      columns=["RoundID", "MatchID", "RoundNumber", "Attacking_Team", "WinningTeam",
+                                               "Team_A_Economy", "Team_B_Economy", "Win_condition", "Ceremony"])
+        score_table_df = score_table_df[score_table_df["RoundNumber"] == round_number]
+        attacking_team = int(score_table_df["Attacking_Team"])
+        winning_team = int(score_table_df["WinningTeam"])
+        return 1 if attacking_team == winning_team else 0
 
     @staticmethod
     def get_average_distance_between_multiple_points(point_list: List):

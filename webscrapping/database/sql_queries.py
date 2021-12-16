@@ -4,6 +4,7 @@ from itertools import combinations
 from math import sqrt
 
 import pandas as pd
+import pprofile
 
 from webscrapping.database.sql_creator import ValorantCreator
 
@@ -27,6 +28,14 @@ class ValorantQueries:
 
     def set_match(self, input_match_id: int):
         self.match_id = input_match_id
+
+    def get_match_db(self):
+        instruction = """
+        SELECT match_id FROM Matches
+        """
+        self.db.cursor.execute(instruction)
+        aux_df = pd.DataFrame(self.db.cursor.fetchall(), columns=['match_id'])
+        return list(aux_df["match_id"])
 
     def get_all_rounds(self):
         instruction = f"""
@@ -183,6 +192,12 @@ class ValorantQueries:
         """
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
+
+    def get_round_amount(self) -> int:
+        query = f"""SELECT match_id, team_a_score, team_b_score FROM MATCHES WHERE match_id = {self.match_id}"""
+        self.db.cursor.execute(query)
+        aux = self.db.cursor.fetchall()[0]
+        return aux[1] + aux[2]
 
     def did_attack_win_that_round(self, round_number: int) -> int:
         score_table = self.get_full_round()
@@ -445,15 +460,17 @@ class ValorantQueries:
                 player_name = item["Player Name"]
                 agent_name = item["Agent Name"]
                 player_role = agent_role_dict[agent_name]["name"]
+                player_weapon = item["Weapon Name"]
                 if player_id in attacking_players:
+                    if player_weapon == "Operator":
+                        atk_data["has_OP"] = 1
                     atk_data[player_role] += 1
                     for raw_feature in simple_features:
                         atk_data[raw_feature] += item[raw_feature]
                 elif player_id in defending_players:
-                    player_weapon = item["Weapon Name"]
+                    def_data[player_role] += 1
                     if player_weapon == "Operator":
                         def_data["has_OP"] = 1
-                    def_data[player_role] += 1
                     for raw_feature in simple_features:
                         def_data[raw_feature] += item[raw_feature]
                 else:
@@ -516,8 +533,22 @@ class ValorantQueries:
         gamestate_df.insert(column_amount, "FinalWinner", round_winner)
         return gamestate_df
 
+    def aggregate_match_gamestate(self) -> pd.DataFrame:
+        round_amount = self.get_round_amount()
+        round_list = [self.aggregate_gamestate(i) for i in range(1, round_amount + 1)]
+        return pd.concat(round_list)
+
+    def test_function_performance(self):
+        profiler = pprofile.Profile()
+        with profiler:
+            self.aggregate_gamestate(5)
+        profiler.dump_stats("profiler_stats.txt")
+        # profiler.print_stats()
+
 
 if __name__ == "__main__":
     vq = ValorantQueries()
     vq.set_match(43621)
-    vq.aggregate_gamestate(5)
+    # vq.get_initial_state()
+    vq.test_function_performance()
+    # vq.aggregate_gamestate(5)

@@ -1,5 +1,7 @@
 import json
-from typing import Tuple
+from typing import Tuple, List
+from itertools import combinations
+from math import sqrt
 
 import pandas as pd
 
@@ -114,6 +116,18 @@ class ValorantQueries:
                                                                 'VictimID', 'EventType', 'DamageType', 'WeaponID',
                                                                 'Ability'])
 
+    def get_round_locations(self):
+        query = f"""
+                SELECT RoundLocations.Round_number, round_time_millis, player_id, location_x, location_y, view_radians
+                FROM RoundLocations
+                INNER JOIN Rounds ON RoundLocations.round_id = Rounds.round_id
+                INNER JOIN Matches ON Rounds.match_id = Matches.match_id
+                WHERE Matches.match_id = {self.match_id}
+                """
+        self.db.cursor.execute(query)
+        return pd.DataFrame(self.db.cursor.fetchall(), columns=['Round', 'Round_time_millis', 'PlayerID',
+                                                                'LocationX', 'LocationY', 'ViewRadians'])
+
     def get_player_names(self) -> dict:
         query = f"""
             SELECT PlayerMapInstance.Player_id, Player_name, map_played
@@ -157,6 +171,68 @@ class ValorantQueries:
         """
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
+
+    @staticmethod
+    def get_average_distance_between_multiple_points(point_list: List):
+        distance_list = []
+        for combo in combinations(point_list, 2):
+            distance = sqrt((combo[0][0] - combo[1][0]) ** 2 + (combo[0][1] - combo[1][1]) ** 2)
+            distance_list.append(distance)
+        return sum(distance_list) / len(distance_list)
+
+    def get_compaction_from_timestamp(self, timestamp: int, current_round_locations_df: pd.DataFrame,
+                                      attacking_player_ids: List[int]) -> dict:
+        """
+        Get attack and defense compactions on a given timestamp
+        :param timestamp: in milliseconds
+        :param current_round_locations_df: dataframe of locations for the current round
+        :param attacking_player_ids: list containing the player ids of the attacking players
+        :return: dict with float values for attack and defense compaction
+        """
+        current_timestamp_locations = current_round_locations_df[
+            current_round_locations_df['Round_time_millis'] == timestamp]
+        atk_locations = []
+        def_locations = []
+        for row in current_timestamp_locations.itertuples():
+            aux = (row.LocationX, row.LocationY)
+            if row.PlayerID in attacking_player_ids:
+                atk_locations.append(aux)
+            else:
+                def_locations.append(aux)
+
+        atk_compact = (
+            self.get_average_distance_between_multiple_points(atk_locations)
+            if len(atk_locations) > 1
+            else 0
+        )
+        def_compact = (
+            self.get_average_distance_between_multiple_points(def_locations)
+            if len(def_locations) > 1
+            else 0
+        )
+        return {"atk_compaction": atk_compact,
+                "def_compaction": def_compact}
+
+    def get_compaction_from_round(self, current_round: int) -> pd.DataFrame:
+        """
+        Get attack and defense compactions for each timestamp in a given round
+        :param current_round: int
+        :return: Columns → Round_time_millis, atk_compaction, def_compaction
+        """
+        locations = self.get_round_locations()
+        current_round_locations = locations[locations['Round'] == current_round]
+        round_dict = self.get_current_round_basic_info(5)
+        attacking_players = round_dict["attacking_players"]
+        time_millis_unique = tuple(current_round_locations["Round_time_millis"].unique())
+        time_millis_list = []
+        for time_millis in time_millis_unique:
+            aux = self.get_compaction_from_timestamp(time_millis, current_round_locations, attacking_players)
+            new_row = (time_millis, aux["atk_compaction"], aux["def_compaction"])
+            time_millis_list.append(new_row)
+
+        time_millis_list.insert(0, (0, 0, 0))
+        time_millis_columns = ("Round_time_millis", "atk_spread", "def_spread")
+        return pd.DataFrame(time_millis_list, columns=time_millis_columns)
 
     def get_team_compositions(self) -> pd.DataFrame:
         """
@@ -405,4 +481,4 @@ class ValorantQueries:
 if __name__ == "__main__":
     # vq = ValorantQueries()
     vq.set_match(43621)
-    print(vq.get_full_loadouts())
+    vq.get_compaction_from_round(5)

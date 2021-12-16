@@ -305,10 +305,36 @@ class ValorantQueries:
         round_df = round_df.assign(MatchWinner=winning_team)
         return round_df
 
+    def get_current_round_basic_info(self, chosen_round: int) -> dict:
+        states = self.get_initial_state()
+        events = self.get_event_table()
+        player_alive_dict = {item: True for item in states["Player ID"].unique()}
+        current_round_states = states[states['Round'] == chosen_round]
+        current_round_events = events[events['Round'] == chosen_round]
+        attacking_players = tuple(current_round_states[current_round_states['Starting Side'] == 'attack'][
+                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
+            current_round_states[current_round_states['Starting Side'] == 'defense']['Player ID'].unique())
+        defending_players = tuple(current_round_states[current_round_states['Starting Side'] == 'defense'][
+                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
+            current_round_states[current_round_states['Starting Side'] == 'attack']['Player ID'].unique())
+        return {"current_round_alive_dict": player_alive_dict.copy(), "current_round_states": current_round_states,
+                "current_round_events": current_round_events, "attacking_players": attacking_players,
+                "defending_players": defending_players}
+
     def get_current_gamestate(self, round_state_table: pd.DataFrame, alive_dict: dict,
                               attacking_players: Tuple[int], defending_players: Tuple[int]) -> dict:
-        variables = ["Loadout Value", "Shield", "Weapon Price", "Initiator", "Duelist", "Controller", "Sentinel"]
-        atk_data = {i: 0 for i in variables}
+        """
+        Returns a dictionary of the current gamestate
+        :param round_state_table: dataframe containing the initial state of the chosen round
+        :param alive_dict: dictionary of alive players
+        :param attacking_players: list of attacking players IDs from that round
+        :param defending_players: list of defending players IDs from that round
+        :return: dict of gamestate for both attack and defense
+        """
+        simple_features = ["Loadout Value", "Shield", "Weapon Price"]
+        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel"]
+        features = simple_features + composite_features
+        atk_data = {feature: 0 for feature in features}
         def_data = atk_data.copy()
         agent_role_dict = self.agent_roles
         for index, item in round_state_table.iterrows():
@@ -320,14 +346,12 @@ class ValorantQueries:
                 player_role = agent_role_dict[agent_name]["name"]
                 if player_id in attacking_players:
                     atk_data[player_role] += 1
-                    atk_data["Loadout Value"] += item["Loadout Value"]
-                    atk_data["Shield"] += item["Shield"]
-                    atk_data["Weapon Price"] += item["Weapon Price"]
+                    for raw_feature in simple_features:
+                        atk_data[raw_feature] += item[raw_feature]
                 elif player_id in defending_players:
                     def_data[player_role] += 1
-                    def_data["Loadout Value"] += item["Loadout Value"]
-                    def_data["Shield"] += item["Shield"]
-                    def_data["Weapon Price"] += item["Weapon Price"]
+                    for raw_feature in simple_features:
+                        def_data[raw_feature] += item[raw_feature]
                 else:
                     Exception("Player ID not in attacking or defending players")
         return {"atk_data": atk_data, "def_data": def_data}
@@ -339,20 +363,12 @@ class ValorantQueries:
         :param chosen_round:
         :return:
         """
-        states = self.get_initial_state()
-        events = self.get_event_table()
-        player_alive_dict = {item: True for item in states["Player ID"].unique()}
-
-        current_round_alive_dict = player_alive_dict.copy()
-        current_round_states = states[states['Round'] == chosen_round]
-        current_round_events = events[events['Round'] == chosen_round]
-
-        attacking_players = tuple(current_round_states[current_round_states['Starting Side'] == 'attack'][
-                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
-            current_round_states[current_round_states['Starting Side'] == 'defense']['Player ID'].unique())
-        defending_players = tuple(current_round_states[current_round_states['Starting Side'] == 'defense'][
-                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
-            current_round_states[current_round_states['Starting Side'] == 'attack']['Player ID'].unique())
+        basic_info = self.get_current_round_basic_info(chosen_round)
+        current_round_alive_dict = basic_info["current_round_alive_dict"]
+        current_round_states = basic_info["current_round_states"]
+        current_round_events = basic_info["current_round_events"]
+        attacking_players = basic_info["attacking_players"]
+        defending_players = basic_info["defending_players"]
 
         current_gamestate_list = []
 

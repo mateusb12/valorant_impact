@@ -96,7 +96,7 @@ class RoundReplay:
                            "DEF_has_OP", "Def_has_Odin",
                            "RegularTime", "SpikeTime", "MapName"]]
         current_map = table.MapName.max()
-        map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split"]
+        map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
         map_names.remove(current_map)
         table = pd.get_dummies(table, columns=['MapName'])
         for item in map_names:

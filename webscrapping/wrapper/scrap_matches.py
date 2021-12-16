@@ -1,6 +1,8 @@
 import time
 import pandas as pd
 from selenium import webdriver
+from termcolor import colored
+
 from webscrapping.analyse_json import Analyser
 from webscrapping.series_scrap import RIBScrapper
 import os
@@ -35,7 +37,7 @@ def download_run(filename: str, tag: str):
     ms = MatchScrapper(filename)
     start_time = time.time()
     ms.download_all_matches(filename="{}_{}.csv".format(filename, tag), thread=False)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    print(colored("--- %s seconds ---" % (time.time() - start_time), 'yellow'))
     ms.close_firefox()
     fix_current_folder()
     os.chdir("matches/events")

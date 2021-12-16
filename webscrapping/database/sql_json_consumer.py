@@ -38,6 +38,13 @@ class ValorantConsumer:
         if current_folder == "events":
             os.chdir("..\\..\\database")
 
+    @staticmethod
+    def navigate_to_json_folder():
+        current_path = os.getcwd()
+        current_folder = current_path.split("\\")[-1]
+        if current_folder == "database":
+            os.chdir("..\\matches\\json")
+
     def extract_full_json(self):
         existing = self.existing_match(self.match_id)
         if not existing:
@@ -55,6 +62,9 @@ class ValorantConsumer:
             self.broken_match = False
 
     def setup_json(self, filename: str):
+        missing_extension = filename.isdigit()
+        if missing_extension:
+            filename = f"{filename}.json"
         data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
         body_txt = data_file.read()
         clean_txt = self.trim_trash_code(body_txt)

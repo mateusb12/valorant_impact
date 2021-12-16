@@ -10,4 +10,6 @@ def fix_current_folder():
         os.chdir(path_parent)
         new_path = os.getcwd()
         current_path = new_path
+    elif folder == "events":
+        os.chdir("..\\..")
 

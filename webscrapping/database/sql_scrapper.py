@@ -20,6 +20,7 @@ class ValorantScrapper:
         self.split_links()
         self.download_links()
         self.populate_sql()
+        print(colored("Pipeline finished", "magenta"))
 
     @staticmethod
     def navigate_to_events_folder():
@@ -62,5 +63,5 @@ class ValorantScrapper:
 
 
 if __name__ == "__main__":
-    vs = ValorantScrapper("championsmatches.csv")
+    vs = ValorantScrapper("redbull.csv")
     vs.start_scrapping_pipeline()

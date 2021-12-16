@@ -8,13 +8,13 @@ from webscrapping.database.sql_json_consumer import ValorantConsumer
 
 class ValorantPopulator:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.vc = ValorantConsumer()
         current_folder = os.getcwd().split("\\")[-1]
         if current_folder == "database":
             os.chdir("..\\matches\\json")
         # Get all files in the current folder
-        self.files = os.listdir()
+        self.files = os.listdir() if "match_list" not in kwargs else kwargs["match_list"]
         os.chdir("..\\..\\database")
 
     @staticmethod
@@ -73,6 +73,6 @@ class ValorantPopulator:
 
 if __name__ == "__main__":
     vp = ValorantPopulator()
-    vp.populate_single_match("43621.json")
+    # vp.populate_single_match("43621.json")
     # vp.populate(start=7000, end=8000, rebuild=False)
     # vp.delete_broken_files()

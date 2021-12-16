@@ -10,6 +10,7 @@ from webscrapping.database.sql_creator import ValorantCreator
 class ValorantConsumer:
     def __init__(self):
         self.db = ValorantCreator("valorant")
+        self.fix_folder()
         self.data = {}
         weapon_file = open('..\\matches\\model\\weapon_table.json')
         self.weapon_data = json.load(weapon_file)
@@ -29,6 +30,13 @@ class ValorantConsumer:
         self.broken_match = False
 
         self.successful_inserts = []
+
+    @staticmethod
+    def fix_folder():
+        current_path = os.getcwd()
+        current_folder = current_path.split("\\")[-1]
+        if current_folder == "events":
+            os.chdir("..\\..\\database")
 
     def extract_full_json(self):
         existing = self.existing_match(self.match_id)

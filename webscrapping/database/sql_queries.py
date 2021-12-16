@@ -65,6 +65,9 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
+    def get_current_map_name(self):
+        return self.get_current_match()[0][4]
+
     def get_loadouts(self):
         query = f"""
             SELECT Rounds.match_id, RoundEconomies.round_id, RoundEconomies.Round_number, RoundEconomies.Player_id,
@@ -401,6 +404,8 @@ class ValorantQueries:
                               attacking_players: Tuple[int], defending_players: Tuple[int]) -> dict:
         """
         Returns a dictionary of the current gamestate
+        Parameters pulled from self.get_initial_state()
+
         :param round_state_table: dataframe containing the initial state of the chosen round
         :param alive_dict: dictionary of alive players
         :param attacking_players: list of attacking players IDs from that round
@@ -408,11 +413,12 @@ class ValorantQueries:
         :return: dict of gamestate for both attack and defense
         """
         simple_features = ["Loadout Value", "Shield", "Weapon Price"]
-        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel"]
+        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel", "Def_has_OP"]
         features = simple_features + composite_features
         atk_data = {feature: 0 for feature in features}
         def_data = atk_data.copy()
         agent_role_dict = self.agent_roles
+        def_data["Def_has_OP"] = 0
         for index, item in round_state_table.iterrows():
             player_id = item["Player ID"]
             alive = alive_dict[player_id]
@@ -425,6 +431,9 @@ class ValorantQueries:
                     for raw_feature in simple_features:
                         atk_data[raw_feature] += item[raw_feature]
                 elif player_id in defending_players:
+                    player_weapon = item["Weapon Name"]
+                    if player_weapon == "Operator":
+                        def_data["Def_has_OP"] = 1
                     def_data[player_role] += 1
                     for raw_feature in simple_features:
                         def_data[raw_feature] += item[raw_feature]
@@ -475,10 +484,16 @@ class ValorantQueries:
         event_type_column = list(current_round_events["EventType"])
         event_type_column.insert(0, "start")
         gamestate_df.insert(1, "EventType", event_type_column)
+
+        positional_spread = self.get_compaction_from_round(chosen_round)
+        gamestate_df.insert(3, "ATK_Spread", positional_spread["atk_spread"])
+        gamestate_df.insert(11, "DEF_Spread", positional_spread["def_spread"])
+        map_name = self.get_current_map_name()
+        gamestate_df.insert(len(gamestate_df), "Map_Name", map_name)
         return gamestate_df
 
 
 if __name__ == "__main__":
-    # vq = ValorantQueries()
+    vq = ValorantQueries()
     vq.set_match(43621)
-    vq.get_compaction_from_round(5)
+    vq.aggregate_gamestate(5)

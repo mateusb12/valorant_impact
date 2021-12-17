@@ -2,9 +2,9 @@ import json
 from typing import Tuple, List
 from itertools import combinations
 from math import sqrt
+from line_profiler_pycharm import profile
 
 import pandas as pd
-import pprofile
 
 from webscrapping.database.sql_creator import ValorantCreator
 
@@ -13,6 +13,7 @@ class ValorantQueries:
     def __init__(self):
         self.db = ValorantCreator("valorant")
         self.match_id = 0
+        self.round_locations, self.match_initial_states, self.match_events, self.map_sides = [None] * 4
 
         weapon_file = open('..\\matches\\model\\weapon_table.json')
         self.weapon_data = json.load(weapon_file)
@@ -28,6 +29,10 @@ class ValorantQueries:
 
     def set_match(self, input_match_id: int):
         self.match_id = input_match_id
+        self.round_locations = self.get_all_round_locations()
+        self.match_initial_states = self.get_initial_state()
+        self.match_events = self.get_event_table()
+        self.map_sides = self.get_player_sides()
 
     def get_match_db(self):
         instruction = """
@@ -137,7 +142,7 @@ class ValorantQueries:
                                                                 'VictimID', 'EventType', 'DamageType', 'WeaponID',
                                                                 'Ability'])
 
-    def get_round_locations(self):
+    def get_all_round_locations(self):
         query = f"""
                 SELECT RoundLocations.Round_number, round_time_millis, player_id, location_x, location_y, view_radians
                 FROM RoundLocations
@@ -160,6 +165,38 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         player_name_df = pd.DataFrame(self.db.cursor.fetchall(), columns=['Player_id', 'Player_name', 'Map_played'])
         return dict(zip(player_name_df['Player_id'], player_name_df['Player_name']))
+
+    def get_player_sides(self):
+        query = f"""
+            SELECT player_id, map_played, team_id, first_side, rounds_played
+            FROM PLayerMapInstance WHERE PLayerMapInstance.map_played = {self.match_id}
+        """
+        self.db.cursor.execute(query)
+        return self.db.cursor.fetchall()
+
+    def get_player_sides_by_round(self, round_number: int) -> dict:
+        side_table = pd.DataFrame(self.map_sides,
+                                  columns=['player_id', 'map_played', 'team_id', 'first_side', 'rounds_played'])
+        attacking_players = list(side_table[side_table['first_side'] == 'attacker']["player_id"])
+        defending_players = list(side_table[side_table['first_side'] == 'defender']["player_id"])
+        round_amount = int(side_table["rounds_played"].unique())
+        side_pattern = ["normal"] * 12
+        if round_amount > 24:
+            side_pattern += ["inverse"] * 12
+            ot_rounds = round_amount - 24
+            for item in range(1, ot_rounds + 1):
+                side_pattern += ["normal"] if item % 2 == 1 else ["inverse"]
+        else:
+            remaining = round_amount - 12
+            side_pattern += ["inverse"] * remaining
+        tuple(enumerate(side_pattern, 1))
+
+        side_pattern_dict = {i: side for i, side in enumerate(side_pattern, 1)}
+        round_type = side_pattern_dict[round_number]
+        if round_type == "normal":
+            return {"attackers": attacking_players, "defenders": defending_players}
+        elif round_type == "inverse":
+            return {"attackers": defending_players, "defenders": attacking_players}
 
     def get_locations(self):
         query = f"""
@@ -217,6 +254,7 @@ class ValorantQueries:
             distance_list.append(distance)
         return sum(distance_list) / len(distance_list)
 
+    @profile
     def get_compaction_from_timestamp(self, timestamp: int, current_round_locations_df: pd.DataFrame,
                                       attacking_player_ids: List[int]) -> dict:
         """
@@ -256,10 +294,10 @@ class ValorantQueries:
         :param current_round: int
         :return: Columns → Round_time_millis, atk_compaction, def_compaction
         """
-        locations = self.get_round_locations()
+        locations = self.round_locations
         current_round_locations = locations[locations['Round'] == current_round]
-        round_dict = self.get_current_round_basic_info(5)
-        attacking_players = round_dict["attacking_players"]
+        side_info = self.get_player_sides_by_round(current_round)
+        attacking_players = side_info["attackers"]
         time_millis_unique = tuple(current_round_locations["Round_time_millis"].unique())
         time_millis_list = []
         for time_millis in time_millis_unique:
@@ -419,8 +457,8 @@ class ValorantQueries:
         return round_df
 
     def get_current_round_basic_info(self, chosen_round: int) -> dict:
-        states = self.get_initial_state()
-        events = self.get_event_table()
+        states = self.match_initial_states
+        events = self.match_events
         player_alive_dict = {item: True for item in states["Player ID"].unique()}
         current_round_states = states[states['Round'] == chosen_round]
         current_round_events = events[events['Round'] == chosen_round]
@@ -538,17 +576,8 @@ class ValorantQueries:
         round_list = [self.aggregate_gamestate(i) for i in range(1, round_amount + 1)]
         return pd.concat(round_list)
 
-    def test_function_performance(self):
-        profiler = pprofile.Profile()
-        with profiler:
-            self.aggregate_gamestate(5)
-        profiler.dump_stats("profiler_stats.txt")
-        # profiler.print_stats()
-
 
 if __name__ == "__main__":
     vq = ValorantQueries()
     vq.set_match(43621)
-    # vq.get_initial_state()
-    vq.test_function_performance()
-    # vq.aggregate_gamestate(5)
+    vq.aggregate_match_gamestate()

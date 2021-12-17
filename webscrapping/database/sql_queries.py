@@ -335,6 +335,7 @@ class ValorantQueries:
         Shield, Shield Price, Weapon Name, Weapon Price, Utility Value
         """
         loadouts = self.get_full_loadouts()
+        agent_role_dict = {key: value["name"] for key, value in self.agent_roles.items()}
         shield_table = {0: 0, 1: 25, 2: 50}
         shield_price = {0: 0, 1: 400, 2: 1000}
         gun_table = self.weapon_data
@@ -348,19 +349,20 @@ class ValorantQueries:
         loadout_df["Weapon Name"] = loadout_df["Weapon ID"].map(gun_names)
         loadout_df["Weapon Price"] = loadout_df["Weapon ID"].map(gun_prices)
         loadout_df["Utility Value"] = loadout_df["Loadout Value"]
-        # loadout_df["Utility Value"] = loadout_df["Utility Value"].where(loadout_df["Utility Value"] > 0, 0)
         agent_dict = {int(key): value["name"] for key, value in self.agent_data.items()}
         loadout_df["Agent Name"] = loadout_df['Agent ID'].map(agent_dict)
-        column_order = ["Match ID", "Round ID", "Round", "Player ID", "Team ID", "Agent Name", "Weapon Name",
-                        "Weapon Price", "Shield", "Shield Price", "Loadout Value", "Remaining Creds", "Agent ID",
-                        "Weapon ID", "Armor ID"]
-        loadout_df = loadout_df[column_order]
+        loadout_df["Agent Role"] = loadout_df['Agent Name'].map(agent_role_dict)
         side_table = self.get_side_info()
         side_dict = {side_table["attacking_first"]: "attack", side_table["defending_first"]: "defense"}
         loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
-        self.reposition_column(loadout_df, "Starting Side", 5)
         loadout_df["Player Name"] = loadout_df['Player ID'].map(self.get_player_names())
+        self.reposition_column(loadout_df, "Starting Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
+        loadout_df.insert(5, "Status", "alive")
+        loadout_df = pd.concat([loadout_df.drop('Agent Role', axis=1), pd.get_dummies(loadout_df['Agent Role'])], axis=1)
+        # Create a new column called "Has Operator" if column "Weapon Name" is "Operator
+        loadout_df["Has Operator"] = loadout_df["Weapon Name"].apply(lambda x: "Operator" in x)
+        loadout_df = pd.concat([loadout_df, pd.get_dummies(loadout_df["Player Name"], prefix="Alive")], axis=1)
         return loadout_df
 
     def get_team_economy(self) -> pd.DataFrame:
@@ -462,6 +464,9 @@ class ValorantQueries:
         player_alive_dict = {item: True for item in states["Player ID"].unique()}
         current_round_states = states[states['Round'] == chosen_round]
         current_round_events = events[events['Round'] == chosen_round]
+        self.reposition_column(current_round_states, "Starting Side", 3)
+        current_round_states = current_round_states.sort_values(by=["Starting Side"])
+
         attacking_players = tuple(current_round_states[current_round_states['Starting Side'] == 'attack'][
                                       'Player ID'].unique()) if chosen_round <= 12 else tuple(
             current_round_states[current_round_states['Starting Side'] == 'defense']['Player ID'].unique())
@@ -514,6 +519,32 @@ class ValorantQueries:
                 else:
                     Exception("Player ID not in attacking or defending players")
         return {"atk_data": atk_data, "def_data": def_data}
+
+    def get_event_impact_into_gamestate(self, victim_df: pd.DataFrame, event_type: str) -> dict:
+        victim_dict = victim_df.to_dict(orient="Records")[0]
+        simple_features = ["Loadout Value", "Shield", "Weapon Price"]
+        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel", "Operator"]
+        features = simple_features + composite_features
+        agent_role_dict = self.agent_roles
+        feature_impact = {feature: 0 for feature in features}
+        victim_role = agent_role_dict[victim_dict["Agent Name"]]["name"]
+        victim_operator = 1 if victim_dict["Weapon Name"] == "Operator" else 0
+        factor = 1 if event_type == "kill" else -1
+        feature_impact[victim_role] = -1 * factor
+        feature_impact["Operator"] = -1 * victim_operator * factor
+        for simple in simple_features:
+            feature_impact[simple] = -victim_dict[simple] * factor
+        return feature_impact
+
+    def get_gamestate_dataframe(self) -> pd.DataFrame:
+        aux = self.get_initial_state()
+        aux_a = aux[aux["Status"] == "alive"]
+        aux_b = aux.groupby(["Round", "Team ID"])
+        agg_columns = ("Remaining Creds", "Loadout Value", "Weapon Price", "Shield",
+                       "Controller", "Duelist", "Initiator", "Sentinel")
+        agg_dict = {col: 'sum' for col in agg_columns}
+        agg_dict["Has Operator"] = "any"
+        return aux_b.agg(agg_dict).reset_index()
 
     def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
         """

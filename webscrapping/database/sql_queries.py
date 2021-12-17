@@ -13,7 +13,8 @@ class ValorantQueries:
     def __init__(self):
         self.db = ValorantCreator("valorant")
         self.match_id = 0
-        self.round_locations, self.match_initial_states, self.match_events, self.map_sides = [None] * 4
+        self.round_locations, self.match_initial_states, self.match_events, self.map_sides, self.player_names = \
+            [None] * 5
 
         weapon_file = open('..\\matches\\model\\weapon_table.json')
         self.weapon_data = json.load(weapon_file)
@@ -31,6 +32,7 @@ class ValorantQueries:
         self.match_id = input_match_id
         self.round_locations = self.get_all_round_locations()
         self.match_initial_states = self.get_initial_state()
+        self.player_names = list(self.match_initial_states["Player Name"].unique())
         self.match_events = self.get_event_table()
         self.map_sides = self.get_player_sides()
 
@@ -138,9 +140,16 @@ class ValorantQueries:
             WHERE Matches.match_id = {self.match_id}
         """
         self.db.cursor.execute(query)
-        return pd.DataFrame(self.db.cursor.fetchall(), columns=['Round', 'Round_time_millis', 'PlayerID',
-                                                                'VictimID', 'EventType', 'DamageType', 'WeaponID',
-                                                                'Ability'])
+        aux_df_columns = ('Round', 'Round_time_millis', 'PlayerID', 'VictimID', 'EventType', 'DamageType',
+                          'WeaponID', 'Ability')
+        aux_df = pd.DataFrame(self.db.cursor.fetchall(), columns=aux_df_columns)
+        player_names = self.get_player_names()
+        aux_df["PlayerName"] = aux_df['PlayerID'].map(player_names)
+        self.reposition_column(aux_df, 'PlayerName', 3)
+        aux_df["VictimName"] = aux_df['VictimID'].map(player_names)
+        self.reposition_column(aux_df, 'VictimName', 5)
+        events = pd.concat([aux_df, pd.get_dummies(aux_df["PlayerName"], prefix="Alive")], axis=1)
+        return events
 
     def get_all_round_locations(self):
         query = f"""
@@ -359,10 +368,10 @@ class ValorantQueries:
         self.reposition_column(loadout_df, "Starting Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
         loadout_df.insert(5, "Status", "alive")
-        loadout_df = pd.concat([loadout_df.drop('Agent Role', axis=1), pd.get_dummies(loadout_df['Agent Role'])], axis=1)
+        loadout_df = pd.concat([loadout_df.drop('Agent Role', axis=1), pd.get_dummies(loadout_df['Agent Role'])],
+                               axis=1)
         # Create a new column called "Has Operator" if column "Weapon Name" is "Operator
         loadout_df["Has Operator"] = loadout_df["Weapon Name"].apply(lambda x: "Operator" in x)
-        loadout_df = pd.concat([loadout_df, pd.get_dummies(loadout_df["Player Name"], prefix="Alive")], axis=1)
         return loadout_df
 
     def get_team_economy(self) -> pd.DataFrame:

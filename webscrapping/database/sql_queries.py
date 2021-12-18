@@ -131,6 +131,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
+    @profile
     def get_event_table(self) -> pd.DataFrame:
         query = f"""
             SELECT RoundEvents.round_number, round_time_millis, player_id, victim_id, event_type, damage_type, weapon_id, ability
@@ -153,11 +154,32 @@ class ValorantQueries:
         aux_occur = aux_occur[["Round", "Round_time_millis"]]
         aux_occur = aux_occur.rename(columns={"Round_time_millis": "Events Amount"})
         aux_indexes = []
-        events_amount_indexes = lambda x: [i for i in range(2, x + 2)]
+        events_amount_indexes = lambda x: [i for i in range(1, x + 1)]
         for item in aux_occur["Events Amount"]:
             aux_indexes.extend(events_amount_indexes(item))
         events["EventIndex"] = aux_indexes
         self.reposition_column(events, "EventIndex", 1)
+
+        player_columns = [item for item in events.columns if item.startswith('Alive_')]
+        void_list = []
+        for j in range(len(events)):
+            row = events.loc[j].copy()
+            event_index = row['EventIndex']
+            victim_name = f"Alive_{row['VictimName']}"
+            event_type = row['EventType']
+            if event_index == 1:
+                for player in player_columns:
+                    row[player] = 1
+            else:
+                previous_row = events.loc[j - 1].copy()
+                for player in player_columns:
+                    row[player] = previous_row[player]
+            if event_type == "kill":
+                row[victim_name] = 0
+            elif event_type == "revival":
+                row[victim_name] = 1
+            void_list.append(row)
+        events = pd.DataFrame(void_list)
         return events
 
     def get_all_round_locations(self):
@@ -563,22 +585,6 @@ class ValorantQueries:
         agg_dict = {col: 'sum' for col in agg_columns}
         agg_dict["Has Operator"] = "any"
         return aux_b.agg(agg_dict).reset_index()
-
-    @staticmethod
-    def get_row_above(input_row: pd.Series) -> pd.Series:
-        row_above = input_row.copy()
-        for index, value in row_above.iteritems():
-            if index.startswith("Alive_"):
-                row_above[index] = 1
-        row_above["Round_time_millis"] = 0
-        row_above["PlayerID"] = 0
-        row_above["PlayerName"] = "Round Start"
-        row_above["VictimID"] = 0
-        row_above["VictimName"] = "Round Start"
-        row_above["DamageType"] = "start"
-        row_above["WeaponID"] = 0
-        row_above["Ability"] = 0
-        return row_above
 
     def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
         """

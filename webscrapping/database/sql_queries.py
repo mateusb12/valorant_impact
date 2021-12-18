@@ -149,6 +149,15 @@ class ValorantQueries:
         aux_df["VictimName"] = aux_df['VictimID'].map(player_names)
         self.reposition_column(aux_df, 'VictimName', 5)
         events = pd.concat([aux_df, pd.get_dummies(aux_df["PlayerName"], prefix="Alive")], axis=1)
+        aux_occur = events.groupby(["Round"]).count().reset_index()
+        aux_occur = aux_occur[["Round", "Round_time_millis"]]
+        aux_occur = aux_occur.rename(columns={"Round_time_millis": "Events Amount"})
+        aux_indexes = []
+        events_amount_indexes = lambda x: [i for i in range(2, x + 2)]
+        for item in aux_occur["Events Amount"]:
+            aux_indexes.extend(events_amount_indexes(item))
+        events["EventIndex"] = aux_indexes
+        self.reposition_column(events, "EventIndex", 1)
         return events
 
     def get_all_round_locations(self):
@@ -554,6 +563,22 @@ class ValorantQueries:
         agg_dict = {col: 'sum' for col in agg_columns}
         agg_dict["Has Operator"] = "any"
         return aux_b.agg(agg_dict).reset_index()
+
+    @staticmethod
+    def get_row_above(input_row: pd.Series) -> pd.Series:
+        row_above = input_row.copy()
+        for index, value in row_above.iteritems():
+            if index.startswith("Alive_"):
+                row_above[index] = 1
+        row_above["Round_time_millis"] = 0
+        row_above["PlayerID"] = 0
+        row_above["PlayerName"] = "Round Start"
+        row_above["VictimID"] = 0
+        row_above["VictimName"] = "Round Start"
+        row_above["DamageType"] = "start"
+        row_above["WeaponID"] = 0
+        row_above["Ability"] = 0
+        return row_above
 
     def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
         """

@@ -131,7 +131,6 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    @profile
     def get_event_table(self) -> pd.DataFrame:
         query = f"""
             SELECT RoundEvents.round_number, round_time_millis, player_id, victim_id, event_type, damage_type, weapon_id, ability
@@ -171,7 +170,8 @@ class ValorantQueries:
                 for player in player_columns:
                     row[player] = 1
             else:
-                previous_row = events.loc[j - 1].copy()
+                #previous_row = events.loc[j - 1].copy()
+                previous_row = void_list[j-1]
                 for player in player_columns:
                     row[player] = previous_row[player]
             if event_type == "kill":

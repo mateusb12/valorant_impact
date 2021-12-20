@@ -408,7 +408,7 @@ class ValorantQueries:
             row = loadout_df.iloc[row_index].copy()
             round_id = row["Round"]
             player_id = row["Player ID"]
-            player_side = "defense" if player_id in nested_dict[round_id]["defenders"] else "attack"
+            player_side = "attack" if player_id in nested_dict[round_id]["defenders"] else "defense"
             row["Player Side"] = player_side
             side_pot.append(row)
 
@@ -623,6 +623,50 @@ class ValorantQueries:
             match_alive_dict[round_number][event_index] = trimmed
         return match_alive_dict
 
+    def get_round_gamestate(self, chosen_round: int):
+        states = self.match_initial_states
+        events = self.match_events
+
+        def aggregate_event(input_df: pd.DataFrame, index: int, time: int) -> pd.DataFrame:
+            trimmed_df = input_df[input_df["Status"] == "alive"]
+            group_df = trimmed_df.groupby(["Player Side"]).agg(agg_dict).reset_index()
+            group_df["Round"] = chosen_round
+            group_df["EventIndex"] = index
+            group_df["Time"] = time
+            new_order = ["Round", "EventIndex", "Time", "Player Side", "Loadout Value", "Weapon Price",
+                         "Shield", "Remaining Creds", "Controller", "Duelist", "Initiator", "Sentinel",
+                         "Has Operator"]
+            return group_df[new_order]
+
+        round_states = states[(states["Round"] == chosen_round)]
+        round_states = round_states.sort_values(by=["Player Side"])
+        round_events = events[(events["Round"] == chosen_round)]
+        alive_info = {item: "alive" for item in round_states["Player Name"].unique()}
+        agg_dict = {"Remaining Creds": "sum", "Loadout Value": "sum", "Shield": "sum", "Weapon Price": "sum",
+                    "Controller": "sum", "Duelist": "sum", "Initiator": "sum", "Sentinel": "sum", "Has Operator": "sum"}
+        gamestate_pot = [aggregate_event(round_states, 0, 0)]
+        for event_index in range(len(round_events)):
+            current_event = round_events.iloc[event_index]
+            event_type = current_event["EventType"]
+            victim_name = current_event["VictimName"]
+            if event_type == "kill":
+                alive_info[victim_name] = "dead"
+            elif event_type == "revival":
+                alive_info[victim_name] = "alive"
+
+            state_pot = []
+            for state_index in range(len(round_states)):
+                player_state = round_states.iloc[state_index].copy()
+                player_name = player_state["Player Name"]
+                player_state["Status"] = alive_info[player_name]
+                state_pot.append(player_state)
+
+            agg_df = pd.DataFrame(state_pot)
+            alive_df = aggregate_event(agg_df, current_event["EventIndex"], current_event["Round_time_millis"])
+            gamestate_pot.append(alive_df)
+
+        return pd.concat(gamestate_pot)
+
     def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
         """
         Create a dataframe of the current gamestate for a given round
@@ -680,6 +724,7 @@ class ValorantQueries:
         return gamestate_df
 
     def aggregate_match_gamestate(self) -> pd.DataFrame:
+        self.get_round_gamestate(5)
         round_amount = self.get_round_amount()
         round_list = [self.aggregate_gamestate(i) for i in range(1, round_amount + 1)]
         return pd.concat(round_list)
@@ -688,4 +733,5 @@ class ValorantQueries:
 if __name__ == "__main__":
     vq = ValorantQueries()
     vq.set_match(43621)
+    vq.get_round_gamestate(5)
     vq.aggregate_match_gamestate()

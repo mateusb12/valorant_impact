@@ -53,7 +53,8 @@ class Analyser:
 
     def implicit_set_config(self, **kwargs):
         map_index = self.get_valid_maps()[self.raw_match_id]
-        round_index = self.get_round_table()[kwargs["round"]]
+        round_table = self.get_round_table()
+        round_index = round_table[kwargs["round"]]
         self.set_config(map=map_index, round=round_index)
 
     def set_config(self, **kwargs):
@@ -199,6 +200,7 @@ class Analyser:
         spike_time = round_func(spike_time)
         return regular_time, spike_time
 
+    @profile
     def generate_single_event(self, **kwargs):
         player_table: dict = self.current_status
         atk_gun_price, def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin = (0, 0, 0, 0, 0, 0)
@@ -310,7 +312,6 @@ class Analyser:
         aux = self.data["series"]["seriesById"]["matches"]
         return {aux[index]["id"]: index + 1 for index in range(len(aux))}
 
-    @profile
     def generate_map_metrics(self) -> list:
         """
         Generates the dataframe body. See get_feature_labels().
@@ -415,9 +416,10 @@ class Analyser:
 
 
 if __name__ == "__main__":
-    a = Analyser("42038.json")
-    a.implicit_set_config(round=28)
-    q = a.export_df(42038)
+    a = Analyser("43621.json")
+    a.implicit_set_config(round=1)
+    #42038
+    q = a.export_df(43621)
     apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

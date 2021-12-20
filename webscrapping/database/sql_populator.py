@@ -73,6 +73,6 @@ class ValorantPopulator:
 
 if __name__ == "__main__":
     vp = ValorantPopulator()
-    # vp.populate_single_match("43621.json")
+    vp.populate_single_match("42038.json")
     # vp.populate(start=7000, end=8000, rebuild=False)
     # vp.delete_broken_files()

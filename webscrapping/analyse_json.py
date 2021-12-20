@@ -2,6 +2,7 @@ import json
 import os
 from typing import Tuple, List
 import pandas as pd
+from line_profiler_pycharm import profile
 
 
 class Analyser:
@@ -309,6 +310,7 @@ class Analyser:
         aux = self.data["series"]["seriesById"]["matches"]
         return {aux[index]["id"]: index + 1 for index in range(len(aux))}
 
+    @profile
     def generate_map_metrics(self) -> list:
         """
         Generates the dataframe body. See get_feature_labels().
@@ -330,7 +332,6 @@ class Analyser:
         """
         Returns a list of all the features used in the model
         """
-        comparison_test = self.generate_map_metrics()
         return ['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
                 'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
                 'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
@@ -349,6 +350,7 @@ class Analyser:
         df = pd.DataFrame(report, columns=self.get_feature_labels())
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
+    @profile
     def export_df(self, input_match_id: int):
         vm = self.get_valid_maps()
         map_index = vm[input_match_id]
@@ -416,9 +418,9 @@ if __name__ == "__main__":
     a = Analyser("42038.json")
     a.implicit_set_config(round=28)
     q = a.export_df(42038)
+    apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()
-    apple = 5 + 1
 
 # a.set_config(map=1, round=414368)
 # a.get_round_positions()

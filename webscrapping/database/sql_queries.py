@@ -13,8 +13,7 @@ class ValorantQueries:
     def __init__(self):
         self.db = ValorantCreator("valorant")
         self.match_id = 0
-        self.round_locations, self.match_initial_states, self.match_events, self.map_sides, self.player_names = \
-            [None] * 5
+        self.round_locations, self.match_initial_states, self.match_events, self.map_sides, self.player_names, self.alive_dict = [None] * 6
 
         weapon_file = open('..\\matches\\model\\weapon_table.json')
         self.weapon_data = json.load(weapon_file)
@@ -30,13 +29,14 @@ class ValorantQueries:
 
     def set_match(self, input_match_id: int):
         self.match_id = input_match_id
-        self.round_locations = self.get_all_round_locations()
+        self.round_locations = self.query_all_round_locations()
+        self.map_sides = self.query_player_sides()
         self.match_initial_states = self.get_initial_state()
         self.player_names = list(self.match_initial_states["Player Name"].unique())
         self.match_events = self.get_event_table()
-        self.map_sides = self.get_player_sides()
+        self.alive_dict = self.generate_match_alive_dict()
 
-    def get_match_db(self):
+    def query_match_db(self):
         instruction = """
         SELECT match_id FROM Matches
         """
@@ -53,7 +53,7 @@ class ValorantQueries:
         self.db.cursor.execute(instruction)
         return self.db.cursor.fetchall()
 
-    def get_full_round(self):
+    def query_full_round(self):
         instruction = f"""
         SELECT *
         FROM Rounds
@@ -72,7 +72,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_economies(self):
+    def query_economies(self):
         query = f"""
             SELECT 'RoundEconomies' as ta, RoundEconomies.*, 'Rounds' as td, Rounds.*, 'Matches' as te, Matches.*
             FROM RoundEconomies
@@ -83,7 +83,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_current_match(self):
+    def query_current_match(self):
         query = f"""
         SELECT * FROM Matches WHERE match_id = {self.match_id}
         """
@@ -91,9 +91,9 @@ class ValorantQueries:
         return self.db.cursor.fetchall()
 
     def get_current_map_name(self):
-        return self.get_current_match()[0][4]
+        return self.query_current_match()[0][4]
 
-    def get_loadouts(self):
+    def query_loadouts(self):
         query = f"""
             SELECT Rounds.match_id, RoundEconomies.round_id, RoundEconomies.Round_number, RoundEconomies.Player_id,
             PlayerMapInstance.team_id, RoundEconomies.remaining_creds, RoundEconomies.loadout_value
@@ -106,7 +106,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_full_loadouts(self):
+    def query_full_loadouts(self):
         query = f"""
         SELECT Rounds.match_id, RoundEconomies.round_id, RoundEconomies.Round_number, RoundEconomies.Player_id,
         PlayerMapInstance.team_id, RoundEconomies.remaining_creds, RoundEconomies.loadout_value, RoundEconomies.agent_id,
@@ -120,7 +120,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_events(self):
+    def query_events(self):
         query = f"""
             SELECT 'RoundEvents' as ta, RoundEvents.*, 'Rounds' as td, Rounds.*, 'Matches' as te, Matches.*
             FROM RoundEvents
@@ -182,7 +182,7 @@ class ValorantQueries:
         events = pd.DataFrame(void_list)
         return events
 
-    def get_all_round_locations(self):
+    def query_all_round_locations(self):
         query = f"""
                 SELECT RoundLocations.Round_number, round_time_millis, player_id, location_x, location_y, view_radians
                 FROM RoundLocations
@@ -206,7 +206,7 @@ class ValorantQueries:
         player_name_df = pd.DataFrame(self.db.cursor.fetchall(), columns=['Player_id', 'Player_name', 'Map_played'])
         return dict(zip(player_name_df['Player_id'], player_name_df['Player_name']))
 
-    def get_player_sides(self):
+    def query_player_sides(self):
         query = f"""
             SELECT player_id, map_played, team_id, first_side, rounds_played
             FROM PLayerMapInstance WHERE PLayerMapInstance.map_played = {self.match_id}
@@ -214,7 +214,7 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
-    def get_player_sides_by_round(self, round_number: int) -> dict:
+    def get_player_sides_table(self):
         side_table = pd.DataFrame(self.map_sides,
                                   columns=['player_id', 'map_played', 'team_id', 'first_side', 'rounds_played'])
         attacking_players = list(side_table[side_table['first_side'] == 'attacker']["player_id"])
@@ -229,9 +229,15 @@ class ValorantQueries:
         else:
             remaining = round_amount - 12
             side_pattern += ["inverse"] * remaining
-        tuple(enumerate(side_pattern, 1))
 
         side_pattern_dict = {i: side for i, side in enumerate(side_pattern, 1)}
+        return {"attackers": attacking_players, "defenders": defending_players, "side_pattern": side_pattern_dict}
+
+    def get_player_sides_by_round(self, round_number: int, player_side_table: dict = None) -> dict:
+        side_dict = self.get_player_sides_table() if player_side_table is None else player_side_table
+        attacking_players = side_dict["attackers"]
+        defending_players = side_dict["defenders"]
+        side_pattern_dict = side_dict["side_pattern"]
         round_type = side_pattern_dict[round_number]
         if round_type == "normal":
             return {"attackers": attacking_players, "defenders": defending_players}
@@ -277,7 +283,7 @@ class ValorantQueries:
         return aux[1] + aux[2]
 
     def did_attack_win_that_round(self, round_number: int) -> int:
-        score_table = self.get_full_round()
+        score_table = self.query_full_round()
         score_table_df = pd.DataFrame(score_table,
                                       columns=["RoundID", "MatchID", "RoundNumber", "Attacking_Team", "WinningTeam",
                                                "Team_A_Economy", "Team_B_Economy", "Win_condition", "Ceremony"])
@@ -374,7 +380,7 @@ class ValorantQueries:
         :return: Round, Player ID, Team ID, Remaining Creds, Loadout Value, Agent ID, Weapon ID, Armor ID,
         Shield, Shield Price, Weapon Name, Weapon Price, Utility Value
         """
-        loadouts = self.get_full_loadouts()
+        loadouts = self.query_full_loadouts()
         agent_role_dict = {key: value["name"] for key, value in self.agent_roles.items()}
         shield_table = {0: 0, 1: 25, 2: 50}
         shield_price = {0: 0, 1: 400, 2: 1000}
@@ -394,14 +400,27 @@ class ValorantQueries:
         loadout_df["Agent Role"] = loadout_df['Agent Name'].map(agent_role_dict)
         side_table = self.get_side_info()
         side_dict = {side_table["attacking_first"]: "attack", side_table["defending_first"]: "defense"}
+        aux_side_table = self.get_player_sides_table()
+        max_rounds = loadout_df["Round"].max()
+        nested_dict = {item: self.get_player_sides_by_round(item, aux_side_table) for item in range(1, max_rounds + 1)}
+        side_pot = []
+        for row_index in range(len(loadout_df)):
+            row = loadout_df.iloc[row_index].copy()
+            round_id = row["Round"]
+            player_id = row["Player ID"]
+            player_side = "defense" if player_id in nested_dict[round_id]["defenders"] else "attack"
+            row["Player Side"] = player_side
+            side_pot.append(row)
+
+        loadout_df = pd.DataFrame(side_pot)
         loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
+
         loadout_df["Player Name"] = loadout_df['Player ID'].map(self.get_player_names())
-        self.reposition_column(loadout_df, "Starting Side", 5)
+        self.reposition_column(loadout_df, "Player Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
         loadout_df.insert(5, "Status", "alive")
         loadout_df = pd.concat([loadout_df.drop('Agent Role', axis=1), pd.get_dummies(loadout_df['Agent Role'])],
                                axis=1)
-        # Create a new column called "Has Operator" if column "Weapon Name" is "Operator
         loadout_df["Has Operator"] = loadout_df["Weapon Name"].apply(lambda x: "Operator" in x)
         return loadout_df
 
@@ -489,7 +508,7 @@ class ValorantQueries:
                             for b in list(economy_table["Round"])}
         round_df[f"{team_a}_economy"] = list(team_a_economies.values())
         round_df[f"{team_b}_economy"] = list(team_b_economies.values())
-        match_data = self.get_current_match()[0]
+        match_data = self.query_current_match()[0]
         map_name = match_data[4]
         winning_team = match_data[9]
         round_df = round_df.assign(MapName=map_name)
@@ -585,6 +604,24 @@ class ValorantQueries:
         agg_dict = {col: 'sum' for col in agg_columns}
         agg_dict["Has Operator"] = "any"
         return aux_b.agg(agg_dict).reset_index()
+
+    def generate_match_alive_dict(self) -> dict:
+        states = self.match_initial_states
+        events = self.match_events
+        id_dict = dict(zip(states["Player ID"].unique(), states["Player Name"].unique()))
+        event_amount_table = events.groupby(["Round"]).count().reset_index()
+        event_amount_dict = dict(zip(event_amount_table["Round"], event_amount_table["EventIndex"]))
+        match_alive_dict = {key: {v: 0 for v in range(1, item + 1)} for key, item in event_amount_dict.items()}
+        players = list(states["Player Name"].unique())
+        all_players = ["Alive_" + sub for sub in players]
+        for row_index in range(len(events)):
+            row = events.iloc[row_index]
+            round_number = int(row["Round"])
+            event_index = int(row["EventIndex"])
+            players_alive = dict(row[all_players])
+            trimmed = {key[6:]: value for key, value in players_alive.items()}
+            match_alive_dict[round_number][event_index] = trimmed
+        return match_alive_dict
 
     def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
         """

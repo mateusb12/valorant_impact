@@ -36,7 +36,6 @@ class ValorantQueries:
         self.match_initial_states = self.get_initial_state()
         self.player_names = list(self.match_initial_states["Player Name"].unique())
         self.match_events = self.get_event_table()
-        self.alive_dict = self.generate_match_alive_dict()
 
     def query_match_db(self):
         instruction = """
@@ -179,8 +178,8 @@ class ValorantQueries:
                 for player in player_columns:
                     row[player] = 1
             else:
-                #previous_row = events.loc[j - 1].copy()
-                previous_row = void_list[j-1]
+                # previous_row = events.loc[j - 1].copy()
+                previous_row = void_list[j - 1]
                 for player in player_columns:
                     row[player] = previous_row[player]
             if event_type == "kill":
@@ -526,160 +525,13 @@ class ValorantQueries:
         round_df = round_df.assign(MatchWinner=winning_team)
         return round_df
 
-    def get_current_round_basic_info(self, chosen_round: int) -> dict:
-        states = self.match_initial_states
-        events = self.match_events
-        player_alive_dict = {item: True for item in states["Player ID"].unique()}
-        current_round_states = states[states['Round'] == chosen_round]
-        current_round_events = events[events['Round'] == chosen_round]
-        self.reposition_column(current_round_states, "Starting Side", 3)
-        current_round_states = current_round_states.sort_values(by=["Starting Side"])
-
-        attacking_players = tuple(current_round_states[current_round_states['Starting Side'] == 'attack'][
-                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
-            current_round_states[current_round_states['Starting Side'] == 'defense']['Player ID'].unique())
-        defending_players = tuple(current_round_states[current_round_states['Starting Side'] == 'defense'][
-                                      'Player ID'].unique()) if chosen_round <= 12 else tuple(
-            current_round_states[current_round_states['Starting Side'] == 'attack']['Player ID'].unique())
-        return {"current_round_alive_dict": player_alive_dict.copy(), "current_round_states": current_round_states,
-                "current_round_events": current_round_events, "attacking_players": attacking_players,
-                "defending_players": defending_players}
-
-    def get_current_gamestate(self, round_state_table: pd.DataFrame, alive_dict: dict,
-                              attacking_players: Tuple[int], defending_players: Tuple[int]) -> dict:
-        """
-        Returns a dictionary of the current gamestate
-        Parameters pulled from self.get_initial_state()
-
-        :param round_state_table: dataframe containing the initial state of the chosen round
-        :param alive_dict: dictionary of alive players
-        :param attacking_players: list of attacking players IDs from that round
-        :param defending_players: list of defending players IDs from that round
-        :return: dict of gamestate for both attack and defense
-        """
-        simple_features = ["Loadout Value", "Shield", "Weapon Price"]
-        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel", "has_OP"]
-        features = simple_features + composite_features
-        atk_data = {feature: 0 for feature in features}
-        def_data = atk_data.copy()
-        agent_role_dict = self.agent_roles
-        def_data["has_OP"] = 0
-        for index, item in round_state_table.iterrows():
-            player_id = item["Player ID"]
-            alive = alive_dict[player_id]
-            if alive:
-                player_name = item["Player Name"]
-                agent_name = item["Agent Name"]
-                player_role = agent_role_dict[agent_name]["name"]
-                player_weapon = item["Weapon Name"]
-                if player_id in attacking_players:
-                    if player_weapon == "Operator":
-                        atk_data["has_OP"] = 1
-                    atk_data[player_role] += 1
-                    for raw_feature in simple_features:
-                        atk_data[raw_feature] += item[raw_feature]
-                elif player_id in defending_players:
-                    def_data[player_role] += 1
-                    if player_weapon == "Operator":
-                        def_data["has_OP"] = 1
-                    for raw_feature in simple_features:
-                        def_data[raw_feature] += item[raw_feature]
-                else:
-                    Exception("Player ID not in attacking or defending players")
-        return {"atk_data": atk_data, "def_data": def_data}
-
-    def get_event_impact_into_gamestate(self, victim_df: pd.DataFrame, event_type: str) -> dict:
-        victim_dict = victim_df.to_dict(orient="Records")[0]
-        simple_features = ["Loadout Value", "Shield", "Weapon Price"]
-        composite_features = ["Initiator", "Duelist", "Controller", "Sentinel", "Operator"]
-        features = simple_features + composite_features
-        agent_role_dict = self.agent_roles
-        feature_impact = {feature: 0 for feature in features}
-        victim_role = agent_role_dict[victim_dict["Agent Name"]]["name"]
-        victim_operator = 1 if victim_dict["Weapon Name"] == "Operator" else 0
-        factor = 1 if event_type == "kill" else -1
-        feature_impact[victim_role] = -1 * factor
-        feature_impact["Operator"] = -1 * victim_operator * factor
-        for simple in simple_features:
-            feature_impact[simple] = -victim_dict[simple] * factor
-        return feature_impact
-
-    def get_gamestate_dataframe(self) -> pd.DataFrame:
-        aux = self.get_initial_state()
-        aux_a = aux[aux["Status"] == "alive"]
-        aux_b = aux.groupby(["Round", "Team ID"])
-        agg_columns = ("Remaining Creds", "Loadout Value", "Weapon Price", "Shield",
-                       "Controller", "Duelist", "Initiator", "Sentinel")
-        agg_dict = {col: 'sum' for col in agg_columns}
-        agg_dict["Has Operator"] = "any"
-        return aux_b.agg(agg_dict).reset_index()
-
-    def generate_match_alive_dict(self) -> dict:
-        states = self.match_initial_states
-        events = self.match_events
-        id_dict = dict(zip(states["Player ID"].unique(), states["Player Name"].unique()))
-        event_amount_table = events.groupby(["Round"]).count().reset_index()
-        event_amount_dict = dict(zip(event_amount_table["Round"], event_amount_table["EventIndex"]))
-        match_alive_dict = {key: {v: 0 for v in range(1, item + 1)} for key, item in event_amount_dict.items()}
-        players = list(states["Player Name"].unique())
-        all_players = ["Alive_" + sub for sub in players]
-        for row_index in range(len(events)):
-            row = events.iloc[row_index]
-            round_number = int(row["Round"])
-            event_index = int(row["EventIndex"])
-            players_alive = dict(row[all_players])
-            trimmed = {key[6:]: value for key, value in players_alive.items()}
-            match_alive_dict[round_number][event_index] = trimmed
-        return match_alive_dict
-
-    def deprecated_round_gamestate(self, chosen_round: int):
-        states = self.match_initial_states
-        events = self.match_events
-
-        def aggregate_event(input_df: pd.DataFrame, index: int, time: int) -> pd.DataFrame:
-            trimmed_df = input_df[input_df["Status"] == "alive"]
-            group_df = trimmed_df.groupby(["Player Side"]).agg(agg_dict).reset_index()
-            group_df["Round"] = chosen_round
-            group_df["EventIndex"] = index
-            group_df["Time"] = time
-            new_order = ["Round", "EventIndex", "Time", "Player Side", "Loadout Value", "Weapon Price",
-                         "Shield", "Remaining Creds", "Controller", "Duelist", "Initiator", "Sentinel",
-                         "Has Operator"]
-            return group_df[new_order]
-
-        round_states = states[(states["Round"] == chosen_round)]
-        round_states = round_states.sort_values(by=["Player Side"])
-        round_events = events[(events["Round"] == chosen_round)]
-        alive_info = {item: "alive" for item in round_states["Player Name"].unique()}
-        agg_dict = {"Remaining Creds": "sum", "Loadout Value": "sum", "Shield": "sum", "Weapon Price": "sum",
-                    "Controller": "sum", "Duelist": "sum", "Initiator": "sum", "Sentinel": "sum", "Has Operator": "sum"}
-        gamestate_pot = [aggregate_event(round_states, 0, 0)]
-        for event_index in range(len(round_events)):
-            current_event = round_events.iloc[event_index]
-            event_type = current_event["EventType"]
-            victim_name = current_event["VictimName"]
-            if event_type == "kill":
-                alive_info[victim_name] = "dead"
-            elif event_type == "revival":
-                alive_info[victim_name] = "alive"
-
-            state_pot = []
-            for state_index in range(len(round_states)):
-                player_state = round_states.iloc[state_index].copy()
-                player_name = player_state["Player Name"]
-                player_state["Status"] = alive_info[player_name]
-                state_pot.append(player_state)
-
-            agg_df = pd.DataFrame(state_pot)
-            alive_df = aggregate_event(agg_df, current_event["EventIndex"], current_event["Round_time_millis"])
-            gamestate_pot.append(alive_df)
-
-        return pd.concat(gamestate_pot)
-
     def get_match_gamestate_table(self):
         round_winner_table = self.round_winner_dataframe()
+        round_amount = round_winner_table["round_number"].max()
         self.round_winner_dict = dict(zip(round_winner_table["round_number"], round_winner_table["attackers_won"]))
-        round_gamestates = self.get_round_gamestates(7)
+        round_gamestates = [self.get_round_gamestates(i) for i in range(1, round_amount + 1)]
+        flat_list = [item for sublist in round_gamestates for item in sublist]
+        final_df = pd.DataFrame(flat_list)
         return {}
 
     def get_round_gamestates(self, chosen_round: int) -> List[dict]:
@@ -738,67 +590,10 @@ class ValorantQueries:
         def_f = {f"DEF_{key}": value for key, value in defense_info.items()}
         return atk_d, def_f
 
-
-    def aggregate_gamestate(self, chosen_round: int) -> pd.DataFrame:
-        """
-        Create a dataframe of the current gamestate for a given round
-        Variables are set within get_current_gamestate function
-        :param chosen_round:
-        :return:
-        """
-        basic_info = self.get_current_round_basic_info(chosen_round)
-        current_round_alive_dict = basic_info["current_round_alive_dict"]
-        current_round_states = basic_info["current_round_states"]
-        current_round_events = basic_info["current_round_events"]
-        attacking_players = basic_info["attacking_players"]
-        defending_players = basic_info["defending_players"]
-
-        current_gamestate_list = []
-
-        first_state = self.get_current_gamestate(current_round_states, current_round_alive_dict, attacking_players,
-                                                 defending_players)
-        current_gamestate_list.append(first_state)
-        for event in current_round_events.iterrows():
-            event_type = event[1]["EventType"]
-            victim_id = event[1]["VictimID"]
-            if event_type == "kill":
-                current_round_alive_dict[victim_id] = False
-            elif event_type == "revival":
-                current_round_alive_dict[victim_id] = True
-            gs = self.get_current_gamestate(current_round_states, current_round_alive_dict, attacking_players,
-                                            defending_players)
-            current_gamestate_list.append(gs)
-
-        dummy_gamestate_list = []
-        for gamestate in current_gamestate_list:
-            atk_gamestate = {f"ATK {key}".replace(" ", "_"): value for key, value in gamestate["atk_data"].items()}
-            def_gamestate = {f"DEF {key}".replace(" ", "_"): value for key, value in gamestate["def_data"].items()}
-            merged_gamestate = {**atk_gamestate, **def_gamestate}
-            dummy_gamestate_list.append(merged_gamestate)
-        gamestate_df = pd.DataFrame(dummy_gamestate_list)
-        timestamps = list(current_round_events["Round_time_millis"])
-        timestamps.insert(0, 0)
-        gamestate_df.insert(0, "Timestamp", timestamps)
-        event_type_column = list(current_round_events["EventType"])
-        event_type_column.insert(0, "start")
-        gamestate_df.insert(1, "EventType", event_type_column)
-
-        positional_spread = self.get_compaction_from_round(chosen_round)
-        gamestate_df.insert(3, "ATK_Spread", positional_spread["atk_spread"])
-        gamestate_df.insert(11, "DEF_Spread", positional_spread["def_spread"])
-
-        map_name = self.get_current_map_name()
-        gamestate_df.insert(len(gamestate_df), "Map_Name", map_name)
-
-        round_winner = self.did_attack_win_that_round(chosen_round)
-        column_amount = gamestate_df.shape[1]
-        gamestate_df.insert(column_amount, "FinalWinner", round_winner)
-        return gamestate_df
-
     def aggregate_match_gamestate(self) -> pd.DataFrame:
         aux = self.get_match_gamestate_table()
         round_list = []
-        return pd.concat(round_list)
+        return {}
 
 
 if __name__ == "__main__":

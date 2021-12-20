@@ -170,27 +170,27 @@ class ValorantQueries:
         events["EventIndex"] = aux_indexes
         self.reposition_column(events, "EventIndex", 1)
 
-        player_columns = [item for item in events.columns if item.startswith('Alive_')]
-        void_list = []
-        for j in range(len(events)):
-            row = events.loc[j].copy()
-            event_index = row['EventIndex']
-            victim_name = f"Alive_{row['VictimName']}"
-            event_type = row['EventType']
-            if event_index == 1:
-                for player in player_columns:
-                    row[player] = 1
-            else:
-                # previous_row = events.loc[j - 1].copy()
-                previous_row = void_list[j - 1]
-                for player in player_columns:
-                    row[player] = previous_row[player]
-            if event_type == "kill":
-                row[victim_name] = 0
-            elif event_type == "revival":
-                row[victim_name] = 1
-            void_list.append(row)
-        events = pd.DataFrame(void_list)
+        # player_columns = [item for item in events.columns if item.startswith('Alive_')]
+        # void_list = []
+        # for j in range(len(events)):
+        #     row = events.loc[j].copy()
+        #     event_index = row['EventIndex']
+        #     victim_name = f"Alive_{row['VictimName']}"
+        #     event_type = row['EventType']
+        #     if event_index == 1:
+        #         for player in player_columns:
+        #             row[player] = 1
+        #     else:
+        #         # previous_row = events.loc[j - 1].copy()
+        #         previous_row = void_list[j - 1]
+        #         for player in player_columns:
+        #             row[player] = previous_row[player]
+        #     if event_type == "kill":
+        #         row[victim_name] = 0
+        #     elif event_type == "revival":
+        #         row[victim_name] = 1
+        #     void_list.append(row)
+        # events = pd.DataFrame(void_list)
         return events
 
     def query_all_round_locations(self):
@@ -537,14 +537,13 @@ class ValorantQueries:
             round_dict[round_number][player_name] = element
         return round_dict
 
-    def get_match_gamestate_table(self):
+    def get_match_gamestate_table(self) -> pd.DataFrame:
         round_winner_table = self.round_winner_dataframe()
         round_amount = round_winner_table["round_number"].max()
         self.round_winner_dict = dict(zip(round_winner_table["round_number"], round_winner_table["attackers_won"]))
         round_gamestates = [self.get_round_gamestates(i) for i in range(1, round_amount + 1)]
         flat_list = [item for sublist in round_gamestates for item in sublist]
-        final_df = pd.DataFrame(flat_list)
-        return {}
+        return pd.DataFrame(flat_list)
 
     def get_round_gamestates(self, chosen_round: int) -> List[dict]:
         self.chosen_round = chosen_round
@@ -657,13 +656,9 @@ class ValorantQueries:
                  "DEF_Shield": def_shield}
         return atk_d, def_f
 
-    def aggregate_match_gamestate(self) -> pd.DataFrame:
-        aux = self.get_match_gamestate_table()
-        round_list = []
-        return {}
-
 
 if __name__ == "__main__":
     vq = ValorantQueries()
     vq.set_match(43621)
-    vq.aggregate_match_gamestate()
+    df = vq.get_match_gamestate_table()
+    apple = 5 + 1

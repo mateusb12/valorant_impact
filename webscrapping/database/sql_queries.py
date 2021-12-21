@@ -384,6 +384,7 @@ class ValorantQueries:
         old_column = input_dataframe.pop(column_name)
         input_dataframe.insert(new_position, old_column.name, old_column)
 
+    @profile
     def get_initial_state(self):
         """
         Returns a list of all players states for a given match
@@ -414,9 +415,10 @@ class ValorantQueries:
         max_rounds = loadout_df["Round"].max()
         nested_dict = {item: self.get_player_sides_by_round(item, aux_side_table) for item in range(1, max_rounds + 1)}
         nested_player_dict = {item: {} for item in range(1, max_rounds+1)}
-        loadout_df["Prefix"] = "_"
-        loadout_df["Tag"] = loadout_df["Round"].astype(str) + loadout_df["Prefix"] + loadout_df["Player ID"].astype(str)
-        test_dict = {item: 15 for item in range(1, max_rounds+1)}
+        prefix_round = list(loadout_df["Round"])
+        prefix_ids = list(loadout_df["Player ID"])
+        prefix_merged = [f"{item[0]}_{item[1]}" for item in zip(prefix_round, prefix_ids)]
+        loadout_df["Tag"] = prefix_merged
         for key, nested_value in nested_dict.items():
             attacker_ids = nested_value["defenders"]
             defender_ids = nested_value["attackers"]
@@ -429,11 +431,10 @@ class ValorantQueries:
         loadout_df["Player Side"] = loadout_df["Tag"].map(
             lambda x: nested_player_dict[int(x.split("_")[0])][int(x.split("_")[1])]
         )
-        loadout_df = loadout_df.drop("Prefix", axis=1)
         loadout_df = loadout_df.drop("Tag", axis=1)
         loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
-
-        loadout_df["Player Name"] = loadout_df['Player ID'].map(self.get_player_names())
+        names = self.get_player_names()
+        loadout_df["Player Name"] = loadout_df['Player ID'].map(names)
         self.reposition_column(loadout_df, "Player Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
         loadout_df.insert(5, "Status", "alive")

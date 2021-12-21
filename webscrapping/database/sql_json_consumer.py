@@ -1,5 +1,7 @@
 import json
 import os
+from pathlib import Path
+
 from termcolor import colored
 
 import psycopg2
@@ -45,8 +47,22 @@ class ValorantConsumer:
         if current_folder == "database":
             os.chdir("..\\matches\\json")
 
+    def delete_database(self):
+        self.db.rebuild_database()
+
+    def export_broken_jsons(self):
+        broken_list = self.broken_json
+        json_folder = Path.cwd()
+        matches = json_folder.parent
+        broken_json = Path(matches, "broken_json")
+        with open(f"{broken_json}\\broken_json.txt", "w") as file:
+            for element in broken_list:
+                file.write(f"{element}\n")
+
     def extract_full_json(self):
-        existing = self.existing_match(self.match_id)
+        match = self.match_id
+        inserts = self.successful_inserts
+        existing = self.existing_match(match)
         if not existing:
             self.add_event()
             self.add_all_teams()
@@ -60,12 +76,22 @@ class ValorantConsumer:
             self.add_round_locations()
             self.add_player_instances()
             self.broken_match = False
+            self.successful_inserts = []
+
+    @staticmethod
+    def get_current_folder_name():
+        current_folder = Path.cwd()
+        return str(current_folder).split("\\")[-1]
 
     def setup_json(self, filename: str):
         missing_extension = filename.isdigit()
         if missing_extension:
             filename = f"{filename}.json"
-        data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
+        folder = self.get_current_folder_name()
+        if folder == "json":
+            data_file = open('{}'.format(filename), encoding="utf-8")
+        else:
+            data_file = open('..\\matches\\json\\{}'.format(filename), encoding="utf-8")
         body_txt = data_file.read()
         clean_txt = self.trim_trash_code(body_txt)
         self.data = json.loads(clean_txt)
@@ -107,13 +133,20 @@ class ValorantConsumer:
         return {}
 
     def handle_postgres_exception(self, input_exception: psycopg2):
+        args = input_exception.args[0].split("\n")
         error_tag = input_exception.diag.source_function
         if error_tag != "_bt_check_unique":
-            print(colored(f'{input_exception}', 'red'))
+            exception = input_exception
+            print(colored(f'{self.match_id} is broken!', 'red'))
             self.broken_json.add(self.match_id)
             self.broken_match = True
             self.successful_inserts.append("Error")
+            Exception("Fatal error")
             return
+        else:
+            constraint = args[1].split(" ")[3].split("=")
+            key = constraint[0][1:-1]
+            value = constraint[1][1:-1]
 
     def handle_key_exception(self, input_exception: KeyError):
         print(colored(f'{input_exception}', 'red'))
@@ -181,8 +214,9 @@ class ValorantConsumer:
             return
         series_data = self.data["series"]["seriesById"]
         try:
-            self.db.insert_series(series_data["id"], series_data["eventId"], series_data["bestOf"],
-                                  series_data["team1Id"], series_data["team2Id"])
+            info = (series_data["id"], series_data["eventId"], series_data["bestOf"], series_data["team1Id"],
+                    series_data["team2Id"])
+            self.db.insert_series(info[0], info[1], info[2], info[3], info[4])
         except psycopg2.DatabaseError as dbe:
             self.handle_postgres_exception(dbe)
         self.successful_inserts.append("Series")
@@ -227,7 +261,8 @@ class ValorantConsumer:
             player_id = aux["id"]
             player_name = aux["ign"]
             team_id = team_table_data[player["teamNumber"]]
-            country_id = aux["countryId"]
+            country = aux["countryId"]
+            country_id = country if country is not None else 0
             try:
                 self.db.insert_player(player_id, player_name, team_id, country_id)
             except psycopg2.DatabaseError as dbe:
@@ -445,9 +480,3 @@ if __name__ == "__main__":
     vc.db.rebuild_database()
     vc.setup_json('37853.json')
     vc.extract_full_json()
-    # q = vc.existing_match(37853)
-    # apple = 5 + 1
-
-    # vc.extract_full_json()
-    # vc.setup_json('37854.json')
-    # vc.extract_full_json()

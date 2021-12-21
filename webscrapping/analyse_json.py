@@ -7,16 +7,17 @@ from line_profiler_pycharm import profile
 
 
 class Analyser:
-    def __init__(self, input_file: str):
-        current_folder = os.getcwd().split("\\")[-1]
-        if current_folder == "Classification_datascience":
-            os.chdir("webscrapping")
-        elif current_folder == "wrapper":
-            os.chdir("..")
-        elif current_folder == "exports":
-            os.chdir("..\\..")
+    def __init__(self):
+        print("Analyser created!")
+        self.data, self.raw_match_id, self.weapon_data, self.agent_data, self.attacking_team = [None] * 5
+        self.maps_data, self.best_of, self.current_status, self.chosen_map, self.chosen_round = [None] * 5
+        self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
+        self.match_id, self.series_id, self.all_matches, self.team_a, self.team_b = [None] * 5
+
+    def set_match(self, input_index: int):
+        input_file = f"{input_index}.json"
         json_folder = self.get_json_folder()
-        data_file = open(f'{json_folder}/{input_file}', encoding="utf-8")
+        data_file = open(f'{json_folder}\\{input_file}', encoding="utf-8")
         body_txt = data_file.read()
         self.data = {}
         self.trim_trash_code(body_txt)
@@ -52,10 +53,14 @@ class Analyser:
     @staticmethod
     def get_matches_folder():
         current_folder = Path(os.getcwd())
+        current_folder_name = str(current_folder).split("\\")[-1]
+        if current_folder_name == "webscrapping":
+            return Path(current_folder, "matches")
         webscrapping = current_folder.parent
         return Path(webscrapping, "matches")
 
     def get_json_folder(self) -> Path:
+        aux = self.get_matches_folder()
         return Path(self.get_matches_folder(), "json")
 
     def get_all_matches_ids(self) -> List[int]:
@@ -362,10 +367,10 @@ class Analyser:
         df = pd.DataFrame(report, columns=self.get_feature_labels())
         df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
-    @profile
-    def export_df(self, input_match_id: int):
+    def export_df(self):
+        self.implicit_set_config(round=1)
         vm = self.get_valid_maps()
-        map_index = vm[input_match_id]
+        map_index = vm[self.match_id]
         r = self.get_first_round()
         self.set_config(map=map_index, round=r)
         features = self.get_feature_labels()
@@ -427,9 +432,9 @@ class Analyser:
 
 
 if __name__ == "__main__":
-    a = Analyser("43621.json")
-    a.implicit_set_config(round=1)
-    q = a.export_df(43621)
+    a = Analyser()
+    a.set_match(23074)
+    q = a.export_df()
     apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

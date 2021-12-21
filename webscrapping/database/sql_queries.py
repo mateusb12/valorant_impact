@@ -413,15 +413,24 @@ class ValorantQueries:
         aux_side_table = self.get_player_sides_table()
         max_rounds = loadout_df["Round"].max()
         nested_dict = {item: self.get_player_sides_by_round(item, aux_side_table) for item in range(1, max_rounds + 1)}
-        nested_side_pot = []
-        for row_index in range(len(loadout_df)):
-            row = loadout_df.iloc[row_index]
-            round_id = row["Round"]
-            player_id = row["Player ID"]
-            player_side = "attack" if player_id in nested_dict[round_id]["defenders"] else "defense"
-            nested_side_pot.append(player_side)
-
-        loadout_df["Player Side"] = nested_side_pot
+        nested_player_dict = {item: {} for item in range(1, max_rounds+1)}
+        loadout_df["Prefix"] = "_"
+        loadout_df["Tag"] = loadout_df["Round"].astype(str) + loadout_df["Prefix"] + loadout_df["Player ID"].astype(str)
+        test_dict = {item: 15 for item in range(1, max_rounds+1)}
+        for key, nested_value in nested_dict.items():
+            attacker_ids = nested_value["defenders"]
+            defender_ids = nested_value["attackers"]
+            merged_ids = attacker_ids + defender_ids
+            merged_sides = {
+                player_id: "attack" if player_id in attacker_ids else "defense"
+                for player_id in merged_ids
+            }
+            nested_player_dict[key] = merged_sides
+        loadout_df["Player Side"] = loadout_df["Tag"].map(
+            lambda x: nested_player_dict[int(x.split("_")[0])][int(x.split("_")[1])]
+        )
+        loadout_df = loadout_df.drop("Prefix", axis=1)
+        loadout_df = loadout_df.drop("Tag", axis=1)
         loadout_df["Starting Side"] = loadout_df['Team ID'].map(side_dict)
 
         loadout_df["Player Name"] = loadout_df['Player ID'].map(self.get_player_names())
@@ -549,10 +558,8 @@ class ValorantQueries:
         self.chosen_round = chosen_round
         states = self.match_initial_states
         events = self.match_events
-        round_states = states[(states["Round"] == chosen_round)]
-        round_events = events[(events["Round"] == chosen_round)]
-        self.round_states = round_states
-        self.round_events = round_events
+        self.round_states = states[(states["Round"] == chosen_round)]
+        self.round_events = events[(events["Round"] == chosen_round)]
         self.alive_dict = {item: "alive" for item in self.round_states["Player Name"].unique()}
         zero_row = self.round_events.iloc[0]
         info_pot = [self.get_single_event_gamestate(zero_row, 0, 0)]
@@ -656,9 +663,12 @@ class ValorantQueries:
                  "DEF_Shield": def_shield}
         return atk_d, def_f
 
+    def export_df(self, match_number: int) -> pd.DataFrame:
+        self.set_match(match_number)
+        return self.get_match_gamestate_table()
+
 
 if __name__ == "__main__":
     vq = ValorantQueries()
-    vq.set_match(43621)
-    df = vq.get_match_gamestate_table()
+    vq.export_df(43621)
     apple = 5 + 1

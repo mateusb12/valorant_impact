@@ -232,8 +232,11 @@ class ValorantQueries:
             FROM PLayerMapInstance WHERE PLayerMapInstance.map_played = {self.match_id}
         """
         self.db.cursor.execute(query)
-        side = self.db.cursor.fetchall()
-        return self.db.cursor.fetchall()
+        result = self.db.cursor.fetchall()
+        if len(result) != 0:
+            return result
+        else:
+            Exception("No player sides found")
 
     def get_player_sides_table(self):
         side_table = pd.DataFrame(self.map_sides,
@@ -447,9 +450,15 @@ class ValorantQueries:
         self.reposition_column(loadout_df, "Player Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
         loadout_df.insert(5, "Status", "alive")
+        default_roles = ["Duelist", "Controller", "Initiator", "Sentinel"]
+        existing_roles = list(loadout_df["Agent Role"].unique())
+        missing_roles = [item for item in default_roles if item not in existing_roles]
         concat_a = loadout_df.drop('Agent Role', axis=1)
         concat_b = pd.get_dummies(loadout_df['Agent Role'])
         loadout_df = pd.concat([concat_a, concat_b], axis=1)
+        if missing_roles:
+            for role in missing_roles:
+                loadout_df[role] = 0
         loadout_df["Has Operator"] = loadout_df["Weapon Name"].apply(lambda x: "Operator" in x)
         return loadout_df
 
@@ -680,7 +689,6 @@ class ValorantQueries:
 
 
 if __name__ == "__main__":
-    # 43621
     vq = ValorantQueries()
-    vq.export_df(6177)
+    vq.export_df(22420)
     apple = 5 + 1

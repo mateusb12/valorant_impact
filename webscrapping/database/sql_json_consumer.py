@@ -478,5 +478,5 @@ class ValorantConsumer:
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
-    vc.setup_json('37853.json')
+    vc.setup_json('35869.json')
     vc.extract_full_json()

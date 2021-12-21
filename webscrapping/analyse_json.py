@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Tuple, List
 import pandas as pd
 from line_profiler_pycharm import profile
@@ -14,20 +15,21 @@ class Analyser:
             os.chdir("..")
         elif current_folder == "exports":
             os.chdir("..\\..")
-        data_file = open('matches/json/{}'.format(input_file), encoding="utf-8")
+        json_folder = self.get_json_folder()
+        data_file = open(f'{json_folder}/{input_file}', encoding="utf-8")
         body_txt = data_file.read()
         self.data = {}
         self.trim_trash_code(body_txt)
 
         self.raw_match_id = int(input_file.split(".")[0])
-
-        weapon_file = open('matches/model/weapon_table.json')
+        model_folder = Path(self.get_matches_folder(), "model")
+        weapon_file = open(f'{model_folder}/weapon_table.json')
         self.weapon_data = json.load(weapon_file)
 
-        agent_file = open('matches/model/agent_table.json')
+        agent_file = open(f'{model_folder}/agent_table.json')
         self.agent_data = json.load(agent_file)
 
-        maps_file = open('matches/model/map_table.json')
+        maps_file = open(f'{model_folder}/map_table.json')
         self.maps_data = json.load(maps_file)
         self.best_of: int = self.data["series"]["seriesById"]["bestOf"]
 
@@ -46,6 +48,15 @@ class Analyser:
 
         self.team_a = self.get_team_a()
         self.team_b = self.get_team_b()
+
+    @staticmethod
+    def get_matches_folder():
+        current_folder = Path(os.getcwd())
+        webscrapping = current_folder.parent
+        return Path(webscrapping, "matches")
+
+    def get_json_folder(self) -> Path:
+        return Path(self.get_matches_folder(), "json")
 
     def get_all_matches_ids(self) -> List[int]:
         matches = self.data["series"]["seriesById"]["matches"]
@@ -418,7 +429,6 @@ class Analyser:
 if __name__ == "__main__":
     a = Analyser("43621.json")
     a.implicit_set_config(round=1)
-    #42038
     q = a.export_df(43621)
     apple = 5 + 1
     # q = a.generate_full_round()

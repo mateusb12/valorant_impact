@@ -40,14 +40,14 @@ class DatabaseConverter:
             ratio = f"{round((index / size)*100, 2)}%"
             progress_str = f"Inserting match #{match} in PostgresSQL, {progress} so far." \
                            f" Ratio → [{ratio}]"
+            print(colored(progress_str, "green"))
             current_time = datetime.datetime.now()
             seconds_added = datetime.timedelta(seconds=remaining_seconds)
             future_date_and_time = current_time + seconds_added
-            estimated_time = f"Estimated time:" \
+            estimated_time = f"Estimated time → " \
                              f" {future_date_and_time.hour}:{future_date_and_time.minute}:{future_date_and_time.second}"
-            print(colored(progress_str, "green"))
             details_str = f"Elapsed → {elapsed}s | Time per match → {round(time_per_match, 2)}s" \
-                          f" | Remaining time → {remaining_minutes}s | Estimated finish → {estimated_time}"
+                          f" | Remaining time → {remaining_minutes} | {estimated_time}"
             print(colored(details_str, "magenta"))
             self.vc.setup_json(f'{match}.json')
             self.vc.extract_full_json()

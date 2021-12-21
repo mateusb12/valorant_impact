@@ -62,7 +62,8 @@ class ValorantConsumer:
     def extract_full_json(self):
         match = self.match_id
         inserts = self.successful_inserts
-        existing = self.existing_match(match)
+        # existing = self.existing_match(match)
+        existing = False
         if not existing:
             self.add_event()
             self.add_all_teams()
@@ -477,6 +478,5 @@ class ValorantConsumer:
 
 if __name__ == "__main__":
     vc = ValorantConsumer()
-    vc.db.rebuild_database()
     vc.setup_json('37853.json')
     vc.extract_full_json()

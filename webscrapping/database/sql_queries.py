@@ -232,6 +232,7 @@ class ValorantQueries:
             FROM PLayerMapInstance WHERE PLayerMapInstance.map_played = {self.match_id}
         """
         self.db.cursor.execute(query)
+        side = self.db.cursor.fetchall()
         return self.db.cursor.fetchall()
 
     def get_player_sides_table(self):
@@ -679,6 +680,7 @@ class ValorantQueries:
 
 
 if __name__ == "__main__":
+    # 43621
     vq = ValorantQueries()
-    vq.export_df(43621)
+    vq.export_df(6177)
     apple = 5 + 1

@@ -22,6 +22,15 @@ class ValorantScrapper:
         self.populate_sql()
         print(colored("Pipeline finished", "magenta"))
 
+    def half_pipeline(self, split_size: int):
+        self.create_links()
+        self.split_links_with_size(split_size)
+
+    def manually_download_parts(self, part_letter: str):
+        full_name = f"{self.suffix}_links"
+        print(colored(f"Download {part_letter} part...", "cyan"))
+        download_run(full_name, part_letter)
+
     @staticmethod
     def navigate_to_events_folder():
         current_path = os.getcwd()
@@ -46,6 +55,12 @@ class ValorantScrapper:
         ccp.split()
         print(colored('Links split!', 'green'))
 
+    def split_links_with_size(self, size: int):
+        print(colored("Splitting links...", "cyan"))
+        ccp = CsvSplitter(f"{self.suffix}_links.csv", file_amount=size)
+        ccp.split()
+        print(colored('Links split!', 'green'))
+
     def download_links(self):
         full_name = f"{self.suffix}_links"
         print(colored("Download A part...", "cyan"))
@@ -63,5 +78,5 @@ class ValorantScrapper:
 
 
 if __name__ == "__main__":
-    vs = ValorantScrapper("redbull.csv")
-    vs.start_scrapping_pipeline()
+    vs = ValorantScrapper("vct_matches.csv")
+    vs.manually_download_parts("n")

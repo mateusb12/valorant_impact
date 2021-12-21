@@ -384,7 +384,6 @@ class ValorantQueries:
         old_column = input_dataframe.pop(column_name)
         input_dataframe.insert(new_position, old_column.name, old_column)
 
-    @profile
     def get_initial_state(self):
         """
         Returns a list of all players states for a given match
@@ -438,8 +437,9 @@ class ValorantQueries:
         self.reposition_column(loadout_df, "Player Side", 5)
         self.reposition_column(loadout_df, "Player Name", 4)
         loadout_df.insert(5, "Status", "alive")
-        loadout_df = pd.concat([loadout_df.drop('Agent Role', axis=1), pd.get_dummies(loadout_df['Agent Role'])],
-                               axis=1)
+        concat_a = loadout_df.drop('Agent Role', axis=1)
+        concat_b = pd.get_dummies(loadout_df['Agent Role'])
+        loadout_df = pd.concat([concat_a, concat_b], axis=1)
         loadout_df["Has Operator"] = loadout_df["Weapon Name"].apply(lambda x: "Operator" in x)
         return loadout_df
 

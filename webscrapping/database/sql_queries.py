@@ -83,6 +83,15 @@ class ValorantQueries:
         self.db.cursor.execute(query)
         return self.db.cursor.fetchall()
 
+    def query_existing_matches(self):
+        instruction = """
+                SELECT match_id
+                FROM Matches
+        """
+        self.db.cursor.execute(instruction)
+        res = self.db.cursor.fetchall()
+        return [item[0] for item in res]
+
     def query_economies(self):
         query = f"""
             SELECT 'RoundEconomies' as ta, RoundEconomies.*, 'Rounds' as td, Rounds.*, 'Matches' as te, Matches.*

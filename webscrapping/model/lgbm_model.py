@@ -19,6 +19,7 @@ class ValorantLBGM:
         self.a = Analyser()
         self.match_list = self.get_match_list()
         self.dataset_index = []
+        self.broken_matches = []
 
     def create_dataset(self, size: int):
         dataset_list = []
@@ -28,7 +29,12 @@ class ValorantLBGM:
             loop = timer()
             time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_index)
             self.a.set_match(match_index)
-            match_df = self.a.export_df()
+            try:
+                match_df = self.a.export_df()
+            except KeyError:
+                print(colored(f"Match #{match_index} is broken", "red"))
+                self.broken_matches.append(match_index)
+                continue
             dataset_list.append(match_df)
         return pd.concat(dataset_list)
 
@@ -70,4 +76,5 @@ class ValorantLBGM:
 
 if __name__ == "__main__":
     vm = ValorantLBGM()
-    vm.export_dataset(size=10, name="test")
+    vm.export_dataset(size=1000, name="test")
+    print(vm.broken_matches)

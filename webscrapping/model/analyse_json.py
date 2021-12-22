@@ -14,6 +14,7 @@ class Analyser:
         self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
+        self.match_link = None
 
     def set_match(self, input_index: int):
         input_file = f"{input_index}.json"
@@ -42,6 +43,7 @@ class Analyser:
         self.match_dict = self.series_by_id["matches"]
         self.match_id = self.data["matches"]["matchDetails"]["id"]
         self.series_id = self.series_by_id["id"]
+        self.match_link = f"https://rib.gg/series/{self.series_id}"
 
         self.team_a = self.get_team_a()
         self.team_b = self.get_team_b()
@@ -392,7 +394,6 @@ class Analyser:
 
     def export_df(self):
         self.set_config(round=1)
-        features = self.get_feature_labels()
         report = self.generate_map_metrics()
         raw = pd.DataFrame(report)
         raw = self.add_teams_to_df(raw)
@@ -414,7 +415,7 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(23074)
+    a.set_match(35126)
     q = a.export_df()
     # q = a.generate_full_round()
     # dm = a.export_round_events()

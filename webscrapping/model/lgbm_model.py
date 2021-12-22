@@ -18,6 +18,7 @@ from termcolor import colored
 class ValorantLGBM:
     def __init__(self, filename: str):
         self.df = pd.read_csv(f"{self.get_dataset_reference()}\\{filename}")
+        self.old_df = self.df.copy()
         self.features: List[str] = []
         self.target = ""
         self.model = None

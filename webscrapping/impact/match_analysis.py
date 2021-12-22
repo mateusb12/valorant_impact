@@ -103,6 +103,9 @@ class RoundReplay:
         def_features = [f"ATK_{item}" for item in team_features]
         target = ["RoundWinner"]
         all_features = atk_features + def_features + global_features
+        all_features = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_operators", "ATK_Initiator", "ATK_Duelist",
+                        "ATK_Sentinel", "ATK_Controller", "DEF_loadoutValue", "DEF_operators", "DEF_Initiator",
+                        "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
         table = old_table[all_features].copy()
         # current_map = table.MapName.max()
         # map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
@@ -400,9 +403,9 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
-    rr.set_match(44889)
-    rr.choose_round(5)
-    rr.get_round_probability(round=5, side="atk", add_events=True)
+    rr.set_match(44795)
+    rr.choose_round(12)
+    rr.get_round_probability(round=12, side="def", add_events=True)
     # cr = rr.get_clutchy_rounds("atk")
     apple = 5 + 1
     # match = 43621

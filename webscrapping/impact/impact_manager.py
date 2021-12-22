@@ -12,9 +12,9 @@ from webscrapping.wrapper.scrap_matches import download_run
 
 
 class PlayerImpact:
-    def __init__(self, match_db: List[int]):
+    def __init__(self, match_db: List[int] = None):
         self.fix_current_folder()
-        self.match_db = match_db
+        self.match_db = get_match_db_reference() if match_db is None else match_db
         print(os.getcwd())
         self.model = train_model()
         self.available = self.existing_matches()
@@ -129,11 +129,16 @@ class PlayerImpact:
         return aux
 
 
+def get_match_db_reference():
+    current_folder = Path(os.getcwd())
+    match_csv = pd.read_csv(f'{current_folder}\\search_list.csv', index_col=False)
+    return match_csv["MatchID"].tolist()
+
+
 def analyse_tourney(file_output: str):
     current_folder = Path(os.getcwd())
     export_folder = Path(current_folder, "impact_exports")
-    match_csv = pd.read_csv(f'{current_folder}\\search_list.csv', index_col=False)
-    matches = match_csv["MatchID"].tolist()
+    matches = get_match_db_reference()
 
     pimp = PlayerImpact(matches)
     # pimp.download_missing_matches("championsmatches.csv")

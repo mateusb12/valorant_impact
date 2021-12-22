@@ -462,7 +462,8 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(43611)
-    q = a.export_player_names()
+    a.set_match(44795)
+    q = a.export_df()
+    apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

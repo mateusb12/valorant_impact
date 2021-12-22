@@ -1,80 +1,189 @@
-import datetime
 import os
-from pathlib import Path
-from random import sample
-from timeit import default_timer as timer
 from typing import List
 
+import lightgbm
+import optuna
+import seaborn as sns
+from matplotlib import pyplot as plt
+from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classification_report
+from sklearn.model_selection import train_test_split
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
 import pandas as pd
+from pathlib import Path
+
 from termcolor import colored
 
-from webscrapping.database.sql_queries import ValorantQueries
-from webscrapping.model.analyse_json import Analyser
-from webscrapping.model.time_analyser import time_metrics
 
+class ValorantLGBM:
+    def __init__(self, filename: str):
+        self.df = pd.read_csv(f"{self.get_dataset_reference()}\\{filename}")
+        self.features: List[str] = []
+        self.target = ""
+        self.model = None
+        self.X, self.Y, self.X_train, self.Y_train, self.X_test, self.Y_test = [None] * 6
+        self.pred_proba, self.pred_proba_test = [None] * 2
 
-class ValorantLBGM:
-    def __init__(self):
-        self.vq = ValorantQueries()
-        self.a = Analyser()
-        self.match_list = self.get_match_list()
-        self.dataset_index = []
-        self.broken_matches = []
+    def check_multicollinearity(self) -> pd.DataFrame:
+        X_variables = self.df[self.features]
+        vif_data = pd.DataFrame()
+        vif_data["feature"] = X_variables.columns
+        vif_data["VIF"] = [variance_inflation_factor(X_variables.values, i) for i in range(X_variables.shape[1])]
+        return vif_data
 
-    def create_dataset(self, size: int):
-        dataset_list = []
-        self.set_random_sample(size)
-        start = timer()
-        for index, match_index in enumerate(self.dataset_index):
-            loop = timer()
-            time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_index)
-            self.a.set_match(match_index)
-            try:
-                match_df = self.a.export_df()
-            except KeyError:
-                print(colored(f"Match #{match_index} is broken", "red"))
-                self.broken_matches.append(match_index)
-                continue
-            dataset_list.append(match_df)
-        return pd.concat(dataset_list)
+    def set_features(self, features: List[str]):
+        self.features = features
 
-    def export_dataset(self, **kwargs):
-        dataset_size = kwargs["size"]
-        dataset_name = kwargs["name"]
-        matches = self.get_matches_folder_reference()
-        datasets = Path(matches, "datasets")
-        huge_df = self.create_dataset(size=dataset_size)
-        huge_df.to_csv(Path(datasets, f"{dataset_name}.csv"), index=False)
-        print(colored(f"Dataset {dataset_name}.csv exported", "green"))
-
-    def get_random_sample(self, amount: int):
-        return sample(self.match_list, amount)
-
-    def set_random_sample(self, amount):
-        self.dataset_index = self.get_random_sample(amount)
+    def set_target(self, target: str):
+        self.target = target
 
     @staticmethod
-    def get_json_folder_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        current_folder_name = current_folder.name
-        if current_folder_name == "model":
-            webscrapping = current_folder.parent
-            return Path(webscrapping, "matches", "json")
+    def get_default_features(**kwargs) -> List[str]:
+        default = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_weaponValue", "ATK_shields",
+                   "ATK_remainingCreds", "ATK_operators", "ATK_Initiator", "ATK_Duelist", "ATK_Sentinel",
+                   "ATK_Controller", "DEF_loadoutValue", "DEF_weaponValue", "DEF_shields", "DEF_remainingCreds",
+                   "DEF_operators", "DEF_Initiator", "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
+        if "delete" in kwargs:
+            return [item for item in default if item not in kwargs["delete"]]
+        else:
+            return default
+
+    def set_default_features_without_multicollinearity(self):
+        raw_list = ["weaponValue", "shields", "remainingCreds"]
+        atk_list = [f"ATK_{item}" for item in raw_list]
+        def_list = [f"DEF_{item}" for item in raw_list]
+        delete_list = atk_list + def_list
+        self.set_features(self.get_default_features(delete=delete_list))
+        self.set_target("RoundWinner")
+        self.df = self.df[self.features + [self.target]]
+
+    def train_model(self, **kwargs):
+        self.X = self.df.drop([self.target], axis='columns')
+        self.Y = self.df[self.target]
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y,
+                                                                                train_size=0.8, test_size=0.2,
+                                                                                random_state=15)
+        X_train, X_valid, Y_train, Y_valid = train_test_split(self.X_train, self.Y_train,
+                                                              train_size=0.9, test_size=0.1, random_state=15)
+        if "optuna_study" in kwargs:
+            self.optuna_study()
+
+        optuna_dict = self.get_optuna_parameters()
+        self.model = lightgbm.LGBMClassifier(bagging_freq=optuna_dict["bagging_freq"],
+                                             min_data_in_leaf=optuna_dict["min_data_in_leaf"],
+                                             max_depth=optuna_dict["max_depth"],
+                                             learning_rate=optuna_dict["learning_rate"],
+                                             num_leaves=optuna_dict["num_leaves"],
+                                             num_threads=optuna_dict["num_threads"],
+                                             min_sum_hessian_in_leaf=optuna_dict["min_sum_hessian_in_leaf"])
+        self.model.fit(X_train, Y_train)
 
     @staticmethod
-    def get_matches_folder_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        current_folder_name = current_folder.name
-        if current_folder_name == "model":
-            webscrapping = current_folder.parent
-            return Path(webscrapping, "matches")
+    def get_optuna_parameters():
+        optuna_df: pd.DataFrame = pd.read_csv("model_params.csv")
+        optuna_dict = optuna_df.to_dict(orient="list")
+        return {key: value[0] for key, value in optuna_dict.items()}
 
-    def get_match_list(self) -> List[int]:
-        jsons = os.listdir(self.get_json_folder_reference())
-        return [int(x.split(".")[0]) for x in jsons]
+    def optuna_study(self):
+        study = optuna.create_study()
+        study.optimize(self.objective, n_trials=20)
+        trial = study.best_trial
+        print(colored(f"Best trial: Value: {trial.value}", "green"))
+        print(colored(f"Params: {trial.params}", "green"))
+        pd_param = pd.DataFrame([trial.params])
+        pd_param.to_csv('model_params.csv', index=False)
+
+    def objective(self, trial):
+        bagging_freq = trial.suggest_int('bagging_freq', 1, 10),
+        min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 2, 100),
+        max_depth = trial.suggest_int('max_depth', 1, 20),
+        learning_rate = trial.suggest_loguniform('learning_rate', 0.001, 0.1),
+        num_leaves = trial.suggest_int('num_leaves', 2, 70),
+        num_threads = trial.suggest_int('num_threads', 1, 10),
+        min_sum_hessian_in_leaf = trial.suggest_int('min_sum_hessian_in_leaf', 1, 10),
+
+        model = lightgbm.LGBMClassifier(bagging_freq=bagging_freq,
+                                        min_data_in_leaf=min_data_in_leaf,
+                                        max_depth=max_depth,
+                                        learning_rate=learning_rate,
+                                        num_leaves=num_leaves,
+                                        num_threads=num_threads,
+                                        min_sum_hessian_in_leaf=min_sum_hessian_in_leaf)
+        model.fit(self.X_train, self.Y_train)
+        pred_proba_test = model.predict_proba(self.X_test)
+        return brier_score_loss(self.Y_test, pd.DataFrame(pred_proba_test)[1])
+
+    def get_feature_importance(self):
+        feature_imp = pd.DataFrame(sorted(zip(self.model.feature_importances_, self.X.columns)),
+                                   columns=['Value', 'Feature'])
+        plt.figure(figsize=(10, 10))
+        sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
+        sns.set(font_scale=1)
+        plt.title('Features')
+        plt.tight_layout()
+        plt.show()
+
+    def get_model_precision(self):
+        plt.figure(figsize=(10, 5))
+        pred_proba = self.model.predict_proba(self.X_train)
+        pred_proba_test = self.model.predict_proba(self.X_test)
+        self.pred_proba = pred_proba
+        self.pred_proba_test = pred_proba_test
+
+        gmt = ["accuracy train", "accuracy test", "log loss train", "log loss test", "brier score train",
+               "brier score test"]
+        metrics = {'Labels': gmt,
+                   'Value': [self.model.score(self.X_train, self.Y_train), self.model.score(self.X_test, self.Y_test),
+                             log_loss(self.Y_train, pred_proba), log_loss(self.Y_test, pred_proba_test),
+                             brier_score_loss(self.Y_train, pd.DataFrame(pred_proba)[1]),
+                             brier_score_loss(self.Y_test, pd.DataFrame(pred_proba_test)[1])]
+                   }
+        sns.set_context(rc={'patch.linewidth': 2.0})
+        sns.set(font_scale=1.3)
+        ax = sns.barplot(x='Labels', y='Value', data=metrics, linewidth=2.0, edgecolor=".2", zorder=3,
+                         palette=sns.color_palette("deep"))
+
+        plt.ylabel('%')
+        ax.grid(linewidth=1, color='white', zorder=0)
+        ax.set_facecolor("#d7d7e0")
+        plt.title("Model performance metrics")
+        plt.show()
+
+    def get_brier_score(self):
+        print("Brier score → {}".format(brier_score_loss(self.Y_test, pd.DataFrame(self.pred_proba_test)[1])))
+
+    def get_confusion_matrix(self):
+        plt.figure(figsize=(8, 6))
+        cm = confusion_matrix(self.Y_test, self.model.predict(self.X_test, num_iteration=50))
+        cm = (cm / cm.sum(axis=1).reshape(-1, 1))
+
+        sns.heatmap(cm, cmap="YlGnBu", vmin=0., vmax=1., annot=True, annot_kws={'size': 45})
+        plt.title("wa", fontsize=5)
+        plt.ylabel('Predicted label')
+        plt.xlabel('True label')
+        plt.show()
+
+    def get_f1_score(self):
+        Y_pred = self.model.predict(self.X_test)
+        f1 = classification_report(self.Y_test, Y_pred, output_dict=True)["weighted avg"]["f1-score"]
+        print(f"F1 score → {f1}")
+
+    def show_all_metrics(self):
+        self.get_feature_importance()
+        self.get_model_precision()
+        self.get_brier_score()
+        self.get_confusion_matrix()
+        self.get_f1_score()
+
+    @staticmethod
+    def get_dataset_reference() -> Path:
+        current_folder = Path(os.getcwd())
+        webscrapping = current_folder.parent
+        return Path(webscrapping, "matches", "datasets")
 
 
 if __name__ == "__main__":
-    vm = ValorantLBGM()
-    vm.export_dataset(size=1000, name="test")
-    print(vm.broken_matches)
+    vm = ValorantLGBM("5000.csv")
+    vm.set_default_features_without_multicollinearity()
+    vm.train_model()
+    vm.show_all_metrics()

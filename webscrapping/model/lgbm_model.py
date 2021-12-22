@@ -8,8 +8,8 @@ from typing import List
 import pandas as pd
 from termcolor import colored
 
-from webscrapping.analyse_json import Analyser
 from webscrapping.database.sql_queries import ValorantQueries
+from webscrapping.model.analyse_json import Analyser
 from webscrapping.model.time_analyser import time_metrics
 
 

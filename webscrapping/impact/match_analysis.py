@@ -259,7 +259,8 @@ class RoundReplay:
         gains = []
         losses = []
         deltas = []
-        for key, value in self.get_map_impact().items():
+        map_impact = self.get_map_impact()
+        for key, value in map_impact.items():
             igns.append(key)
             gains.append(value["gained"])
             losses.append(value["lost"])

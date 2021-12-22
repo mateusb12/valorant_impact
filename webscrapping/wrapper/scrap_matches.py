@@ -3,7 +3,7 @@ import pandas as pd
 from selenium import webdriver
 from termcolor import colored
 
-from webscrapping.analyse_json import Analyser
+from webscrapping.model.analyse_json import Analyser
 from webscrapping.series_scrap import RIBScrapper
 import os
 from webscrapping.wrapper.folder_fixer import fix_current_folder

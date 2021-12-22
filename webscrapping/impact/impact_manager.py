@@ -1,9 +1,12 @@
 import os
+from pathlib import Path
 from typing import List
 from random import choice as random_choice
 import pandas as pd
 
-from webscrapping.match_analysis import RoundReplay, train_model
+from match_analysis import RoundReplay, train_model
+from timeit import default_timer as timer
+from webscrapping.model.time_analyser import time_metrics
 from webscrapping.wrapper.csv_manager import CsvCreator, CsvSplitter, CsvConverter
 from webscrapping.wrapper.scrap_matches import download_run
 
@@ -14,7 +17,7 @@ class PlayerImpact:
         self.match_db = match_db
         print(os.getcwd())
         self.model = train_model()
-        self.available = self.create_queue()
+        self.available = self.existing_matches()
         self.failed_matches = []
 
     @staticmethod
@@ -30,9 +33,20 @@ class PlayerImpact:
         return random_choice(list(self.available.keys()))
 
     @staticmethod
+    def existing_matches() -> List[int]:
+        current_folder = Path(os.getcwd())
+        webscrapping = current_folder.parent
+        json = Path(webscrapping, "matches", "json")
+        json_list = os.listdir(json)
+        return [int(item.split(".")[0]) for item in json_list]
+
+    @staticmethod
     def existing_match(input_match_id: int):
+        current_folder = Path(os.getcwd())
+        webscrapping = current_folder.parent
+        json = Path(webscrapping, "matches", "json")
         try:
-            analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(input_match_id), index_col=False)
+            analysis_df = pd.read_csv(f'{json}\\{input_match_id}.json'.format(input_match_id), index_col=False)
             return True, analysis_df
         except FileNotFoundError:
             return False, None
@@ -82,13 +96,17 @@ class PlayerImpact:
 
     def export_full_impact(self) -> List[pd.DataFrame]:
         impacts = []
-        total_len = len(self.available)
-        for index, key in enumerate(self.available):
+        total_len = len(self.match_db)
+        start = timer()
+        for index, key in enumerate(self.match_db):
+            rr = RoundReplay(self.model)
             if key != 0:
-                rr = RoundReplay(key, self.available[key], self.model)
+                rr.set_match(key)
                 rr.choose_round(1)
-                percentage = round((index + 1) / total_len * 100, 2)
-                print(f"Analysing match {key}. Total: #{index}/{total_len}.    {percentage}%")
+                loop = timer()
+                time_metrics(start=start, end=loop, index=index, size=total_len, tag="match", element=key)
+                # percentage = round((index + 1) / total_len * 100, 2)
+                # print(f"Analysing match {key}. Total: #{index}/{total_len}.    {percentage}%")
                 try:
                     impacts.append(rr.get_map_impact_dataframe())
                 except KeyError:
@@ -112,13 +130,15 @@ class PlayerImpact:
 
 
 def analyse_tourney(file_output: str):
-    match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
+    current_folder = Path(os.getcwd())
+    export_folder = Path(current_folder, "impact_exports")
+    match_csv = pd.read_csv(f'{current_folder}\\search_list.csv', index_col=False)
     matches = match_csv["MatchID"].tolist()
 
     pimp = PlayerImpact(matches)
     # pimp.download_missing_matches("championsmatches.csv")
     q = pimp.analyse_full_impact()
-    q.to_csv(f"matches\\analysis\\{file_output}", index=False)
+    q.to_csv(f"{export_folder}\\{file_output}", index=False)
     print(f"{file_output} generated!")
 
 
@@ -136,7 +156,7 @@ if __name__ == "__main__":
     #                "8792", "8791", "8028", "8027"]
     # pi = PlayerImpact(gmd_matches)
     # pi.analyse_full_impact()
-    analyse_tourney("gmd_matches.csv")
+    analyse_tourney("gmd_impact.csv")
     # analyse_tourney("berlim.csv")
     # match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
     # matches = match_csv["MatchID"].tolist()

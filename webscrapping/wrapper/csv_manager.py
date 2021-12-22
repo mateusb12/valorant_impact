@@ -3,7 +3,7 @@ import os
 
 from termcolor import colored
 
-from webscrapping.analyse_json import Analyser
+from webscrapping.model.analyse_json import Analyser
 from webscrapping.wrapper.folder_fixer import fix_current_folder
 
 

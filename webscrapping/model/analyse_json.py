@@ -13,7 +13,7 @@ class Analyser:
         self.maps_data, self.best_of, self.current_status, self.chosen_map, self.chosen_round = [None] * 5
         self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
-        self.match_dict, self.defending_first_team, self.round_amount = [None] * 3
+        self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
 
     def set_match(self, input_index: int):
         input_file = f"{input_index}.json"
@@ -36,7 +36,8 @@ class Analyser:
         self.series_by_id = self.data["series"]["seriesById"]
         self.best_of: int = self.series_by_id["bestOf"]
 
-        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [None] * 5
+        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [
+                                                                                                                    None] * 5
         self.map_id, self.map_name, self.round_table, self.reverse_round_table, self.match_id = [None] * 5
         self.match_dict = self.series_by_id["matches"]
         self.match_id = self.data["matches"]["matchDetails"]["id"]
@@ -80,9 +81,9 @@ class Analyser:
         round_number = self.reverse_round_table[self.chosen_round]
         self.round_amount = match_json["team1Score"] + match_json["team2Score"]
         side_dict = self.handle_sides(self.round_amount)
-        mirror_dict = {"normal": {"attacking": self.attacking_first_team, "defending": self.defending_first_team},
-                       "inverse": {"attacking": self.defending_first_team, "defending": self.attacking_first_team}}
-        current_round_sides = mirror_dict[side_dict[round_number]]
+        mirror_dict = {"normal": {self.attacking_first_team: "attacking", self.defending_first_team: "defending"},
+                       "inverse": {self.attacking_first_team: "defending", self.defending_first_team: "attacking"}}
+        self.current_round_sides = mirror_dict[side_dict[round_number]]
         old_attack = self.attacking_first_team
         new_attack = 0
         if old_attack == 1:
@@ -220,7 +221,45 @@ class Analyser:
         spike_time = round_func(spike_time)
         return regular_time, spike_time
 
-    @profile
+    def generate_single_event_values(self, **kwargs):
+        player_table: dict = self.current_status
+        team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators"]
+        roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
+        features = team_variables + roles
+        atk_dict = {item: 0 for item in features}
+        def_dict = {item: 0 for item in features}
+        shield_table = {0: 0, 1: 25, 2: 50}
+
+        for key, value in player_table.items():
+            player_state = value["alive"]
+            if player_state:
+                weapon_id = str(value["weaponId"])
+                weapon_price = int(self.weapon_data[weapon_id]["price"]) if weapon_id != "None" else 0
+                agent_id = str(value["agentId"])
+                shield_id = str(value["shieldId"])
+                shield_value = shield_table[int(shield_id)] if shield_id != "None" else 0
+                agent_role = self.agent_data[agent_id]["role"]
+                team_number = value["name"]["team_number"]
+                team_side = self.current_round_sides[team_number]
+                cont_dict = {"loadoutValue": value["loadoutValue"], "weaponValue": weapon_price,
+                             "remainingCreds": value["remainingCreds"], "operators": 1 if weapon_id == "15" else 0,
+                             "shields": shield_value, agent_role: 1}
+                for feature, feature_value in cont_dict.items():
+                    if team_side == "attacking":
+                        atk_dict[feature] += feature_value
+                    else:
+                        def_dict[feature] += feature_value
+
+        regular_time, spike_time = self.generate_spike_timings(kwargs["timestamp"], kwargs["plant"])
+        round_winner = kwargs["winner"] if "winner" in kwargs else None
+        final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "RoundWinner": round_winner,
+                      "RoundID": self.chosen_round, "MapID": self.match_id}
+        for key, value in atk_dict.items():
+            final_dict[f"ATK_{key}"] = value
+        for key, value in def_dict.items():
+            final_dict[f"DEF_{key}"] = value
+        return final_dict
+
     def generate_single_event(self, **kwargs):
         player_table: dict = self.current_status
         atk_gun_price, def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin = (0, 0, 0, 0, 0, 0)
@@ -292,20 +331,19 @@ class Analyser:
         plant = self.get_plant_timestamp()
         self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
-        first_round = self.generate_single_event(timestamp=0, winner=round_winner, plant=plant)
-        round_array = [first_round]
+        round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
+        round_array = [round_start]
         self.round_events = self.get_round_events()
         for key, value in self.round_events.items():
-            timestamp = value["timing"]
+            event_type = value["event"]
             situation = self.current_status
-            if value["victim"] is not None:
+            if event_type == "kill":
                 self.current_status[value["victim"]]["alive"] = False
-            if value["event"] == "revival":
+            elif event_type == "revival":
                 self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
-            beep_table = self.evaluate_spike_beeps(timestamp, plant)
-            event = self.generate_single_event(timestamp=key, winner=round_winner,
-                                               beeps=beep_table, plant=plant)
+            # event = self.generate_single_event(timestamp=key, winner=round_winner, plant=plant)
+            event = self.generate_single_event_values(timestamp=key, winner=round_winner, plant=plant)
             round_array.append(event)
         return round_array
 
@@ -353,15 +391,10 @@ class Analyser:
                 'FinalWinner']
 
     def export_df(self):
-        # self.implicit_set_config(round=1)
         self.set_config(round=1)
-        vm = self.get_valid_maps()
-        map_index = vm[self.match_id]
-        r = self.get_first_round()
-        # self.set_config(round=r)
         features = self.get_feature_labels()
         report = self.generate_map_metrics()
-        raw = pd.DataFrame(report, columns=features)
+        raw = pd.DataFrame(report)
         raw = self.add_teams_to_df(raw)
         return raw
 

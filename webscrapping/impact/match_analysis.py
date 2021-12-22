@@ -16,11 +16,19 @@ from webscrapping.model.analyse_json import Analyser
 
 
 class RoundReplay:
-    def __init__(self, input_model: lightgbm.LGBMClassifier):
+    def __init__(self, input_model: lightgbm.LGBMClassifier = None):
         self.match_id = 0
         self.analyser = Analyser()
-        self.model = input_model
+        self.vm: ValorantLGBM = self.get_model()
+        self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
+
+    @staticmethod
+    def get_model():
+        vm = ValorantLGBM("500.csv")
+        vm.set_default_features_without_multicollinearity()
+        vm.train_model()
+        return vm
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -97,15 +105,10 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        team_features = ["loadoutValue", "operators", "Initiator", "Duelist", "Sentinel", "Controller"]
-        global_features = ["RegularTime", "SpikeTime"]
-        atk_features = [f"ATK_{item}" for item in team_features]
-        def_features = [f"ATK_{item}" for item in team_features]
-        target = ["RoundWinner"]
-        all_features = atk_features + def_features + global_features
         all_features = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_operators", "ATK_Initiator", "ATK_Duelist",
                         "ATK_Sentinel", "ATK_Controller", "DEF_loadoutValue", "DEF_operators", "DEF_Initiator",
                         "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
+        all_features = self.vm.features
         table = old_table[all_features].copy()
         # current_map = table.MapName.max()
         # map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
@@ -247,6 +250,7 @@ class RoundReplay:
         impact_list = []
         for i in range(1, self.round_amount + 1):
             self.choose_round(i)
+            round_impact = self.get_round_impact()
             impact_list.append(self.get_round_impact())
 
         for round_impact in impact_list:
@@ -403,8 +407,10 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
-    rr.set_match(44795)
-    rr.choose_round(12)
+    rr.set_match(45334)
+    rr.choose_round(2)
+    rr.get_map_impact_dataframe()
+    # rr.get_player_most_impactful_rounds("Bonecold")
     rr.get_round_probability(round=12, side="def", add_events=True)
     # cr = rr.get_clutchy_rounds("atk")
     apple = 5 + 1

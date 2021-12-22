@@ -98,8 +98,8 @@ class PlayerImpact:
         impacts = []
         total_len = len(self.match_db)
         start = timer()
+        rr = RoundReplay(self.model)
         for index, key in enumerate(self.match_db):
-            rr = RoundReplay(self.model)
             if key != 0:
                 rr.set_match(key)
                 rr.choose_round(1)

@@ -4,7 +4,7 @@ from typing import List, Optional
 import pandas as pd
 
 from webscrapping.series_scrap import RIBScrapper
-from webscrapping.analyse_json import Analyser
+from webscrapping.model.analyse_json import Analyser
 
 
 class SingleMatchDownloader:

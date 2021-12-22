@@ -78,9 +78,9 @@ class ValorantLGBM:
                                              min_sum_hessian_in_leaf=optuna_dict["min_sum_hessian_in_leaf"])
         self.model.fit(X_train, Y_train)
 
-    @staticmethod
-    def get_optuna_parameters():
-        optuna_df: pd.DataFrame = pd.read_csv("model_params.csv")
+    def get_optuna_parameters(self):
+        ref = self.get_optuna_reference()
+        optuna_df: pd.DataFrame = pd.read_csv(f"{ref}\\model_params.csv")
         optuna_dict = optuna_df.to_dict(orient="list")
         return {key: value[0] for key, value in optuna_dict.items()}
 
@@ -181,9 +181,19 @@ class ValorantLGBM:
         webscrapping = current_folder.parent
         return Path(webscrapping, "matches", "datasets")
 
+    @staticmethod
+    def get_optuna_reference() -> Path:
+        current_folder = Path(os.getcwd())
+        current_folder_name = current_folder.name
+        if current_folder_name == "impact":
+            webscrapping = current_folder.parent
+            return Path(webscrapping, "model")
+        elif current_folder_name == "model":
+            return current_folder
+
 
 if __name__ == "__main__":
-    vm = ValorantLGBM("5000.csv")
+    vm = ValorantLGBM("500.csv")
     vm.set_default_features_without_multicollinearity()
     vm.train_model()
     vm.show_all_metrics()

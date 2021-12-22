@@ -14,7 +14,7 @@ class Analyser:
         self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
-        self.match_link = None
+        self.match_link, self.round_number = [None] * 2
 
     def set_match(self, input_index: int):
         input_file = f"{input_index}.json"
@@ -67,6 +67,7 @@ class Analyser:
         :param kwargs: chosen_round → round id to be analysed
         """
         round_table = self.get_round_table()
+        self.round_number = kwargs["round"]
         self.chosen_round = round_table[kwargs["round"]]
         match_json = [item for item in self.match_dict if item["id"] == self.match_id][0]
         self.chosen_map: str = match_json["seriesMatchNumber"]
@@ -138,6 +139,15 @@ class Analyser:
         for match in self.series_by_id["matches"]:
             if match["seriesMatchNumber"] == self.chosen_map:
                 return match
+
+    def export_player_names(self):
+        self.set_config(round=1)
+        return {
+            value["name"]["ign"]: {"gained": 0, "lost": 0, "delta": 0} for item, value in self.current_status.items()
+        }
+
+    def get_last_round(self) -> int:
+        return self.round_amount
 
     def generate_player_table(self) -> dict:
         """
@@ -255,7 +265,7 @@ class Analyser:
         regular_time, spike_time = self.generate_spike_timings(kwargs["timestamp"], kwargs["plant"])
         round_winner = kwargs["winner"] if "winner" in kwargs else None
         final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "RoundWinner": round_winner,
-                      "RoundID": self.chosen_round, "MapID": self.match_id}
+                      "RoundID": self.chosen_round, "MatchID": self.match_id, "RoundNumber": self.round_number}
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():
@@ -416,6 +426,6 @@ class Analyser:
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(35126)
-    q = a.export_df()
+    q = a.export_player_names()
     # q = a.generate_full_round()
     # dm = a.export_round_events()

@@ -1,5 +1,6 @@
 import copy
 import os
+from pathlib import Path
 from typing import List
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -9,20 +10,26 @@ import matplotlib.lines as mlines
 from sklearn.model_selection import train_test_split, cross_val_score
 import lightgbm
 
-from webscrapping.analyse_json import Analyser
+from webscrapping.model.lgbm_model import ValorantLGBM
 from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
+from webscrapping.model.analyse_json import Analyser
 
 
 class RoundReplay:
-    def __init__(self, match_id: int, input_df: pd.DataFrame, input_model: lightgbm.LGBMClassifier):
-        self.df = input_df
+    def __init__(self, input_model: lightgbm.LGBMClassifier):
+        self.match_id = 0
+        self.analyser = Analyser()
+        self.model = input_model
+        self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
+
+    def set_match(self, match_id: int):
         self.match_id = match_id
-        self.analyser = Analyser("{}.json".format(match_id))
+        self.analyser.set_match(match_id)
         self.player_impact = self.analyser.export_player_names()
         self.round_amount = self.analyser.get_last_round()
-        self.query = input_df.query("MatchID == {}".format(match_id))
+        self.df = self.analyser.export_df()
+        self.query = self.df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
-        self.model = input_model
         self.chosen_round = None
 
     def choose_round(self, round_number: int):
@@ -372,8 +379,14 @@ def download_missing_matches(match_id: int, series_id: int, **kwargs):
 
 
 def train_model() -> lightgbm.LGBMClassifier:
-    raw_df = pd.read_csv('matches\\rounds\\na_merged.csv', index_col=False)
-    return generate_prediction_model(raw_df)
+    # current_folder = Path(os.getcwd())
+    # webscrapping = current_folder.parent
+    # datasets = Path(webscrapping, "matches", "datasets")
+    # raw_df = pd.read_csv(f'{datasets}\\500.csv', index_col=False)
+    vm = ValorantLGBM("500.csv")
+    vm.set_default_features_without_multicollinearity()
+    vm.train_model()
+    return vm.model
 
 
 def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
@@ -385,9 +398,12 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    match = 43621
-    series = 20464
-    download_missing_matches(match, series)
+    model = train_model()
+    rr = RoundReplay(model)
+    rr.set_match(44889)
+    # match = 43621
+    # series = 20464
+    # download_missing_matches(match, series)
     # model = train_model()
     # analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match), index_col=False)
     # rr = RoundReplay(match, analysis_df, model)

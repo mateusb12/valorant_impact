@@ -58,12 +58,6 @@ class Analyser:
         aux = self.get_matches_folder()
         return Path(self.get_matches_folder(), "json")
 
-    def implicit_set_config(self, **kwargs):
-        map_index = self.get_valid_maps()[self.raw_match_id]
-        round_table = self.get_round_table()
-        round_index = round_table[kwargs["round"]]
-        self.set_config(map=map_index, round=round_index)
-
     def set_config(self, **kwargs):
         """
         Set the many configurations of the analysis
@@ -272,10 +266,7 @@ class Analyser:
 
         regular_time, spike_time = self.generate_spike_timings(round_millis, plant_millis)
 
-        round_winner = None
-        if "winner" in kwargs:
-            round_winner = kwargs["winner"]
-
+        round_winner = kwargs["winner"] if "winner" in kwargs else None
         return (self.chosen_round, self.reverse_round_table[self.chosen_round], round_millis, atk_gun_price,
                 def_gun_price, atk_alive, def_alive, def_has_operator, def_has_odin,
                 regular_time, spike_time, atk_bank, def_bank,
@@ -334,10 +325,6 @@ class Analyser:
             for round_data in self.data["matches"]["matchDetails"]["events"]
         }
 
-    def get_map_table(self) -> dict:
-        aux = self.series_by_id["matches"]
-        return {aux[index]["id"]: index + 1 for index in range(len(aux))}
-
     def generate_map_metrics(self) -> list:
         """
         Generates the dataframe body. See get_feature_labels().
@@ -351,10 +338,8 @@ class Analyser:
     def get_first_round(self) -> list:
         return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
 
-    def get_last_round(self) -> int:
-        return self.data["matches"]["matchDetails"]["economies"][-1]["roundNumber"]
-
-    def get_feature_labels(self) -> List[str]:
+    @staticmethod
+    def get_feature_labels() -> List[str]:
         """
         Returns a list of all the features used in the model
         """
@@ -366,15 +351,6 @@ class Analyser:
                 'ATK_Shields', 'DEF_Shields',
                 'MapName', 'MatchID', 'SeriesID', 'bestOF',
                 'FinalWinner']
-
-    def export_single_map(self, input_match_id: int):
-        vm = self.get_valid_maps()
-        map_index = vm[input_match_id]
-        r = self.get_first_round()
-        self.set_config(map=map_index, round=r)
-        report = self.generate_map_metrics()
-        df = pd.DataFrame(report, columns=self.get_feature_labels())
-        df.to_csv(r'matches\exports\{}.csv'.format(input_match_id), index=False)
 
     def export_df(self):
         # self.implicit_set_config(round=1)
@@ -401,44 +377,6 @@ class Analyser:
         new["Team_B_ID"] = team_b_id
         new["Team_B_Name"] = team_b_name
         return new
-
-    def export_player_names(self) -> dict:
-        self.implicit_set_config(round=1)
-        return {
-            value["name"]["ign"]: {"gained": 0, "lost": 0, "delta": 0} for item, value in self.current_status.items()
-        }
-
-    def export_round_events(self) -> dict:
-        self.chosen_map = self.get_map_table()[self.raw_match_id]
-        self.chosen_round = self.get_round_table()[1]
-        self.set_config(map=self.chosen_map, round=self.chosen_round)
-        export_events = self.data["matches"]["matchDetails"]["events"]
-
-        for event in export_events:
-            killer_id = event["playerId"]
-            victim_id = event["referencePlayerId"]
-            killer_name = self.current_status[killer_id]["name"]["ign"]
-            killer_agent_id = self.current_status[killer_id]["agentId"]
-            killer_agent_name = self.agent_data[str(killer_agent_id)]["name"]
-
-            if event["eventType"] in ["kill", "revival"]:
-                victim_name = self.current_status[victim_id]["name"]["ign"]
-                victim_agent_id = self.current_status[victim_id]["agentId"]
-                victim_agent_name = self.agent_data[str(victim_agent_id)]["name"]
-                event["victim_agent_name"] = victim_agent_name
-                event["victim_name"] = victim_name
-            else:
-                event["victim_agent_name"] = "None"
-                event["victim_name"] = "None"
-            if event["weaponId"] is not None:
-                weapon = self.weapon_data[str(event["weaponId"])]
-            else:
-                weapon = {"weaponId": "None", "name": event["ability"]}
-            event["killer_name"] = killer_name
-            event["killer_agent_name"] = killer_agent_name
-            event["weapon"] = weapon
-
-        return export_events
 
 
 if __name__ == "__main__":

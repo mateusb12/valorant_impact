@@ -97,17 +97,19 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        table = old_table[["ATK_wealth", "DEF_wealth",
-                           "ATK_alive", "DEF_alive",
-                           "ATK_Shields", "DEF_Shields",
-                           "DEF_has_OP", "Def_has_Odin",
-                           "RegularTime", "SpikeTime", "MapName"]]
-        current_map = table.MapName.max()
-        map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
-        map_names.remove(current_map)
-        table = pd.get_dummies(table, columns=['MapName'])
-        for item in map_names:
-            table['MapName_{}'.format(item)] = 0
+        team_features = ["loadoutValue", "operators", "Initiator", "Duelist", "Sentinel", "Controller"]
+        global_features = ["RegularTime", "SpikeTime"]
+        atk_features = [f"ATK_{item}" for item in team_features]
+        def_features = [f"ATK_{item}" for item in team_features]
+        target = ["RoundWinner"]
+        all_features = atk_features + def_features + global_features
+        table = old_table[all_features].copy()
+        # current_map = table.MapName.max()
+        # map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
+        # map_names.remove(current_map)
+        # table = pd.get_dummies(table, columns=['MapName'])
+        # for item in map_names:
+        #     table['MapName_{}'.format(item)] = 0
         side = kwargs["side"]
         attack_pred = None
         if side == "atk":
@@ -379,10 +381,6 @@ def download_missing_matches(match_id: int, series_id: int, **kwargs):
 
 
 def train_model() -> lightgbm.LGBMClassifier:
-    # current_folder = Path(os.getcwd())
-    # webscrapping = current_folder.parent
-    # datasets = Path(webscrapping, "matches", "datasets")
-    # raw_df = pd.read_csv(f'{datasets}\\500.csv', index_col=False)
     vm = ValorantLGBM("500.csv")
     vm.set_default_features_without_multicollinearity()
     vm.train_model()
@@ -401,6 +399,8 @@ if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
     rr.set_match(44889)
+    cr = rr.get_clutchy_rounds("atk")
+    apple = 5 + 1
     # match = 43621
     # series = 20464
     # download_missing_matches(match, series)

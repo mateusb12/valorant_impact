@@ -161,7 +161,7 @@ if __name__ == "__main__":
     #                "8792", "8791", "8028", "8027"]
     # pi = PlayerImpact(gmd_matches)
     # pi.analyse_full_impact()
-    analyse_tourney("gmd_impact.csv")
+    analyse_tourney("champions_impact.csv")
     # analyse_tourney("berlim.csv")
     # match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
     # matches = match_csv["MatchID"].tolist()

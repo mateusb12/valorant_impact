@@ -176,7 +176,8 @@ class RoundReplay:
 
     def get_round_story(self) -> dict:
         round_story = []
-        for i in self.analyser.export_round_events():
+        round_events = self.analyser.export_round_events()
+        for i in round_events:
             if i["roundNumber"] == self.chosen_round:
                 output = "None"
                 if i["eventType"] == "kill":
@@ -399,7 +400,9 @@ if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
     rr.set_match(44889)
-    cr = rr.get_clutchy_rounds("atk")
+    rr.choose_round(5)
+    rr.get_round_probability(round=5, side="atk", add_events=True)
+    # cr = rr.get_clutchy_rounds("atk")
     apple = 5 + 1
     # match = 43621
     # series = 20464

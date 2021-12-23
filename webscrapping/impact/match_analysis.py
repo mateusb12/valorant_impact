@@ -22,6 +22,7 @@ class RoundReplay:
         self.vm: ValorantLGBM = self.get_model()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
+        self.feature_df = None
 
     @staticmethod
     def get_model():
@@ -36,6 +37,7 @@ class RoundReplay:
         self.player_impact = self.analyser.export_player_names()
         self.round_amount = self.analyser.get_last_round()
         self.df = self.analyser.export_df()
+        self.feature_df = self.df[self.vm.get_model_features()]
         self.query = self.df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
         self.chosen_round = None
@@ -96,6 +98,14 @@ class RoundReplay:
             )
         }
 
+    @staticmethod
+    def displace_column(input_df: pd.DataFrame, column_name: str):
+        column = list(input_df[column_name])
+        last = column[-1]
+        displaced = column[1:]
+        displaced.append(last)
+        input_df[column_name] = displaced
+
     def get_round_probability(self, **kwargs):
         """
         :param kwargs: round_number: int
@@ -105,27 +115,34 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
+        times = tuple(old_table["RoundTime"])
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
+        displaced_table = table.copy()
+        self.displace_column(displaced_table, "RegularTime")
+        self.displace_column(displaced_table, "SpikeTime")
+        first_row = pd.DataFrame(table.iloc[0]).transpose()
+        displaced_table = pd.concat([first_row, displaced_table]).reset_index(drop=True)
+        displaced_table = displaced_table[:-1]
+        default_pred = self.model.predict_proba(table)[:, 1]
+        displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
+        table["ATK_Prob_before_event"] = displaced_pred
+        table["ATK_Prob_after_event"] = default_pred
+        table["Difference (%)"] = table["ATK_Prob_after_event"] - table["ATK_Prob_before_event"]
+        del table["ATK_Prob_before_event"]
+        table = table.rename(columns={'ATK_Prob_after_event': 'Win_probability'})
         side = kwargs["side"]
-        attack_pred = None
-        if side == "atk":
-            attack_pred = [round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
-        elif side == "def":
-            attack_pred = [100 - round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
-        test_dict = {a: b for a, b in zip(old_table["RoundTime"], attack_pred)}
-        table["Win_probability"] = attack_pred
+        if side == "def":
+            table['Win_probability'] = table['Win_probability'].apply(lambda x: 1 - x)
+            table['Difference (%)'] = table['Difference (%)'].apply(lambda x: -1 * x)
         raw_timings = [round(x / 1000, 2) for x in old_table.RoundTime]
-        integer_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
         table["Round time"] = raw_timings
-        margin_differences = [(x - attack_pred[i - 1]) for i, x in enumerate(attack_pred)][1:]
-        margin_differences.insert(0, 0)
-        table["Difference (%)"] = margin_differences
+        integer_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
         winner = self.get_round_winners()[round_number]
         tag_dict = {0: "def", 1: "atk"}
         table["Final Winner"] = tag_dict[winner]
         table["Round"] = round_number
-        table["Integer time"] = integer_timings
+        table["Integer time"] = old_table.RoundTime
         table = table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round",
                        "Integer time"]]
         if "add_events" in kwargs and kwargs["add_events"]:
@@ -139,7 +156,7 @@ class RoundReplay:
             table["Difference (%)"] = new_diff
 
             table = table[["Round", "Round time", "Stamps", "Difference (%)", "Actors", "Means", "Victims",
-                           "Win_probability", "Final Winner"]]
+                           "Win_probability", "Final Winner", "Integer time"]]
 
         table = table.fillna(0)
         return table
@@ -194,16 +211,59 @@ class RoundReplay:
             rs_dict[self.letterify(i + 1, displace=True)] = x
         return rs_dict
 
+    # @staticmethod
+    # def handle_pandas_dtype(situation: dict):
+    #     for key, value in situation.items():
+    #         if not isinstance(value, str):
+    #             dtype_name = value.dtype.name
+    #             if dtype_name == "int64":
+    #                 situation[key] = int(value)
+    #             elif dtype_name == "float64":
+    #                 situation[key] = float(value)
+    #
+    # def get_feature_probability_table(self) -> pd.DataFrame:
+    #     old_table = self.df
+    #     round_df = old_table[old_table["RoundNumber"] == self.chosen_round]
+    #     feature_df = round_df[self.vm.get_model_features()]
+    #     table = feature_df.copy()
+    #     prob = self.model.predict_proba(table)
+    #     table["Probability"] = [prob[:, 1]][0]
+    #     table["RoundTime"] = round_df["RoundTime"]
+    #     return table
+    #
+    # def remove_time_on_probability(self, **kwargs) -> dict:
+    #     exact_index = kwargs["index"]
+    #     time_diff = kwargs["time_diff"]
+    #     input_df = kwargs["df"]
+    #     # input_round_time = 54742
+    #     # time_diff = 44
+    #     query_row = input_df.iloc[exact_index]
+    #     if exact_index == 0:
+    #         query_dict = dict(query_row)
+    #         proba_this_event = float(self.vm.test_probability(query_dict))
+    #         return {"with_time": proba_this_event, "without_time": proba_this_event}
+    #     past_row = input_df.iloc[exact_index - 1]
+    #     state_dict = dict(past_row)
+    #     normal_time = state_dict["RegularTime"]
+    #     spike_time = state_dict["SpikeTime"]
+    #     situation = "RegularTime" if normal_time >= 0 else "SpikeTime"
+    #     proba_with_time = float(self.vm.test_probability(state_dict))
+    #     state_dict[situation] -= time_diff
+    #     proba_without_time = float(self.vm.test_probability(state_dict))
+    #     return {"with_time": proba_with_time, "without_time": proba_without_time}
+
     def get_round_impact(self) -> dict:
         prob_table = self.get_round_probability(side="def", add_events=True)
         player_impact_table = copy.deepcopy(self.player_impact)
-        for i in prob_table.iterrows():
-            stamp = i[1]["Stamps"]
-            means = i[1]["Means"]
+        for index in range(len(prob_table)):
+            row = prob_table.iloc[index]
+            current_time = int(row["Integer time"])
+            stamp = row["Stamps"]
+            means = row["Means"]
             if stamp != "A" and means != "spike":
-                actor_diff = i[1]["Difference (%)"]
-                actor = i[1]["Actors"]
-                victim = i[1]["Victims"]
+                actor_diff = row["Difference (%)"]
+                actor = row["Actors"]
+                victim = row["Victims"]
                 victim_diff = 0 if means == "revived" else -actor_diff
                 if actor_diff >= 0:
                     player_impact_table[actor]["gained"] += actor_diff
@@ -243,7 +303,7 @@ class RoundReplay:
         for i in range(1, self.round_amount + 1):
             self.choose_round(i)
             round_impact = self.get_round_impact()
-            impact_list.append(self.get_round_impact())
+            impact_list.append(round_impact)
 
         for round_impact in impact_list:
             for key, value in round_impact.items():
@@ -400,7 +460,7 @@ if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
     rr.set_match(44866)
-    rr.choose_round(19)
+    rr.choose_round(5)
     rr.get_round_probability(round=19, side="atk", add_events=True)
     rr.get_map_impact_dataframe()
     # rr.get_player_most_impactful_rounds("Bonecold")

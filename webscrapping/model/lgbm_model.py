@@ -14,6 +14,8 @@ from pathlib import Path
 
 from termcolor import colored
 
+from webscrapping.model.analyse_json import Analyser
+
 
 class ValorantLGBM:
     def __init__(self, filename: str):
@@ -228,6 +230,9 @@ class ValorantLGBM:
     def get_importance_dict(self) -> dict:
         return dict(zip(self.model.feature_name_, self.model.feature_importances_))
 
+    def get_model_features(self) -> List[str]:
+        return self.model.feature_name_
+
     def test_probability(self, example: dict = None) -> float:
         if example is None:
             aux_df = pd.DataFrame([self.get_probability_input_example()])
@@ -241,16 +246,29 @@ class ValorantLGBM:
                 "ATK_Duelist": 1, "ATK_Sentinel": 1, "ATK_Controller": 1, "DEF_loadoutValue": 23700, "DEF_operators": 0,
                 "DEF_Initiator": 2, "DEF_Duelist": 1, "DEF_Sentinel": 1, "DEF_Controller": 1}
 
+    def query_example(self, **kwargs) -> dict:
+        match = kwargs["match"]
+        round_ = kwargs["round_"]
+        timing = kwargs["timing"]
+        a = Analyser()
+        a.set_match(match)
+        df = a.export_df()
+        match_query = df[df["MatchID"] == match]
+        round_query = match_query[match_query["RoundNumber"] == round_]
+        timing_query = round_query[round_query["RegularTime"] == timing]
+        trim = timing_query[self.get_model_features()]
+        return trim.to_dict(orient="records")[0]
+
+
+def get_trained_model() -> ValorantLGBM:
+    v = ValorantLGBM("500.csv")
+    v.set_default_features_without_multicollinearity()
+    v.train_model()
+    return v
+
 
 if __name__ == "__main__":
-    vm = ValorantLGBM("500.csv")
-    vm.set_default_features_without_multicollinearity()
-    # vm.set_delta_setup()
-    # vm.set_delta_features()
-    # vm.set_features(["delta_loadoutValue", "delta_operators", "delta_Initiator", "delta_Duelist",
-    #                  "delta_Sentinel", "delta_Controller"])
-    # vm.set_target("RoundWinner")
-    # vm.trim_df()
+    vm = get_trained_model()
     vm.train_model()
     print(vm.test_probability())
     vm.show_all_metrics()

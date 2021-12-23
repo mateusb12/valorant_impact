@@ -105,23 +105,15 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        # all_features = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_operators", "ATK_Initiator",
-        # "ATK_Duelist", "ATK_Sentinel", "ATK_Controller", "DEF_loadoutValue", "DEF_operators", "DEF_Initiator",
-        # "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
-        # current_map = table.MapName.max()
-        # map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]
-        # map_names.remove(current_map)
-        # table = pd.get_dummies(table, columns=['MapName'])
-        # for item in map_names:
-        #     table['MapName_{}'.format(item)] = 0
         side = kwargs["side"]
         attack_pred = None
         if side == "atk":
             attack_pred = [round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
         elif side == "def":
             attack_pred = [100 - round(i[1] * 100, 2) for i in self.model.predict_proba(table)]
+        test_dict = {a: b for a, b in zip(old_table["RoundTime"], attack_pred)}
         table["Win_probability"] = attack_pred
         raw_timings = [round(x / 1000, 2) for x in old_table.RoundTime]
         integer_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
@@ -407,11 +399,11 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 if __name__ == "__main__":
     model = train_model()
     rr = RoundReplay(model)
-    rr.set_match(45334)
-    rr.choose_round(2)
+    rr.set_match(44866)
+    rr.choose_round(19)
+    rr.get_round_probability(round=19, side="atk", add_events=True)
     rr.get_map_impact_dataframe()
     # rr.get_player_most_impactful_rounds("Bonecold")
-    rr.get_round_probability(round=12, side="def", add_events=True)
     # cr = rr.get_clutchy_rounds("atk")
     apple = 5 + 1
     # match = 43621

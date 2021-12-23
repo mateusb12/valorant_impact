@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Tuple
 
 import lightgbm
 import optuna
@@ -38,9 +38,42 @@ class ValorantLGBM:
     def set_target(self, target: str):
         self.target = target
 
-    def trim_df(self):
-        combined = self.features + [self.target]
-        self.df = self.df[combined]
+    def get_default_features(self, **kwargs) -> List[str]:
+        global_features = ["RegularTime", "SpikeTime"]
+        raw_features = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators"]
+        roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
+        team_features = raw_features + roles
+        prefix_team_features = self.generate_atk_def_prefix(team_features)
+        trimmed = global_features + prefix_team_features
+        if "delete" in kwargs:
+            trimmed = [item for item in trimmed if item not in kwargs["delete"]]
+        return trimmed
+
+    def handle_dummy_column_names(self) -> Tuple[str] or None:
+        first_map_index = 0
+        df_columns = tuple(self.df.columns)
+        for index, column_name in enumerate(df_columns):
+            if column_name == "Team_B_Name":
+                first_map_index = index + 1
+                break
+        if first_map_index != 0:
+            return df_columns[first_map_index:]
+        else:
+            return None
+
+
+    @staticmethod
+    def generate_atk_def_prefix(variable_list: List[str]) -> List[str]:
+        atk_p = [f"ATK_{item}" for item in variable_list]
+        def_p = [f"DEF_{item}" for item in variable_list]
+        return atk_p + def_p
+
+    def set_default_features_without_multicollinearity(self):
+        raw_list = ["weaponValue", "shields", "remainingCreds"]
+        delete_list = self.generate_atk_def_prefix(raw_list)
+        self.set_features(self.get_default_features(delete=delete_list))
+        self.set_target("FinalWinner")
+        self.df = self.df[self.features + [self.target]]
 
     def set_delta_setup(self):
         self.set_delta_features()
@@ -49,30 +82,14 @@ class ValorantLGBM:
         self.set_target("FinalWinner")
         self.trim_df()
 
-    @staticmethod
-    def get_default_features(**kwargs) -> List[str]:
-        default = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_weaponValue", "ATK_shields",
-                   "ATK_remainingCreds", "ATK_operators", "ATK_Initiator", "ATK_Duelist", "ATK_Sentinel",
-                   "ATK_Controller", "DEF_loadoutValue", "DEF_weaponValue", "DEF_shields", "DEF_remainingCreds",
-                   "DEF_operators", "DEF_Initiator", "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
-        if "delete" in kwargs:
-            return [item for item in default if item not in kwargs["delete"]]
-        else:
-            return default
-
-    def set_default_features_without_multicollinearity(self):
-        raw_list = ["weaponValue", "shields", "remainingCreds"]
-        atk_list = [f"ATK_{item}" for item in raw_list]
-        def_list = [f"DEF_{item}" for item in raw_list]
-        delete_list = atk_list + def_list
-        self.set_features(self.get_default_features(delete=delete_list))
-        self.set_target("FinalWinner")
-        self.df = self.df[self.features + [self.target]]
-
     def set_delta_features(self):
         delta_features = ["loadoutValue", "operators", "Initiator", "Duelist", "Sentinel", "Controller"]
         for feature in delta_features:
             self.df[f"delta_{feature}"] = self.df[f"ATK_{feature}"] - self.df[f"DEF_{feature}"]
+
+    def trim_df(self):
+        combined = self.features + [self.target]
+        self.df = self.df[combined]
 
     def train_model(self, **kwargs):
         self.X = self.df.drop([self.target], axis='columns')

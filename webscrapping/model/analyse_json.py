@@ -265,9 +265,9 @@ class Analyser:
         round_time = kwargs["timestamp"]
         regular_time, spike_time = self.generate_spike_timings(kwargs["timestamp"], kwargs["plant"])
         round_winner = kwargs["winner"] if "winner" in kwargs else None
-        final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "FinalWinner": round_winner,
-                      "RoundID": self.chosen_round, "MatchID": self.match_id, "RoundNumber": self.round_number,
-                      "RoundTime": round_time}
+        final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.map_name["name"],
+                      "FinalWinner": round_winner, "RoundID": self.chosen_round, "MatchID": self.match_id,
+                      "RoundNumber": self.round_number, "RoundTime": round_time}
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():
@@ -356,7 +356,6 @@ class Analyser:
             elif event_type == "revival":
                 self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
-            # event = self.generate_single_event(timestamp=key, winner=round_winner, plant=plant)
             event = self.generate_single_event_values(timestamp=key, winner=round_winner, plant=plant)
             round_array.append(event)
         return round_array

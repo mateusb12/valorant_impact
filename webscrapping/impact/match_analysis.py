@@ -105,10 +105,10 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        all_features = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_operators", "ATK_Initiator", "ATK_Duelist",
-                        "ATK_Sentinel", "ATK_Controller", "DEF_loadoutValue", "DEF_operators", "DEF_Initiator",
-                        "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
-        all_features = self.vm.features
+        # all_features = ["RegularTime", "SpikeTime", "ATK_loadoutValue", "ATK_operators", "ATK_Initiator",
+        # "ATK_Duelist", "ATK_Sentinel", "ATK_Controller", "DEF_loadoutValue", "DEF_operators", "DEF_Initiator",
+        # "DEF_Duelist", "DEF_Sentinel", "DEF_Controller"]
+        all_features = self.model.feature_name_
         table = old_table[all_features].copy()
         # current_map = table.MapName.max()
         # map_names = ["Ascent", "Bind", "Breeze", "Haven", "Icebox", "Split", "Fracture"]

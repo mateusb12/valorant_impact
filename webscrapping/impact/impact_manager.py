@@ -6,6 +6,8 @@ import pandas as pd
 
 from match_analysis import RoundReplay, train_model
 from timeit import default_timer as timer
+
+from webscrapping.model.analyse_json import Analyser
 from webscrapping.model.time_analyser import time_metrics
 from webscrapping.wrapper.csv_manager import CsvCreator, CsvSplitter, CsvConverter
 from webscrapping.wrapper.scrap_matches import download_run
@@ -14,9 +16,12 @@ from webscrapping.wrapper.scrap_matches import download_run
 class PlayerImpact:
     def __init__(self, match_db: List[int] = None):
         self.fix_current_folder()
+        self.search_player = ""
         self.match_db = get_match_db_reference() if match_db is None else match_db
         print(os.getcwd())
         self.model = train_model()
+        self.rr = RoundReplay(self.model)
+        self.analyser = Analyser()
         self.available = self.existing_matches()
         self.failed_matches = []
 
@@ -88,6 +93,7 @@ class PlayerImpact:
         return rr.get_map_impact_dataframe()
 
     def get_player_impact_throughout_all_matches(self, player_name: str) -> pd.DataFrame:
+        self.search_player = player_name
         raw_impact = self.export_full_impact()
         raw_dfs_concat = pd.concat(raw_impact)
         player_df = raw_dfs_concat[raw_dfs_concat["Name"] == f"{player_name}"]
@@ -98,20 +104,22 @@ class PlayerImpact:
         impacts = []
         total_len = len(self.match_db)
         start = timer()
-        rr = RoundReplay(self.model)
+        rr = self.rr
+        player_name = self.search_player
         for index, key in enumerate(self.match_db):
             if key != 0:
                 rr.set_match(key)
+                self.analyser.set_match(key)
                 rr.choose_round(1)
-                loop = timer()
-                time_metrics(start=start, end=loop, index=index, size=total_len, tag="match", element=key)
-                # percentage = round((index + 1) / total_len * 100, 2)
-                # print(f"Analysing match {key}. Total: #{index}/{total_len}.    {percentage}%")
-                try:
-                    impacts.append(rr.get_map_impact_dataframe())
-                except KeyError:
-                    print("→ → → Match {} failed!".format(key))
-                    self.failed_matches.append(key)
+                existing_player = self.analyser.check_if_player_is_in_match(player_name)
+                if existing_player:
+                    loop = timer()
+                    time_metrics(start=start, end=loop, index=index, size=total_len, tag="match", element=key)
+                    try:
+                        impacts.append(rr.get_map_impact_dataframe())
+                    except KeyError:
+                        print("→ → → Match {} failed!".format(key))
+                        self.failed_matches.append(key)
         return impacts
 
     def analyse_full_impact(self) -> pd.DataFrame:
@@ -148,6 +156,9 @@ def analyse_tourney(file_output: str):
 
 
 if __name__ == "__main__":
+    # analyse_tourney("champions_impact.csv")
+    pi = PlayerImpact()
+    pi.get_player_impact_throughout_all_matches("leaf")
     # gmd_matches = ["43119", "43118", "43093", "43092", "43091", "42906", "42905", "41261", "41260", "41259", "39940",
     #                "39939", "39439", "39438", "39437", "33683", "33682", "33672", "33671", "33670", "33112", "33111",
     #                "33110", "30507", "30506", "30409", "30408", "30407", "29826", "29825", "29824", "29394", "29393",
@@ -161,7 +172,6 @@ if __name__ == "__main__":
     #                "8792", "8791", "8028", "8027"]
     # pi = PlayerImpact(gmd_matches)
     # pi.analyse_full_impact()
-    analyse_tourney("champions_impact.csv")
     # analyse_tourney("berlim.csv")
     # match_csv = pd.read_csv('..\\matches\\analysis\\search_list.csv', index_col=False)
     # matches = match_csv["MatchID"].tolist()

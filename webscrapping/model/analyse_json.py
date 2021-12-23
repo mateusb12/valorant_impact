@@ -427,6 +427,10 @@ class Analyser:
         aux = self.series_by_id["matches"]
         return {aux[index]["id"]: index + 1 for index in range(len(aux))}
 
+    def check_if_player_is_in_match(self, player_name: str) -> bool:
+        player_names = self.export_player_names().keys()
+        return player_name in player_names
+
     def export_round_events(self) -> dict:
         self.set_config(round=1)
         # self.set_config(map=self.chosen_map, round=self.chosen_round)
@@ -462,7 +466,7 @@ class Analyser:
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(44795)
-    q = a.export_df()
+    q = a.export_player_names()
     apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

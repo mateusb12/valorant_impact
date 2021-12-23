@@ -61,7 +61,6 @@ class ValorantLGBM:
         else:
             return None
 
-
     @staticmethod
     def generate_atk_def_prefix(variable_list: List[str]) -> List[str]:
         atk_p = [f"ATK_{item}" for item in variable_list]
@@ -70,6 +69,7 @@ class ValorantLGBM:
 
     def set_default_features_without_multicollinearity(self):
         raw_list = ["weaponValue", "shields", "remainingCreds"]
+        # raw_list = ["loadoutValue", "remainingCreds"]
         delete_list = self.generate_atk_def_prefix(raw_list)
         self.set_features(self.get_default_features(delete=delete_list))
         self.set_target("FinalWinner")
@@ -225,6 +225,22 @@ class ValorantLGBM:
         elif current_folder_name == "model":
             return current_folder
 
+    def get_importance_dict(self) -> dict:
+        return dict(zip(self.model.feature_name_, self.model.feature_importances_))
+
+    def test_probability(self, example: dict = None) -> float:
+        if example is None:
+            aux_df = pd.DataFrame([self.get_probability_input_example()])
+        else:
+            aux_df = pd.DataFrame([example])
+        return self.model.predict_proba(aux_df)[0][1]
+
+    @staticmethod
+    def get_probability_input_example() -> dict:
+        return {"RegularTime": 0, "SpikeTime": 0, "ATK_loadoutValue": 20750, "ATK_operators": 0, "ATK_Initiator": 2,
+                "ATK_Duelist": 1, "ATK_Sentinel": 1, "ATK_Controller": 1, "DEF_loadoutValue": 23700, "DEF_operators": 0,
+                "DEF_Initiator": 2, "DEF_Duelist": 1, "DEF_Sentinel": 1, "DEF_Controller": 1}
+
 
 if __name__ == "__main__":
     vm = ValorantLGBM("500.csv")
@@ -236,4 +252,5 @@ if __name__ == "__main__":
     # vm.set_target("RoundWinner")
     # vm.trim_df()
     vm.train_model()
+    print(vm.test_probability())
     vm.show_all_metrics()

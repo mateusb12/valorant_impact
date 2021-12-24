@@ -21,6 +21,7 @@ class ValorantLGBM:
     def __init__(self, filename: str):
         self.df = pd.read_csv(f"{self.get_dataset_reference()}\\{filename}")
         self.old_df = self.df.copy()
+        self.old_df_name = filename
         self.features: List[str] = []
         self.target = ""
         self.model = None
@@ -261,7 +262,7 @@ class ValorantLGBM:
 
 
 def get_trained_model() -> ValorantLGBM:
-    v = ValorantLGBM("500.csv")
+    v = ValorantLGBM("5000.csv")
     v.set_default_features_without_multicollinearity()
     v.train_model()
     return v

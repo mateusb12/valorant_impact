@@ -76,5 +76,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=500, name="500")
+    vm.export_dataset(size=5000, name="5000")
     print(vm.broken_matches)

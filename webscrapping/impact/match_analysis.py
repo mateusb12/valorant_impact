@@ -84,12 +84,9 @@ class RoundReplay:
                 minimum_probabilities_dict[round_id] = min_prob
 
         self.chosen_round = original_round
-        return {
-            k: v
-            for k, v in sorted(
-                minimum_probabilities_dict.items(), key=lambda item: item[1]
-            )
-        }
+        return dict(
+            sorted(minimum_probabilities_dict.items(), key=lambda item: item[1])
+        )
 
     @staticmethod
     def displace_column(input_df: pd.DataFrame, column_name: str):
@@ -411,31 +408,12 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    model = train_model()
-    rr = RoundReplay(model)
-    rr.set_match(44866)
-    rr.choose_round(13)
-    rr.plot_round(side="atk")
-    rr.get_map_impact_dataframe()
-    rr.get_round_probability(round=19, side="atk", add_events=True)
-    rr.get_map_impact_dataframe()
-    # rr.get_player_most_impactful_rounds("Bonecold")
-    # cr = rr.get_clutchy_rounds("atk")
-    apple = 5 + 1
-    # match = 43621
-    # series = 20464
-    # download_missing_matches(match, series)
-    # model = train_model()
-    # analysis_df = pd.read_csv('matches\\exports\\{}.csv'.format(match), index_col=False)
-    # rr = RoundReplay(match, analysis_df, model)
-    # smd.download_full_series(match_list=[43118, 43119])
-    # rr = generate_round_replay_example(match, series)
-    # q = rr.get_map_impact_dataframe()
-    # # q = rr.get_player_most_impactful_rounds("nAts")
-    # rr.choose_round(27)
-    # rr.round_events_dataframe()
-
-    # https://rib.gg/series/4103 Sentinels BO5 score 3-2
-    # https://rib.gg/series/18716 Liquid BO5 score 3-1
-    # https://rib.gg/series/18718 Furia BO5 score 3-0
-    # https://rib.gg/series/3173 Sentinels BO1
+    vv = get_trained_model()
+    rr = RoundReplay(vv.model)
+    rr.set_match(45189)
+    rr.choose_round(31)
+    print(rr.get_clutchy_rounds("atk"))
+    # rr.plot_round(side="atk")
+    # rr.get_map_impact_dataframe()
+    # rr.get_round_probability(round=19, side="atk", add_events=True)
+    # rr.get_map_impact_dataframe()

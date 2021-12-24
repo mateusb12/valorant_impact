@@ -14,7 +14,7 @@ class Analyser:
         self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
-        self.match_link, self.round_number = [None] * 2
+        self.match_link, self.round_number, self.team_number_dict = [None] * 3
 
     def set_match(self, input_index: int):
         input_file = f"{input_index}.json"
@@ -58,8 +58,8 @@ class Analyser:
         return Path(webscrapping, "matches")
 
     def get_json_folder(self) -> Path:
-        aux = self.get_matches_folder()
-        return Path(self.get_matches_folder(), "json")
+        matches = self.get_matches_folder()
+        return Path(matches, "json")
 
     def set_config(self, **kwargs):
         """
@@ -462,11 +462,36 @@ class Analyser:
 
         return export_events
 
+    def export_side_table(self) -> dict:
+        self.set_config(round=1)
+        team_1 = self.team_a
+        team_2 = self.team_b
+        round_amount = self.round_amount
+        side_dict = {}
+        for round_number in range(1, round_amount + 1):
+            self.set_config(round=round_number)
+            current_round_sides = self.current_round_sides
+            sides = {team_1["name"]: 1, team_2["name"]: 2}
+            side_dict[round_number] = {team_1["name"]: current_round_sides[sides[team_1["name"]]],
+                                       team_2["name"]: current_round_sides[sides[team_2["name"]]]}
+        return side_dict
+
+    def export_initial_sides(self) -> dict:
+        team_1 = self.team_a["name"]
+        team_2 = self.team_b["name"]
+        mirror = {1: 2, 2: 1}
+        attacking_first = self.attacking_first_team
+        defending_first = mirror[attacking_first]
+        team_numbers = {1: team_1, 2: team_2}
+        return {"attacking_first": team_numbers[self.attacking_first_team],
+                "defending_first": team_numbers[defending_first]}
+
+
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(29383)
-    q = a.export_df()
+    a.set_match(45189)
+    q = a.export_side_table()
     apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

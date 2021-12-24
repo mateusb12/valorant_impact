@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classification_report
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from timeit import default_timer as timer
 
 import pandas as pd
 from pathlib import Path
@@ -262,9 +263,13 @@ class ValorantLGBM:
 
 
 def get_trained_model() -> ValorantLGBM:
-    v = ValorantLGBM("5000.csv")
+    dataset = "5000.csv"
+    start = timer()
+    v = ValorantLGBM(dataset)
     v.set_default_features_without_multicollinearity()
     v.train_model()
+    end = timer()
+    print(colored(f"Model loading time: {end - start}", "green"))
     return v
 
 

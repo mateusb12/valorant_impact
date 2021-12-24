@@ -175,9 +175,9 @@ def analyse_tourney(file_output: str):
 
 
 if __name__ == "__main__":
-    # analyse_tourney("champions_impact.csv")
-    pi = PlayerImpact()
-    pi.get_player_impact_throughout_all_matches("chronicle")
+    analyse_tourney("champions_impact.csv")
+    # pi = PlayerImpact()
+    # pi.get_player_impact_throughout_all_matches("chronicle")
     # gmd_matches = ["43119", "43118", "43093", "43092", "43091", "42906", "42905", "41261", "41260", "41259", "39940",
     #                "39939", "39439", "39438", "39437", "33683", "33682", "33672", "33671", "33670", "33112", "33111",
     #                "33110", "30507", "30506", "30409", "30408", "30407", "29826", "29825", "29824", "29394", "29393",

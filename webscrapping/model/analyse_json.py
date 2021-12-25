@@ -242,7 +242,7 @@ class Analyser:
         def_dict = {item: 0 for item in features}
         shield_table = {0: 0, 1: 25, 2: 50}
 
-        for key, value in player_table.items():
+        for value in player_table.values():
             player_state = value["alive"]
             if player_state:
                 weapon_id = str(value["weaponId"])
@@ -486,12 +486,23 @@ class Analyser:
         return {"attacking_first": team_numbers[self.attacking_first_team],
                 "defending_first": team_numbers[defending_first]}
 
+    def export_player_agent_picks(self) -> dict:
+        self.set_config(round=1)
+        map_dict = self.get_series_by_id_match()
+        agent_pick_dict = {}
+        for item in map_dict["players"]:
+            player_name = item["player"]["ign"]
+            agent_id = item["agentId"]
+            agent_name = self.agent_data[str(agent_id)]["name"]
+            agent_pick_dict[player_name] = agent_name
+        return agent_pick_dict
 
 
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(45189)
-    q = a.export_side_table()
+    q = a.export_player_agent_picks()
+    # q = a.export_side_table()
     apple = 5 + 1
     # q = a.generate_full_round()
     # dm = a.export_round_events()

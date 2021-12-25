@@ -264,7 +264,7 @@ class RoundReplay:
 
         return dict(sorted(pi.items(), key=lambda item: item[1]["delta"], reverse=True))
 
-    def get_map_impact_dataframe(self) -> pd.DataFrame:
+    def get_map_impact_dataframe(self, **kwargs) -> pd.DataFrame:
         igns = []
         gains = []
         losses = []
@@ -278,7 +278,11 @@ class RoundReplay:
         match_id = [self.match_id] * len(igns)
 
         impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas, "MatchID": match_id}
-        return pd.DataFrame(impact_table)
+        aux_impact = pd.DataFrame(impact_table)
+        if "agents" in kwargs:
+            agent_dict = self.analyser.export_player_agent_picks()
+            aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
+        return aux_impact
 
     @staticmethod
     def letterify(number: int, **kwargs):
@@ -411,6 +415,7 @@ if __name__ == "__main__":
     vv = get_trained_model()
     rr = RoundReplay(vv.model)
     rr.set_match(45189)
+    aux = rr.get_map_impact_dataframe(agents=True)
     rr.choose_round(31)
     print(rr.get_clutchy_rounds("atk"))
     # rr.plot_round(side="atk")

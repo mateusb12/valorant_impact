@@ -33,6 +33,31 @@ def set_match():
     return f"Match {match} successfully set!", 201
 
 
+@app.route('/set_round/<round_number>', methods=["POST"])
+def set_round(round_number):
+    print(f"round → {round_number}")
+    rr.choose_round(round_number)
+    return f"Round {round_number} successfully set!", 201
+
+
+@app.route('/get_clutchy_rounds/<side>', methods=["GET"])
+def get_clutchy_rounds(side):
+    clutchy_rounds = rr.get_clutchy_rounds(side)
+    return jsonify(clutchy_rounds)
+
+
+@app.route("/get_player_most_impactful_rounds/", methods=["POST"])
+def get_player_most_impactful_rounds():
+    input_json = request.get_json(force=True)
+    player_name = input_json["Player"]
+    try:
+        player_most_impactful_rounds_df = rr.get_player_most_impactful_rounds(player_name)
+        dict_to_return = player_most_impactful_rounds_df.to_dict('list')
+        return jsonify(dict_to_return)
+    except KeyError:
+        return f"Could not find [{player_name}] in match #{analyser.match_id}", 404
+
+
 @app.route('/get_match_gamestate', methods=["GET"])
 def get_match_gamestate():
     gamestate_df = analyser.export_df()

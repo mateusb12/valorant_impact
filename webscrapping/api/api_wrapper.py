@@ -46,6 +46,21 @@ def get_clutchy_rounds(side):
     return jsonify(clutchy_rounds)
 
 
+@app.route('/get_round_probability/<input_side>', methods=["GET"])
+def get_round_probability(input_side):
+    round_probability_df = rr.get_round_probability(side=input_side, add_events=True)
+    dict_to_return = round_probability_df.to_dict('list')
+    return jsonify(dict_to_return)
+
+
+@app.route('/get_round_impact', methods=["GET"])
+def get_round_impact():
+    round_impact_df = rr.get_round_impact_dataframe()
+    round_impact_df["Player"] = round_impact_df.index
+    dict_to_return = round_impact_df.to_dict('list')
+    return jsonify(dict_to_return)
+
+
 @app.route("/get_player_most_impactful_rounds/", methods=["POST"])
 def get_player_most_impactful_rounds():
     input_json = request.get_json(force=True)

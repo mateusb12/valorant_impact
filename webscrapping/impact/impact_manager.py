@@ -24,6 +24,7 @@ class PlayerImpact:
         self.analyser = Analyser()
         self.available = self.existing_matches()
         self.failed_matches = []
+        self.analysis_type = None
 
     @staticmethod
     def fix_current_folder():
@@ -113,7 +114,12 @@ class PlayerImpact:
                 loop = timer()
                 time_metrics(start=start, end=loop, index=index, size=total_len, tag="match", element=key)
                 try:
-                    impacts.append(rr.get_map_impact_dataframe())
+                    impact = [5]
+                    if self.analysis_type == "player":
+                        impact = rr.get_map_impact_dataframe()
+                    elif self.analysis_type == "agent":
+                        impact = rr.get_map_impact_dataframe(agents=True)
+                    impacts.append(impact)
                 except KeyError:
                     print("→ → → Match {} failed!".format(key))
                     self.failed_matches.append(key)
@@ -135,21 +141,25 @@ class PlayerImpact:
                     loop = timer()
                     time_metrics(start=start, end=loop, index=index, size=total_len, tag="match", element=key)
                     try:
-                        impacts.append(rr.get_map_impact_dataframe())
+                        impact = rr.get_map_impact_dataframe()
+                        impacts.append(impact)
                     except KeyError:
                         print("→ → → Match {} failed!".format(key))
                         self.failed_matches.append(key)
         return impacts
 
-    def analyse_full_impact(self) -> pd.DataFrame:
+    def analyse_full_impact(self, **kwargs) -> pd.DataFrame:
+        self.analysis_type = kwargs["type"]
         raw_dfs = self.export_full_impact()
         raw_dfs_concat = pd.concat(raw_dfs)
         raw_dfs_concat = raw_dfs_concat.drop(["MatchID"], axis=1)
-        aux = raw_dfs_concat.groupby('Name').agg({'Delta': ['sum', 'count'], "Gain": "sum", "Lost": "sum"})
+        analysis_dict = {"agent": "Agent", "player": "Name"}
+        bias = analysis_dict[self.analysis_type]
+        aux = raw_dfs_concat.groupby(bias).agg({'Delta': ['sum', 'count'], "Gain": "sum", "Lost": "sum"})
         aux.columns = aux.columns.map("_".join)
-        aux["Name"] = aux.index
+        aux[bias] = aux.index
         aux = aux.reset_index(drop=True)
-        aux = aux[["Name", "Gain_sum", "Lost_sum", "Delta_sum", "Delta_count"]]
+        aux = aux[[bias, "Gain_sum", "Lost_sum", "Delta_sum", "Delta_count"]]
         aux = aux.rename(columns={"Delta_count": "Matches"})
         aux = aux.sort_values("Delta_sum", ascending=False)
         aux['Delta_avg'] = aux['Delta_sum'] / aux['Matches']
@@ -162,20 +172,21 @@ def get_match_db_reference():
     return match_csv["MatchID"].tolist()
 
 
-def analyse_tourney(file_output: str):
+def analyse_tourney(file_output: str, **kwargs):
+    analysis_type = kwargs["type"]
     current_folder = Path(os.getcwd())
     export_folder = Path(current_folder, "impact_exports")
     matches = get_match_db_reference()
 
     pimp = PlayerImpact(matches)
     # pimp.download_missing_matches("championsmatches.csv")
-    q = pimp.analyse_full_impact()
+    q = pimp.analyse_full_impact(type=analysis_type)
     q.to_csv(f"{export_folder}\\{file_output}", index=False)
     print(f"{file_output} generated!")
 
 
 if __name__ == "__main__":
-    analyse_tourney("champions_impact.csv")
+    analyse_tourney("champions_impact.csv", type="agent")
     # pi = PlayerImpact()
     # pi.get_player_impact_throughout_all_matches("chronicle")
     # gmd_matches = ["43119", "43118", "43093", "43092", "43091", "42906", "42905", "41261", "41260", "41259", "39940",

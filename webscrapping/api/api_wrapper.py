@@ -1,0 +1,52 @@
+import ast
+
+from termcolor import colored
+
+from webscrapping.impact.match_analysis import RoundReplay
+from webscrapping.model.analyse_json import Analyser
+from flask import Flask, jsonify, request
+from timeit import default_timer as timer
+
+from webscrapping.model.lgbm_model import get_trained_model
+
+start = timer()
+app = Flask(__name__)
+analyser = Analyser()
+vv = get_trained_model()
+rr = RoundReplay(vv.model)
+
+
+@app.route("/")
+def homepage():
+    raw_dict = {"a": "b", "b": "c"}
+    return jsonify(raw_dict)
+
+
+@app.route('/set_match', methods=["POST"])
+def set_match():
+    input_json = request.get_json(force=True)
+    analyser.set_match(0, json=input_json)
+    analyser.set_config(round=1)
+    match = analyser.match_id
+    print(f"match → {match}")
+    rr.set_match(match)
+    return f"Match {match} successfully set!", 201
+
+
+@app.route('/get_match_gamestate', methods=["GET"])
+def get_match_gamestate():
+    gamestate_df = analyser.export_df()
+    dict_to_return = gamestate_df.to_dict('list')
+    return jsonify(dict_to_return)
+
+
+@app.route('/get_map_impact', methods=["GET"])
+def get_map_impact():
+    map_impact_df = rr.get_map_impact_dataframe()
+    dict_to_return = map_impact_df.to_dict('list')
+    return jsonify(dict_to_return)
+
+
+end = timer()
+print(colored(f"API  loading time: {end - start}", "red"))
+app.run()

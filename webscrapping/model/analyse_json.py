@@ -16,15 +16,17 @@ class Analyser:
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
         self.match_link, self.round_number, self.team_number_dict = [None] * 3
 
-    def set_match(self, input_index: int):
+    def open_file(self, input_index: int) -> dict:
         input_file = f"{input_index}.json"
         json_folder = self.get_json_folder()
         data_file = open(f'{json_folder}\\{input_file}', encoding="utf-8")
         body_txt = data_file.read()
-        self.data = {}
-        self.trim_trash_code(body_txt)
+        return self.trim_trash_code(body_txt)
 
-        self.raw_match_id = int(input_file.split(".")[0])
+    def set_match(self, input_index: int, **kwargs):
+        self.data = kwargs["json"] if "json" in kwargs else self.open_file(input_index)
+
+        self.raw_match_id = input_index
         model_folder = Path(self.get_matches_folder(), "model")
         weapon_file = open(f'{model_folder}/weapon_table.json')
         self.weapon_data = json.load(weapon_file)
@@ -47,6 +49,17 @@ class Analyser:
 
         self.team_a = self.get_team_a()
         self.team_b = self.get_team_b()
+
+    @staticmethod
+    def trim_trash_code(code_string: str):
+        """
+        Trim the trash code from the json file, making the json readable
+        """
+        first_segment = code_string[:24]
+        if first_segment != "window.__INITIAL_STATE__":
+            return json.loads(code_string)
+        new_format = code_string[45:]
+        return json.loads(new_format)
 
     @staticmethod
     def get_matches_folder():
@@ -109,17 +122,6 @@ class Analyser:
             side_pattern += ["inverse"] * remaining
 
         return {i: side for i, side in enumerate(side_pattern, 1)}
-
-    def trim_trash_code(self, code_string: str):
-        """
-        Trim the trash code from the json file, making the json readable
-        """
-        first_segment = code_string[0:24]
-        if first_segment == "window.__INITIAL_STATE__":
-            new_format = code_string[45:]
-            self.data = json.loads(new_format)
-        else:
-            self.data = json.loads(code_string)
 
     def get_team_a(self):
         aux = self.series_by_id
@@ -501,7 +503,8 @@ class Analyser:
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(45189)
-    q = a.export_player_agent_picks()
+    q = a.export_df()
+    w = q.to_dict('list')
     # q = a.export_side_table()
     apple = 5 + 1
     # q = a.generate_full_round()

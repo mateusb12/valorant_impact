@@ -223,7 +223,7 @@ class ValorantLGBM:
     def get_optuna_reference() -> Path:
         current_folder = Path(os.getcwd())
         current_folder_name = current_folder.name
-        if current_folder_name == "impact":
+        if current_folder_name in ("impact", "api"):
             webscrapping = current_folder.parent
             return Path(webscrapping, "model")
         elif current_folder_name == "model":

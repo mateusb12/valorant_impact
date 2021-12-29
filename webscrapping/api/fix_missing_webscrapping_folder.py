@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 import os
 
@@ -11,4 +12,4 @@ def webscrapping_fix():
     # sys.path.append("E:\\Python\\Classification_datascience")
 
 
-print(webscrapping_fix())
+sys.path.append(webscrapping_fix())

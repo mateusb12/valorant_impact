@@ -2,10 +2,9 @@ import pathlib
 import sys
 
 from termcolor import colored
-from fix_imports import webscrapping_fix
+import fix_missing_webscrapping_folder
 import os
 
-sys.path.append(webscrapping_fix())
 from webscrapping.impact.match_analysis import RoundReplay
 from webscrapping.model.analyse_json import Analyser
 from flask import Flask, jsonify, request

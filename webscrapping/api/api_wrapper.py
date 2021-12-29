@@ -42,12 +42,18 @@ def set_round(round_number):
 
 @app.route('/get_clutchy_rounds/<side>', methods=["GET"])
 def get_clutchy_rounds(side):
+    """
+    :param side: "atk" or "def
+    """
     clutchy_rounds = rr.get_clutchy_rounds(side)
     return jsonify(clutchy_rounds)
 
 
 @app.route('/get_round_probability/<input_side>', methods=["GET"])
 def get_round_probability(input_side):
+    """
+    :param input_side: "atk" or "def
+    """
     round_probability_df = rr.get_round_probability(side=input_side, add_events=True)
     dict_to_return = round_probability_df.to_dict('list')
     return jsonify(dict_to_return)
@@ -55,6 +61,12 @@ def get_round_probability(input_side):
 
 @app.route('/get_round_impact', methods=["GET"])
 def get_round_impact():
+    """
+    Json format
+    {
+        "Player": "nAts"
+    }
+    """
     round_impact_df = rr.get_round_impact_dataframe()
     round_impact_df["Player"] = round_impact_df.index
     dict_to_return = round_impact_df.to_dict('list')

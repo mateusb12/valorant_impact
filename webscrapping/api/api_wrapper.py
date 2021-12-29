@@ -1,11 +1,16 @@
-import ast
+import pathlib
+import sys
 
 from termcolor import colored
+from fix_imports import webscrapping_fix
+import os
 
+sys.path.append(webscrapping_fix())
 from webscrapping.impact.match_analysis import RoundReplay
 from webscrapping.model.analyse_json import Analyser
 from flask import Flask, jsonify, request
 from timeit import default_timer as timer
+from pathlib import Path
 
 from webscrapping.model.lgbm_model import get_trained_model
 
@@ -14,6 +19,11 @@ app = Flask(__name__)
 analyser = Analyser()
 vv = get_trained_model()
 rr = RoundReplay(vv.model)
+
+
+def get_webscrapping_path():
+    current_folder = pathlib.Path(os.getcwd())
+    return current_folder.parent
 
 
 @app.route("/")
@@ -97,6 +107,13 @@ def get_map_impact():
     map_impact_df = rr.get_map_impact_dataframe()
     dict_to_return = map_impact_df.to_dict('list')
     return jsonify(dict_to_return)
+
+
+def webscrapping_fix():
+    current_folder = Path(os.getcwd())
+    webscrapping_folder = current_folder.parent
+    root_folder = webscrapping_folder.parent
+    return str(root_folder)
 
 
 end = timer()

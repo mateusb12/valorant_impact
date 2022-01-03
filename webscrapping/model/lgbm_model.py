@@ -18,9 +18,21 @@ from termcolor import colored
 from webscrapping.model.analyse_json import Analyser
 
 
+def get_dataset_reference() -> Path:
+    current_folder = Path(os.getcwd())
+    current_folder_name = current_folder.name
+    if current_folder_name == "model":
+        webscrapping = current_folder.parent
+    elif current_folder_name == "model_improvement":
+        webscrapping = current_folder.parent.parent
+    else:
+        Exception("Can't find webscrapping folder")
+    return Path(webscrapping, "matches", "datasets")
+
+
 class ValorantLGBM:
     def __init__(self, filename: str):
-        self.df = pd.read_csv(f"{self.get_dataset_reference()}\\{filename}")
+        self.df = pd.read_csv(f"{get_dataset_reference()}\\{filename}")
         self.old_df = self.df.copy()
         self.old_df_name = filename
         self.features: List[str] = []
@@ -214,12 +226,6 @@ class ValorantLGBM:
         self.get_f1_score()
 
     @staticmethod
-    def get_dataset_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        webscrapping = current_folder.parent
-        return Path(webscrapping, "matches", "datasets")
-
-    @staticmethod
     def get_optuna_reference() -> Path:
         current_folder = Path(os.getcwd())
         current_folder_name = current_folder.name
@@ -228,6 +234,8 @@ class ValorantLGBM:
             return Path(webscrapping, "model")
         elif current_folder_name == "model":
             return current_folder
+        elif current_folder_name == "model_improvement":
+            return current_folder.parent
 
     def get_importance_dict(self) -> dict:
         return dict(zip(self.model.feature_name_, self.model.feature_importances_))
@@ -271,6 +279,10 @@ def get_trained_model() -> ValorantLGBM:
     end = timer()
     print(colored(f"Model loading time: {end - start}", "green"))
     return v
+
+
+def get_dataset() -> pd.DataFrame:
+    return pd.read_csv(f"{get_dataset_reference()}\\5000.csv")
 
 
 if __name__ == "__main__":

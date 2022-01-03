@@ -9,7 +9,6 @@ def webscrapping_fix():
     root_folder = webscrapping_folder.parent
     aux = str(root_folder)
     return str(root_folder)
-    # sys.path.append("E:\\Python\\Classification_datascience")
 
 
 sys.path.append(webscrapping_fix())

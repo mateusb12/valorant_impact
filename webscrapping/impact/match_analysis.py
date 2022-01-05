@@ -23,7 +23,7 @@ class RoundReplay:
         self.vm: ValorantLGBM = get_trained_model()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
-        self.feature_df, self.events_data = [None] * 2
+        self.feature_df, self.events_data, self.side = [None] * 3
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -103,6 +103,31 @@ class RoundReplay:
         displaced.append(last)
         input_df[column_name] = displaced
 
+    def get_displaced_preds(self, input_table: pd.DataFrame) -> dict:
+        displaced_table = input_table.copy()
+        self.displace_column(displaced_table, "RegularTime")
+        self.displace_column(displaced_table, "SpikeTime")
+        first_row = pd.DataFrame(input_table.iloc[0]).transpose()
+        displaced_table = pd.concat([first_row, displaced_table]).reset_index(drop=True)
+        displaced_table = displaced_table[:-1]
+        default_pred = self.model.predict_proba(input_table)[:, 1]
+        displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
+        return {"default": default_pred, "displaced": displaced_pred}
+
+    def handle_defuse_situation(self, input_table: pd.DataFrame):
+        events: list = list(input_table["EventType"])
+        proba_after = list(input_table["Probability_after_event"])
+        proba_before = list(input_table["Probability_before_event"])
+        defuse_index = [i for i, x in enumerate(events) if x == "defuse"][0]
+        new_side_value = {"atk": 0, "def": 1}
+        side_value = new_side_value[self.side]
+        trim_size = len(input_table["EventType"]) - defuse_index
+        if defuse_index + 1 < len(events):
+            proba_before[defuse_index + 1:] = [side_value] * trim_size
+            input_table["Probability_before_event"] = proba_before
+        proba_after[defuse_index:] = [side_value] * trim_size
+        input_table["Probability_after_event"] = proba_after
+
     def get_round_probability(self, **kwargs):
         """
         :param kwargs: round_number: int
@@ -112,38 +137,19 @@ class RoundReplay:
         """
         round_number = self.chosen_round
         old_table = self.get_round_dataframe(round_number)
-        times = tuple(old_table["RoundTime"])
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
-        displaced_table = table.copy()
-        self.displace_column(displaced_table, "RegularTime")
-        self.displace_column(displaced_table, "SpikeTime")
-        first_row = pd.DataFrame(table.iloc[0]).transpose()
-        displaced_table = pd.concat([first_row, displaced_table]).reset_index(drop=True)
-        displaced_table = displaced_table[:-1]
-        default_pred = self.model.predict_proba(table)[:, 1]
-        displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
-        table["ATK_Prob_before_event"] = displaced_pred
-        table["ATK_Prob_after_event"] = default_pred
+        displaced_dict = self.get_displaced_preds(table)
+        displaced_pred = displaced_dict["displaced"]
+        default_pred = displaced_dict["default"]
         table["Probability_before_event"] = displaced_pred
         table["Probability_after_event"] = default_pred
-        table["Difference (%)"] = table["ATK_Prob_after_event"] - table["ATK_Prob_before_event"]
-        del table["ATK_Prob_before_event"]
-        table = table.rename(columns={'ATK_Prob_after_event': 'Win_probability'})
         side = kwargs["side"]
+        self.side = side
         if side == "def":
-            table['Win_probability'] = table['Win_probability'].apply(lambda x: 1 - x)
-            table['Difference (%)'] = table['Difference (%)'].apply(lambda x: -1 * x)
-        table['Win_probability'] = table['Win_probability'].apply(lambda x: 100 * x)
-        table['Difference (%)'] = table['Difference (%)'].apply(lambda x: 100 * x)
-        raw_timings = [round(x / 1000, 2) for x in old_table.RoundTime]
-        table["Round time"] = raw_timings
-        integer_timings = [int(round(x / 1000, 0)) for x in old_table.RoundTime]
-        winner = self.get_round_winners()[round_number]
-        tag_dict = {0: "def", 1: "atk"}
-        table["Final Winner"] = tag_dict[winner]
+            table['Probability_before_event'] = table['Probability_before_event'].apply(lambda y: 1 - y)
+            table['Probability_after_event'] = table['Probability_after_event'].apply(lambda y: 1 - y)
         table["Round"] = round_number
-        table["Integer time"] = old_table.RoundTime
         current_round_events = self.events_data[self.chosen_round]
         event_ids = [0]
         for x in current_round_events:
@@ -155,10 +161,17 @@ class RoundReplay:
                 event_ids.append(query_id[0])
         table["EventID"] = event_ids
         event_types = [x["eventType"] for x in current_round_events]
+        defuse = True if "defuse" in event_types else False
         event_types.insert(0, "start")
         table["EventType"] = event_types
-        table = table.rename(columns={'Difference (%)': 'Impact'})
-        table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event", "Impact"]]
+
+        if defuse:
+            self.handle_defuse_situation(table)
+
+        table["Impact"] = table["Probability_after_event"] - table["Probability_before_event"]
+        table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
+                       "Impact"]]
+
         if "add_events" in kwargs and kwargs["add_events"]:
             extra_df = self.round_events_dataframe()
             table.reset_index(drop=True, inplace=True)
@@ -435,17 +448,15 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 if __name__ == "__main__":
     rr = RoundReplay()
-    rr.set_match(44795)
-    rr.choose_round(3)
+    rr.set_match(44866)
+    rr.choose_round(5)
     round_impact_df = rr.get_round_impact_dataframe()
     round_impact_df["Player"] = round_impact_df.index
     dict_to_return = round_impact_df.to_dict('list')
 
-
     # aux = rr.get_map_impact_dataframe(agents=True)
     # rr.choose_round(31)
     # print(rr.get_clutchy_rounds("atk"))
-
 
     # rr.plot_round(side="atk")
     # rr.get_map_impact_dataframe()

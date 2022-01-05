@@ -140,7 +140,7 @@ class Analyser:
         return {"id": aux["team2"]["id"], "name": aux["team2"]["name"]}
 
     def get_plant_timestamp(self):
-        for h in self.round_events.values():
+        for h in self.round_events:
             if h["event"] == "plant":
                 return h["timing"]
         return None
@@ -190,22 +190,22 @@ class Analyser:
                 player_dict[player_id] = aux
         return player_dict
 
-    def get_round_events(self) -> dict:
+    def get_round_events(self) -> list[dict]:
         """
         Get the events of the round (kills, deaths, plants, defuses, etc)
         :return:
         """
-        return {
-            m["roundTimeMillis"]: {
+        return [
+            {
                 "round_number": m["roundNumber"],
-                "victim": m["referencePlayerId"],
-                "event": m["eventType"],
                 "timing": m["roundTimeMillis"],
-                "author": m["playerId"]
+                "author": m["playerId"],
+                "event": m["eventType"],
+                "victim": m["referencePlayerId"],
             }
             for m in self.data["matches"]["matchDetails"]["events"]
             if m["roundId"] == self.chosen_round
-        }
+        ]
 
     def get_round_winner(self) -> int:
         for match in self.series_by_id["matches"]:
@@ -366,11 +366,13 @@ class Analyser:
         round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
         round_array = [round_start]
         self.round_events = self.get_round_events()
+        re = self.round_events
         sides = self.get_player_sides()
         atk_kills = 0
         def_kills = 0
-        for key, value in self.round_events.items():
+        for value in self.round_events:
             event_type: str = value["event"]
+            timing: int = value["timing"]
             self.event_type = event_type
             situation = self.current_status
             if event_type == "kill":
@@ -386,7 +388,7 @@ class Analyser:
             elif event_type == "defuse":
                 self.defuse_happened = True
 
-            event = self.generate_single_event_values(timestamp=key, winner=round_winner, plant=plant)
+            event = self.generate_single_event_values(timestamp=timing, winner=round_winner, plant=plant)
             event["ATK_kills"] = atk_kills
             event["DEF_kills"] = def_kills
             round_array.append(event)
@@ -533,7 +535,7 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(44787)
+    a.set_match(44786)
     q = a.export_df()
     w = q.to_dict('list')
     # q = a.export_side_table()

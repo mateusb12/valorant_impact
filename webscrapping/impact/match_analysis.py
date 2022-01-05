@@ -23,7 +23,7 @@ class RoundReplay:
         self.vm: ValorantLGBM = get_trained_model()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
-        self.feature_df = None
+        self.feature_df, self.events_data = [None] * 2
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -35,6 +35,11 @@ class RoundReplay:
         self.query = self.df.query("MatchID == {}".format(match_id))
         self.round_table = self.get_round_table()
         self.chosen_round = None
+        event_list = self.analyser.data["matches"]["matchDetails"]["events"]
+        aux_dict = {i: [] for i in range(1, self.round_amount + 1)}
+        for item in self.analyser.data["matches"]["matchDetails"]["events"]:
+            aux_dict[item["roundNumber"]].append(item)
+        self.events_data = aux_dict
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
@@ -120,6 +125,8 @@ class RoundReplay:
         displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
         table["ATK_Prob_before_event"] = displaced_pred
         table["ATK_Prob_after_event"] = default_pred
+        table["Probability_before_event"] = displaced_pred
+        table["Probability_after_event"] = default_pred
         table["Difference (%)"] = table["ATK_Prob_after_event"] - table["ATK_Prob_before_event"]
         del table["ATK_Prob_before_event"]
         table = table.rename(columns={'ATK_Prob_after_event': 'Win_probability'})
@@ -137,8 +144,21 @@ class RoundReplay:
         table["Final Winner"] = tag_dict[winner]
         table["Round"] = round_number
         table["Integer time"] = old_table.RoundTime
-        table = table[["Round time", "Win_probability", "Difference (%)", "Final Winner", "Round",
-                       "Integer time"]]
+        current_round_events = self.events_data[self.chosen_round]
+        event_ids = [0]
+        for x in current_round_events:
+            raw_ids = [x["killId"], x["bombId"], x["resId"]]
+            query_id = [x for x in raw_ids if x is not None]
+            if len(query_id) != 1:
+                Exception("Error in query")
+            else:
+                event_ids.append(query_id[0])
+        table["EventID"] = event_ids
+        event_types = [x["eventType"] for x in current_round_events]
+        event_types.insert(0, "start")
+        table["EventType"] = event_types
+        table = table.rename(columns={'Difference (%)': 'Impact'})
+        table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event", "Impact"]]
         if "add_events" in kwargs and kwargs["add_events"]:
             extra_df = self.round_events_dataframe()
             table.reset_index(drop=True, inplace=True)

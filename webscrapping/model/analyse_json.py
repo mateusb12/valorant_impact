@@ -15,7 +15,7 @@ class Analyser:
         self.round_events, self.map_id, self.map_name, self.round_table, self.reverse_round_table = [None] * 5
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
-        self.match_link, self.round_number, self.team_number_dict = [None] * 3
+        self.match_link, self.round_number, self.team_number_dict, self.defuse_happened, self.event_type = [None] * 5
 
     def open_file(self, input_index: int) -> dict:
         input_file = f"{input_index}.json"
@@ -224,11 +224,13 @@ class Analyser:
 
         # return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
 
-    @staticmethod
-    def generate_spike_timings(round_millis: int, plant_millis: int) -> Tuple:
+    def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple:
         if round_millis == plant_millis:
             regular_time = 0
             spike_time = 45000
+        elif self.defuse_happened:
+            regular_time = 0
+            spike_time = 0
         elif (
                 plant_millis is not None
                 and round_millis <= plant_millis
@@ -357,6 +359,8 @@ class Analyser:
 
     def generate_full_round(self) -> list:
         plant = self.get_plant_timestamp()
+        self.defuse_happened = False
+        self.event_type = "start"
         self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
         round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
@@ -366,7 +370,8 @@ class Analyser:
         atk_kills = 0
         def_kills = 0
         for key, value in self.round_events.items():
-            event_type = value["event"]
+            event_type: str = value["event"]
+            self.event_type = event_type
             situation = self.current_status
             if event_type == "kill":
                 self.current_status[value["victim"]]["alive"] = False
@@ -378,6 +383,9 @@ class Analyser:
             elif event_type == "revival":
                 self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
+            elif event_type == "defuse":
+                self.defuse_happened = True
+
             event = self.generate_single_event_values(timestamp=key, winner=round_winner, plant=plant)
             event["ATK_kills"] = atk_kills
             event["DEF_kills"] = def_kills
@@ -525,7 +533,7 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(45334)
+    a.set_match(44786)
     q = a.export_df()
     w = q.to_dict('list')
     # q = a.export_side_table()

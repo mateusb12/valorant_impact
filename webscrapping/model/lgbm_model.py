@@ -252,8 +252,9 @@ class ValorantLGBM:
 
     @staticmethod
     def get_probability_input_example() -> dict:
-        return {"RegularTime": 0, "SpikeTime": 0, "ATK_loadoutValue": 20750, "ATK_operators": 0, "ATK_Initiator": 2,
-                "ATK_Duelist": 1, "ATK_Sentinel": 1, "ATK_Controller": 1, "DEF_loadoutValue": 23700, "DEF_operators": 0,
+        return {"RegularTime": 0, "SpikeTime": 0, "ATK_loadoutValue": 20750, "ATK_Initiator": 2,
+                "ATK_Duelist": 1, "ATK_Sentinel": 1, "ATK_Controller": 1, "ATK_kills": 1,
+                "DEF_loadoutValue": 23700, "DEF_operators": 0, "DEF_kills": 1,
                 "DEF_Initiator": 2, "DEF_Duelist": 1, "DEF_Sentinel": 1, "DEF_Controller": 1}
 
     def query_example(self, **kwargs) -> dict:

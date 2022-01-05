@@ -68,14 +68,21 @@ def get_round_probability(input_side):
     return jsonify(dict_to_return)
 
 
-@app.route('/get_round_impact', methods=["GET"])
+@app.route('/get_round_impact/', methods=["POST"])
 def get_round_impact():
     """
     Json format
     {
-        "Player": "nAts"
+        "match_id": 44795,
+        "round": 1
     }
     """
+    input_json = request.get_json(force=True)
+    print(input_json)
+    match_id = input_json["match_id"]
+    round_number = input_json["round"]
+    rr.set_match(match_id)
+    rr.choose_round(round_number)
     round_impact_df = rr.get_round_impact_dataframe()
     round_impact_df["Player"] = round_impact_df.index
     dict_to_return = round_impact_df.to_dict('list')

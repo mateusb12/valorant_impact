@@ -21,7 +21,7 @@ from webscrapping.model.analyse_json import Analyser
 def get_dataset_reference() -> Path:
     current_folder = Path(os.getcwd())
     current_folder_name = current_folder.name
-    if current_folder_name == "model":
+    if current_folder_name in ("model", "api", "impact"):
         webscrapping = current_folder.parent
     elif current_folder_name == "model_improvement":
         webscrapping = current_folder.parent.parent

@@ -26,7 +26,8 @@ class Analyser:
 
     def set_match(self, input_index: int, **kwargs):
         # self.data = kwargs["json"] if "json" in kwargs else self.open_file(input_index)
-        self.data = get_match_info(input_index)
+        # self.data = get_match_info(input_index)
+        self.data = kwargs["json"] if "json" in kwargs else get_match_info(input_index)
 
         self.raw_match_id = input_index
         model_folder = Path(self.get_matches_folder(), "model")

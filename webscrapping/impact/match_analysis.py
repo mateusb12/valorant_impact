@@ -9,6 +9,7 @@ import matplotlib.lines as mlines
 
 from sklearn.model_selection import train_test_split, cross_val_score
 import lightgbm
+from termcolor import colored
 
 from webscrapping.model.lgbm_model import ValorantLGBM, get_trained_model
 from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
@@ -37,6 +38,7 @@ class RoundReplay:
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
+        print(colored(f"Round {round_number} selected", "yellow"))
 
     def is_player_in_this_match(self, player_name: str) -> bool:
         return player_name in self.player_impact
@@ -412,15 +414,19 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 
 if __name__ == "__main__":
-    vv = get_trained_model()
-    rr = RoundReplay(vv.model)
-    rr.set_match(45189)
+    rr = RoundReplay()
+    rr.set_match(44795)
+    rr.choose_round(3)
     round_impact_df = rr.get_round_impact_dataframe()
     round_impact_df["Player"] = round_impact_df.index
     dict_to_return = round_impact_df.to_dict('list')
-    aux = rr.get_map_impact_dataframe(agents=True)
-    rr.choose_round(31)
-    print(rr.get_clutchy_rounds("atk"))
+
+
+    # aux = rr.get_map_impact_dataframe(agents=True)
+    # rr.choose_round(31)
+    # print(rr.get_clutchy_rounds("atk"))
+
+
     # rr.plot_round(side="atk")
     # rr.get_map_impact_dataframe()
     # rr.get_round_probability(round=19, side="atk", add_events=True)

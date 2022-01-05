@@ -226,16 +226,19 @@ class Analyser:
 
     @staticmethod
     def generate_spike_timings(round_millis: int, plant_millis: int) -> Tuple:
-        if (
+        if round_millis == plant_millis:
+            regular_time = 0
+            spike_time = 45000
+        elif (
                 plant_millis is not None
                 and round_millis <= plant_millis
                 or plant_millis is None
         ):
-            regular_time = round_millis
+            regular_time = 100000 - round_millis
             spike_time = 0
         else:
             regular_time = 0
-            spike_time = round_millis - plant_millis
+            spike_time = 45000 - (round_millis - plant_millis)
 
         def round_func(x):
             return int(round(x / 1000))

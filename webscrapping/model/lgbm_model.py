@@ -55,8 +55,8 @@ class ValorantLGBM:
         self.target = target
 
     def get_default_features(self, **kwargs) -> List[str]:
-        global_features = ["RegularTime", "SpikeTime"]
-        raw_features = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators"]
+        global_features = ["RegularTime", "SpikeTime", "DEF_operators"]
+        raw_features = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         team_features = raw_features + roles
         prefix_team_features = self.generate_atk_def_prefix(team_features)
@@ -271,7 +271,7 @@ class ValorantLGBM:
 
 
 def get_trained_model() -> ValorantLGBM:
-    dataset = "5000.csv"
+    dataset = "4500.csv"
     start = timer()
     v = ValorantLGBM(dataset)
     v.set_default_features_without_multicollinearity()
@@ -287,6 +287,4 @@ def get_dataset() -> pd.DataFrame:
 
 if __name__ == "__main__":
     vm = get_trained_model()
-    vm.train_model()
-    print(vm.test_probability())
     vm.show_all_metrics()

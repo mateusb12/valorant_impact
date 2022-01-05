@@ -225,12 +225,12 @@ class Analyser:
         # return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
 
     def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple:
-        if round_millis == plant_millis:
-            regular_time = 0
-            spike_time = 45000
-        elif self.defuse_happened:
+        if round_millis >= 100000 or self.defuse_happened:
             regular_time = 0
             spike_time = 0
+        elif round_millis == plant_millis:
+            regular_time = 0
+            spike_time = 45000
         elif (
                 plant_millis is not None
                 and round_millis <= plant_millis
@@ -533,7 +533,7 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(44786)
+    a.set_match(44787)
     q = a.export_df()
     w = q.to_dict('list')
     # q = a.export_side_table()

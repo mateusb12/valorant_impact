@@ -2,7 +2,6 @@ import json
 from typing import Tuple, List
 from itertools import combinations
 from math import sqrt
-from line_profiler_pycharm import profile
 from collections import Counter
 
 import pandas as pd

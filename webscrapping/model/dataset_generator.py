@@ -8,16 +8,43 @@ from typing import List
 import pandas as pd
 from termcolor import colored
 
-from webscrapping.database.sql_queries import ValorantQueries
 from webscrapping.model.analyse_json import Analyser
 from webscrapping.model.time_analyser import time_metrics
 
 
+def get_json_folder_reference() -> Path:
+    current_folder = Path(os.getcwd())
+    current_folder_name = current_folder.name
+    if current_folder_name == "model":
+        webscrapping = current_folder.parent
+        return Path(webscrapping, "matches", "json")
+
+
+def get_matches_folder_reference() -> Path:
+    current_folder = Path(os.getcwd())
+    current_folder_name = current_folder.name
+    if current_folder_name == "model":
+        webscrapping = current_folder.parent
+        return Path(webscrapping, "matches")
+
+
+def get_events_folder_reference() -> Path:
+    current_folder = Path(os.getcwd())
+    current_folder_name = current_folder.name
+    if current_folder_name == "model":
+        webscrapping = current_folder.parent
+        return Path(webscrapping, "matches", "events")
+
+
+def get_match_list() -> List[int]:
+    matches_csv = pd.read_csv(get_events_folder_reference() / "dataset_matches.csv")
+    return matches_csv["Match Id"].tolist()
+
+
 class ValorantDatasetGenerator:
     def __init__(self):
-        self.vq = ValorantQueries()
         self.a = Analyser()
-        self.match_list = self.get_match_list()
+        self.match_list = get_match_list()
         self.dataset_index = []
         self.broken_matches = []
 
@@ -41,40 +68,24 @@ class ValorantDatasetGenerator:
     def export_dataset(self, **kwargs):
         dataset_size = kwargs["size"]
         dataset_name = kwargs["name"]
-        matches = self.get_matches_folder_reference()
+        matches = get_matches_folder_reference()
         datasets = Path(matches, "datasets")
         huge_df = self.create_dataset(size=dataset_size)
         huge_df.to_csv(Path(datasets, f"{dataset_name}.csv"), index=False)
         print(colored(f"Dataset {dataset_name}.csv exported", "green"))
 
     def get_random_sample(self, amount: int):
-        return sample(self.match_list, amount)
+        dataset_size = len(self.match_list)
+        if amount > dataset_size:
+            raise ValueError(f"Dataset size [{dataset_size}] is smaller than the requested sample size [{amount}]")
+        else:
+            return sample(self.match_list, amount)
 
     def set_random_sample(self, amount):
         self.dataset_index = self.get_random_sample(amount)
 
-    @staticmethod
-    def get_json_folder_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        current_folder_name = current_folder.name
-        if current_folder_name == "model":
-            webscrapping = current_folder.parent
-            return Path(webscrapping, "matches", "json")
-
-    @staticmethod
-    def get_matches_folder_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        current_folder_name = current_folder.name
-        if current_folder_name == "model":
-            webscrapping = current_folder.parent
-            return Path(webscrapping, "matches")
-
-    def get_match_list(self) -> List[int]:
-        jsons = os.listdir(self.get_json_folder_reference())
-        return [int(x.split(".")[0]) for x in jsons]
-
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=5000, name="5000")
+    vm.export_dataset(size=4500, name="4500")
     print(vm.broken_matches)

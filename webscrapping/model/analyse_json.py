@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Tuple, List
 import pandas as pd
 # from line_profiler_pycharm import profile
+from webscrapping.model.api_consumer import get_match_info
 
 
 class Analyser:
@@ -24,7 +25,8 @@ class Analyser:
         return self.trim_trash_code(body_txt)
 
     def set_match(self, input_index: int, **kwargs):
-        self.data = kwargs["json"] if "json" in kwargs else self.open_file(input_index)
+        # self.data = kwargs["json"] if "json" in kwargs else self.open_file(input_index)
+        self.data = get_match_info(input_index)
 
         self.raw_match_id = input_index
         model_folder = Path(self.get_matches_folder(), "model")
@@ -123,6 +125,11 @@ class Analyser:
 
         return {i: side for i, side in enumerate(side_pattern, 1)}
 
+    def get_player_sides(self) -> dict:
+        raw_side_dict = self.current_round_sides
+        player_db = self.current_status
+        return {key: raw_side_dict[value["team_number"]] for key, value in player_db.items()}
+
     def get_team_a(self):
         aux = self.series_by_id
         return {"id": aux["team1"]["id"], "name": aux["team1"]["name"]}
@@ -193,6 +200,7 @@ class Analyser:
                 "victim": m["referencePlayerId"],
                 "event": m["eventType"],
                 "timing": m["roundTimeMillis"],
+                "author": m["playerId"]
             }
             for m in self.data["matches"]["matchDetails"]["events"]
             if m["roundId"] == self.chosen_round
@@ -237,7 +245,7 @@ class Analyser:
 
     def generate_single_event_values(self, **kwargs):
         player_table: dict = self.current_status
-        team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators"]
+        team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         features = team_variables + roles
         atk_dict = {item: 0 for item in features}
@@ -350,15 +358,25 @@ class Analyser:
         round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
         round_array = [round_start]
         self.round_events = self.get_round_events()
+        sides = self.get_player_sides()
+        atk_kills = 0
+        def_kills = 0
         for key, value in self.round_events.items():
             event_type = value["event"]
             situation = self.current_status
             if event_type == "kill":
                 self.current_status[value["victim"]]["alive"] = False
+                player_side = sides[value["author"]]
+                if player_side == "attacking":
+                    atk_kills += 1
+                elif player_side == "defending":
+                    def_kills += 1
             elif event_type == "revival":
                 self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
             event = self.generate_single_event_values(timestamp=key, winner=round_winner, plant=plant)
+            event["ATK_kills"] = atk_kills
+            event["DEF_kills"] = def_kills
             round_array.append(event)
         return round_array
 
@@ -410,6 +428,7 @@ class Analyser:
         report = self.generate_map_metrics()
         raw = pd.DataFrame(report)
         raw = self.add_teams_to_df(raw)
+        raw["Loadout_diff"] = raw["ATK_loadoutValue"] - raw["DEF_loadoutValue"]
         return raw
 
     def add_teams_to_df(self, input_df: pd.DataFrame) -> pd.DataFrame:
@@ -502,7 +521,7 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(43625)
+    a.set_match(45334)
     q = a.export_df()
     w = q.to_dict('list')
     # q = a.export_side_table()

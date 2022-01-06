@@ -114,12 +114,14 @@ class RoundReplay:
         displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
         return {"default": default_pred, "displaced": displaced_pred}
 
-    def handle_special_situation(self, input_table: pd.DataFrame):
+    def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
+        situation_type = kwargs["situation"]
         query = input_table.query("RegularTime == 0 and SpikeTime == 0")
         to_index = list(query.index)
         new_proba = 1 if self.side == "def" else 0
+        before_index = 0 if situation_type == "timeout" else 1
+        input_table.loc[to_index[before_index]:to_index[-1], 'Probability_before_event'] = new_proba
         input_table.loc[to_index[0]:to_index[-1], 'Probability_after_event'] = new_proba
-        input_table.loc[to_index[1]:to_index[-1], 'Probability_before_event'] = new_proba
 
     def get_round_probability(self, **kwargs):
         """
@@ -161,8 +163,10 @@ class RoundReplay:
         event_types.insert(0, "start")
         table["EventType"] = event_types
 
-        if defuse or timeout:
-            self.handle_special_situation(table)
+        if defuse:
+            self.handle_special_situation(table, situation="defuse")
+        elif timeout:
+            self.handle_special_situation(table, situation="timeout")
 
         table["Impact"] = table["Probability_after_event"] - table["Probability_before_event"]
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
@@ -444,8 +448,8 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 if __name__ == "__main__":
     rr = RoundReplay()
-    rr.set_match(44786)
-    rr.choose_round(3)
+    rr.set_match(44787)
+    rr.choose_round(6)
     proba = rr.get_round_probability(side="atk")
     round_impact_df = rr.get_round_impact_dataframe()
     round_impact_df["Player"] = round_impact_df.index

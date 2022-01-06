@@ -119,7 +119,7 @@ class RoundReplay:
         to_index = list(query.index)
         new_proba = 1 if self.side == "def" else 0
         input_table.loc[to_index[0]:to_index[-1], 'Probability_after_event'] = new_proba
-        input_table.loc[to_index[0]:to_index[-1], 'Probability_before_event'] = new_proba
+        input_table.loc[to_index[1]:to_index[-1], 'Probability_before_event'] = new_proba
 
     def get_round_probability(self, **kwargs):
         """

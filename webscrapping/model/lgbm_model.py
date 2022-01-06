@@ -55,8 +55,8 @@ class ValorantLGBM:
         self.target = target
 
     def get_default_features(self, **kwargs) -> List[str]:
-        global_features = ["RegularTime", "SpikeTime", "DEF_operators"]
-        raw_features = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "kills"]
+        global_features = ["RegularTime", "SpikeTime", "DEF_operators", "Loadout_diff"]
+        raw_features = ["weaponValue", "shields", "remainingCreds", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         team_features = raw_features + roles
         prefix_team_features = self.generate_atk_def_prefix(team_features)
@@ -115,7 +115,8 @@ class ValorantLGBM:
                                                                                 random_state=15)
         X_train, X_valid, Y_train, Y_valid = train_test_split(self.X_train, self.Y_train,
                                                               train_size=0.9, test_size=0.1, random_state=15)
-        if "optuna" in kwargs:
+        optuna_flag = kwargs["optuna"] if "optuna" in kwargs else False
+        if optuna_flag:
             self.optuna_study()
 
         optuna_dict = self.get_optuna_parameters()
@@ -136,7 +137,8 @@ class ValorantLGBM:
 
     def optuna_study(self):
         study = optuna.create_study()
-        study.optimize(self.objective, n_trials=20)
+        study_trials = 20
+        study.optimize(self.objective, n_trials=study_trials)
         trial = study.best_trial
         print(colored(f"Best trial: Value: {trial.value}", "green"))
         print(colored(f"Params: {trial.params}", "green"))
@@ -276,7 +278,7 @@ def get_trained_model() -> ValorantLGBM:
     start = timer()
     v = ValorantLGBM(dataset)
     v.set_default_features_without_multicollinearity()
-    v.train_model()
+    v.train_model(optuna=False)
     end = timer()
     print(colored(f"Model loading time: {end - start}", "green"))
     return v

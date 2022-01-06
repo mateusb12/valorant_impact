@@ -168,7 +168,7 @@ class RoundReplay:
         elif timeout:
             self.handle_special_situation(table, situation="timeout")
 
-        table["Impact"] = table["Probability_after_event"] - table["Probability_before_event"]
+        table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
                        "Impact"]]
 

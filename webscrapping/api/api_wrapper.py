@@ -85,8 +85,7 @@ def get_round_impact():
     side = input_json["side"]
     rr.set_match(match_id)
     rr.choose_round(round_number)
-    round_impact_df = rr.get_round_probability(side=side, add_events=True)
-    # round_impact_df["Player"] = round_impact_df.index
+    round_impact_df = rr.get_round_probability(side=side)
     dict_to_return = round_impact_df.to_dict('list')
     return jsonify(dict_to_return)
 

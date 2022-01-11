@@ -1,1 +1,1 @@
-web: sh -c 'cd ./webscrapping/api && gunicorn api_wrapper.py'
+web: cd ./webscrapping/api && python3 api_wrapper.py

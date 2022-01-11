@@ -4,16 +4,16 @@ stages:
 setup:
   stage: deploy
   script: 
-    — apt-get update -qy
-    — apt-get install -y python-dev python-pip
-    — pip install -r requirements.txt
+    - apt-get update -qy
+    - apt-get install -y python-dev python-pip
+    - pip install -r requirements.txt
 
 production:
   stage: deploy
-  script: 
-    — apt-get update -qy
-    — apt-get install -y ruby-dev
-    — gem install dpl
-    — dpl — provider=heroku — app=impact-score — api-key=$HEROKU_API_KEY
+  script:
+    - apt-get update -qy
+    - apt-get install -y ruby-dev
+    - gem install dpl
+    - dpl -provider=heroku — app=impact-score — api-key=$HEROKU_API_KEY
   only:
     - main

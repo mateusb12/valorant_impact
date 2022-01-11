@@ -190,7 +190,7 @@ class Analyser:
                 player_dict[player_id] = aux
         return player_dict
 
-    def get_round_events(self) -> list[dict]:
+    def get_round_events(self):
         """
         Get the events of the round (kills, deaths, plants, defuses, etc)
         :return:

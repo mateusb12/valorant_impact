@@ -32,7 +32,7 @@ def get_dataset_reference() -> Path:
 
 class ValorantLGBM:
     def __init__(self, filename: str):
-        self.df = pd.read_csv(f"{get_dataset_reference()}\\{filename}")
+        self.df = pd.read_csv(f"{get_dataset_reference()}/{filename}")
         self.old_df = self.df.copy()
         self.old_df_name = filename
         self.features: List[str] = []
@@ -131,7 +131,7 @@ class ValorantLGBM:
 
     def get_optuna_parameters(self):
         ref = self.get_optuna_reference()
-        optuna_df: pd.DataFrame = pd.read_csv(f"{ref}\\model_params.csv")
+        optuna_df: pd.DataFrame = pd.read_csv(f"{ref}/model_params.csv")
         optuna_dict = optuna_df.to_dict(orient="list")
         return {key: value[0] for key, value in optuna_dict.items()}
 
@@ -285,7 +285,7 @@ def get_trained_model() -> ValorantLGBM:
 
 
 def get_dataset() -> pd.DataFrame:
-    return pd.read_csv(f"{get_dataset_reference()}\\5000.csv")
+    return pd.read_csv(f"{get_dataset_reference()}/5000.csv")
 
 
 if __name__ == "__main__":

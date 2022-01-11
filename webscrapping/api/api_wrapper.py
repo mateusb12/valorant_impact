@@ -124,5 +124,5 @@ def webscrapping_fix():
 
 
 end = timer()
-print(colored(f"API  loading time: {end - start}", "red"))
-app.run(host='0.0.0.0', port=33507)
+port = int(os.environ.get('PORT', 5000))
+app.run(host='0.0.0.0', port=port)

@@ -9,6 +9,7 @@ from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classi
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from timeit import default_timer as timer
+import joblib
 
 import pandas as pd
 from pathlib import Path
@@ -16,6 +17,9 @@ from pathlib import Path
 from termcolor import colored
 
 from webscrapping.model.analyse_json import Analyser
+from webscrapping.os_slash import get_slash_type
+
+sl = get_slash_type()
 
 
 def get_dataset_reference() -> Path:
@@ -31,15 +35,22 @@ def get_dataset_reference() -> Path:
 
 
 class ValorantLGBM:
-    def __init__(self, filename: str):
-        self.df = pd.read_csv(f"{get_dataset_reference()}/{filename}")
-        self.old_df = self.df.copy()
+    def __init__(self, filename: str = None):
+        if filename:
+            self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{filename}")
+            self.old_df = self.df.copy()
+        else:
+            self.df = None
         self.old_df_name = filename
         self.features: List[str] = []
         self.target = ""
         self.model = None
         self.X, self.Y, self.X_train, self.Y_train, self.X_test, self.Y_test = [None] * 6
         self.pred_proba, self.pred_proba_test = [None] * 2
+        self.from_file = False
+        self.from_scratch = False
+        self.df_prepared = False
+        self.do_optuna = False
 
     def check_multicollinearity(self) -> pd.DataFrame:
         X_variables = self.df[self.features]
@@ -107,18 +118,38 @@ class ValorantLGBM:
         combined = self.features + [self.target]
         self.df = self.df[combined]
 
-    def train_model(self, **kwargs):
-        self.X = self.df.drop([self.target], axis='columns')
-        self.Y = self.df[self.target]
-        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y,
-                                                                                train_size=0.8, test_size=0.2,
-                                                                                random_state=15)
-        X_train, X_valid, Y_train, Y_valid = train_test_split(self.X_train, self.Y_train,
-                                                              train_size=0.9, test_size=0.1, random_state=15)
-        optuna_flag = kwargs["optuna"] if "optuna" in kwargs else False
-        if optuna_flag:
-            self.optuna_study()
+    def prepare_df(self):
+        if not self.df_prepared:
+            if self.df is None:
+                self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{'4500.csv'}")
+            self.X = self.df.drop([self.target], axis='columns')
+            self.Y = self.df[self.target]
+            self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y,
+                                                                                    train_size=0.8, test_size=0.2,
+                                                                                    random_state=15)
+            self.df_prepared = True
 
+    def train_model(self):
+        current_folder = Path(os.getcwd())
+        if os.path.isfile(f"{current_folder}{sl}model.pkl"):
+            self.import_model_from_file()
+            self.from_file = True
+        else:
+            print(colored("[model.pkl] not found. Training model from scratch with 20 optuna iterations", "yellow"))
+            self.pandas_tasks(optuna=True)
+            self.from_scratch = True
+
+    def pandas_tasks(self, **kwargs):
+        self.set_default_features_without_multicollinearity()
+        self.prepare_df()
+        optuna_study = kwargs["optuna"]
+        if optuna_study:
+            self.do_optuna = True
+        self.train_model_from_scratch()
+
+    def train_model_from_scratch(self):
+        if self.do_optuna:
+            self.optuna_study(trials=20)
         optuna_dict = self.get_optuna_parameters()
         self.model = lightgbm.LGBMClassifier(bagging_freq=optuna_dict["bagging_freq"],
                                              min_data_in_leaf=optuna_dict["min_data_in_leaf"],
@@ -127,17 +158,21 @@ class ValorantLGBM:
                                              num_leaves=optuna_dict["num_leaves"],
                                              num_threads=optuna_dict["num_threads"],
                                              min_sum_hessian_in_leaf=optuna_dict["min_sum_hessian_in_leaf"])
-        self.model.fit(X_train, Y_train)
+        self.model.fit(self.X_train, self.Y_train)
+        joblib.dump(self.model, 'model.pkl')
+
+    def import_model_from_file(self):
+        self.model: lightgbm.LGBMClassifier = joblib.load('model.pkl')
 
     def get_optuna_parameters(self):
         ref = self.get_optuna_reference()
-        optuna_df: pd.DataFrame = pd.read_csv(f"{ref}/model_params.csv")
+        optuna_df: pd.DataFrame = pd.read_csv(f"{ref}{sl}model_params.csv")
         optuna_dict = optuna_df.to_dict(orient="list")
         return {key: value[0] for key, value in optuna_dict.items()}
 
-    def optuna_study(self):
+    def optuna_study(self, **kwargs):
         study = optuna.create_study()
-        study_trials = 20
+        study_trials = kwargs["trials"] if "trials" in kwargs else 10
         study.optimize(self.objective, n_trials=study_trials)
         trial = study.best_trial
         print(colored(f"Best trial: Value: {trial.value}", "green"))
@@ -221,6 +256,9 @@ class ValorantLGBM:
         print(f"F1 score → {f1}")
 
     def show_all_metrics(self):
+        if self.from_file:
+            print(colored("Impossible to show metrics. You should instantiate this class with a csv dataset", "red"))
+        self.pandas_tasks(optuna=False)
         self.get_feature_importance()
         self.get_model_precision()
         self.get_brier_score()
@@ -277,15 +315,14 @@ def get_trained_model() -> ValorantLGBM:
     dataset = "4500.csv"
     start = timer()
     v = ValorantLGBM(dataset)
-    v.set_default_features_without_multicollinearity()
-    v.train_model(optuna=False)
+    v.train_model()
     end = timer()
     print(colored(f"Model loading time: {end - start}", "green"))
     return v
 
 
 def get_dataset() -> pd.DataFrame:
-    return pd.read_csv(f"{get_dataset_reference()}/5000.csv")
+    return pd.read_csv(f"{get_dataset_reference()}{sl}5000.csv")
 
 
 if __name__ == "__main__":

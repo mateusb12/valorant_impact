@@ -83,9 +83,10 @@ def get_round_impact():
     match_id = input_json["match_id"]
     round_number = input_json["round"]
     side = input_json["side"]
-    rr.set_match(match_id)
-    rr.choose_round(round_number)
-    round_impact_df = rr.get_round_probability(side=side)
+    rr_instance = RoundReplay(vv.model)
+    rr_instance.set_match(match_id)
+    rr_instance.choose_round(round_number)
+    round_impact_df = rr_instance.get_round_probability(side=side)
     dict_to_return = round_impact_df.to_dict('list')
     return jsonify(dict_to_return)
 

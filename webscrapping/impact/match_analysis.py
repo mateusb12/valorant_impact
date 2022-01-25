@@ -117,11 +117,13 @@ class RoundReplay:
     def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
         situation_type = kwargs["situation"]
         query = input_table.query("RegularTime == 0 and SpikeTime == 0")
-        to_index = list(query.index)
+        query_indexes = list(query.index)
         new_proba = 1 if self.side == "def" else 0
         before_index = 0 if situation_type == "timeout" else 1
-        input_table.loc[to_index[before_index]:to_index[-1], 'Probability_before_event'] = new_proba
-        input_table.loc[to_index[0]:to_index[-1], 'Probability_after_event'] = new_proba
+        first_element = query_indexes[before_index]
+        last_element = query_indexes[-1]
+        input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
+        input_table.loc[query_indexes[0]:last_element, 'Probability_after_event'] = new_proba
 
     def get_round_probability(self, **kwargs):
         """
@@ -158,8 +160,8 @@ class RoundReplay:
                 event_ids.append(query_id[0])
         table["EventID"] = event_ids
         event_types = [x["eventType"] for x in current_round_events]
-        defuse = True if "defuse" in event_types else False
-        timeout = True if max_millis >= 100000 else False
+        defuse = "defuse" in event_types and event_types[-1] != "defuse"
+        timeout = max_millis >= 100000
         event_types.insert(0, "start")
         table["EventType"] = event_types
 
@@ -448,12 +450,18 @@ def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
 
 if __name__ == "__main__":
     rr = RoundReplay()
-    rr.set_match(44787)
-    rr.choose_round(6)
-    proba = rr.get_round_probability(side="atk")
-    round_impact_df = rr.get_round_impact_dataframe()
-    round_impact_df["Player"] = round_impact_df.index
-    dict_to_return = round_impact_df.to_dict('list')
+    rr.set_match(44788)
+    rr.choose_round(1)
+    total_rounds = rr.analyser.round_amount
+    proba_plot = []
+    for i in range(1, total_rounds):
+        rr.choose_round(i)
+        proba_plot.append(rr.get_round_probability(side="atk"))
+    merged_proba_plot = pd.concat(proba_plot, axis=0)
+    apple = 5 + 1
+    # round_impact_df = rr.get_round_impact_dataframe()
+    # round_impact_df["Player"] = round_impact_df.index
+    # dict_to_return = round_impact_df.to_dict('list')
 
     # aux = rr.get_map_impact_dataframe(agents=True)
     # rr.choose_round(31)

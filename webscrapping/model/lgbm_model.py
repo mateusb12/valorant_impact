@@ -22,16 +22,22 @@ from webscrapping.os_slash import get_slash_type
 sl = get_slash_type()
 
 
-def get_dataset_reference() -> Path:
+def get_webscrapping_reference() -> Path or None:
     current_folder = Path(os.getcwd())
     current_folder_name = current_folder.name
     if current_folder_name in ("model", "api", "impact"):
-        webscrapping = current_folder.parent
+        webscrapping_p = current_folder.parent
     elif current_folder_name == "model_improvement":
-        webscrapping = current_folder.parent.parent
+        webscrapping_p = current_folder.parent.parent
     else:
         Exception("Can't find webscrapping folder")
-    return Path(webscrapping, "matches", "datasets")
+        return None
+    return webscrapping_p
+
+
+def get_dataset_reference() -> Path:
+    webscrapping_ref = get_webscrapping_reference()
+    return Path(webscrapping_ref, "matches", "datasets")
 
 
 class ValorantLGBM:
@@ -130,12 +136,16 @@ class ValorantLGBM:
             self.df_prepared = True
 
     def train_model(self):
-        current_folder = Path(os.getcwd())
-        if os.path.isfile(f"{current_folder}{sl}model.pkl"):
+        current_path = Path(os.getcwd())
+        current_folder = current_path.name
+        webscrapping_path = current_path.parent if current_folder != "webscrapping" else current_path
+        model_path = f"{webscrapping_path}{sl}model{sl}model.pkl"
+        if os.path.isfile(model_path):
             self.import_model_from_file()
             self.from_file = True
         else:
-            print(colored("[model.pkl] not found. Training model from scratch with 20 optuna iterations", "yellow"))
+            print(colored(f"[model.pkl] not found at {model_path}.", "yellow"))
+            print(colored('Training model with 20 optuna iterations', "yellow"))
             self.pandas_tasks(optuna=True)
             self.from_scratch = True
 
@@ -162,6 +172,9 @@ class ValorantLGBM:
         joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
+        webscrapping_folder = get_webscrapping_reference()
+        model_folder = Path(webscrapping_folder, "model")
+        os.chdir(model_folder)
         self.model: lightgbm.LGBMClassifier = joblib.load('model.pkl')
 
     def get_optuna_parameters(self):

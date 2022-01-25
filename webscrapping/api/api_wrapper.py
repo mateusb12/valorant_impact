@@ -1,6 +1,6 @@
 import pathlib
 import sys
-
+import pandas as pd
 from termcolor import colored
 import fix_missing_webscrapping_folder
 import os
@@ -68,8 +68,8 @@ def get_round_probability(input_side):
     return jsonify(dict_to_return)
 
 
-@app.route('/get_round_impact/', methods=["POST"])
-def get_round_impact():
+@app.route('/get_round_impact/<input_match_id>', methods=["GET"])
+def get_round_impact(input_match_id):
     """
     Json format
     {
@@ -78,15 +78,19 @@ def get_round_impact():
         "side": "atk"
     }
     """
-    input_json = request.get_json(force=True)
-    print(input_json)
-    match_id = input_json["match_id"]
-    round_number = input_json["round"]
-    side = input_json["side"]
+    # input_json = request.get_json(force=True)
+    # print(input_json)
+    match_id = input_match_id
+    # round_number = input_json["round"]
+    # side = input_json["side"]
     rr_instance = RoundReplay(vv.model)
     rr_instance.set_match(match_id)
-    rr_instance.choose_round(round_number)
-    round_impact_df = rr_instance.get_round_probability(side=side)
+    total_rounds = rr_instance.analyser.round_amount
+    proba_plot = []
+    for i in range(1, total_rounds):
+        rr_instance.choose_round(i)
+        proba_plot.append(rr_instance.get_round_probability(side="atk"))
+    round_impact_df = pd.concat(proba_plot, axis=0)
     dict_to_return = round_impact_df.to_dict('list')
     return jsonify(dict_to_return)
 

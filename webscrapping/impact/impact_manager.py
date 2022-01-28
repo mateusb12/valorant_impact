@@ -4,11 +4,11 @@ from typing import List
 from random import choice as random_choice
 import pandas as pd
 
-from match_analysis import RoundReplay, train_model
+from impact_score.impact.match_analysis import RoundReplay, train_model
 from timeit import default_timer as timer
 
-from webscrapping.model.analyse_json import Analyser
-from webscrapping.model.time_analyser import time_metrics
+from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.model.time_analyser import time_metrics
 from webscrapping.wrapper.csv_manager import CsvCreator, CsvSplitter, CsvConverter
 from webscrapping.wrapper.scrap_matches import download_run
 

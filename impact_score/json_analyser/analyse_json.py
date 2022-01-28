@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple, List
 import pandas as pd
 # from line_profiler_pycharm import profile
-from webscrapping.model.api_consumer import get_match_info
+from impact_score.json_analyser.api_consumer import get_match_info
 
 
 class Analyser:

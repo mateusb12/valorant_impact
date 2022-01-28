@@ -1,10 +1,10 @@
 import os
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 
 from webscrapping.series_scrap import RIBScrapper
-from webscrapping.model.analyse_json import Analyser
+from impact_score.json_analyser.analyse_json import Analyser
 
 
 class SingleMatchDownloader:

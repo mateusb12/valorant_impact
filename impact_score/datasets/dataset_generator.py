@@ -1,4 +1,3 @@
-import datetime
 import os
 from pathlib import Path
 from random import sample
@@ -8,8 +7,8 @@ from typing import List
 import pandas as pd
 from termcolor import colored
 
-from webscrapping.model.analyse_json import Analyser
-from webscrapping.model.time_analyser import time_metrics
+from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.model.time_analyser import time_metrics
 
 
 def get_json_folder_reference() -> Path:

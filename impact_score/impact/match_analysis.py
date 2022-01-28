@@ -9,7 +9,6 @@ import lightgbm
 from termcolor import colored
 
 from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model
-from webscrapping.wrapper.single_match_downloader import SingleMatchDownloader
 from impact_score.json_analyser.analyse_json import Analyser
 
 

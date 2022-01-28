@@ -4,7 +4,16 @@ from pathlib import Path
 from typing import Tuple, List
 import pandas as pd
 # from line_profiler_pycharm import profile
+from impact_score.imports.os_slash import get_slash_type
 from impact_score.json_analyser.api_consumer import get_match_info
+
+sl = get_slash_type()
+
+
+def get_valorant_model_folder():
+    current_folder = Path(os.getcwd())
+    parent_folder = current_folder.parent
+    return Path(parent_folder, 'valorant_model')
 
 
 class Analyser:
@@ -30,14 +39,14 @@ class Analyser:
         self.data = kwargs["json"] if "json" in kwargs else get_match_info(input_index)
 
         self.raw_match_id = input_index
-        model_folder = Path(self.get_matches_folder(), "model")
-        weapon_file = open(f'{model_folder}/weapon_table.json')
+        model_folder = get_valorant_model_folder()
+        weapon_file = open(f'{model_folder}{sl}weapon_table.json')
         self.weapon_data = json.load(weapon_file)
 
-        agent_file = open(f'{model_folder}/agent_table.json')
+        agent_file = open(f'{model_folder}{sl}agent_table.json')
         self.agent_data = json.load(agent_file)
 
-        maps_file = open(f'{model_folder}/map_table.json')
+        maps_file = open(f'{model_folder}{sl}map_table.json')
         self.maps_data = json.load(maps_file)
         self.series_by_id = self.data["series"]["seriesById"]
         self.best_of: int = self.series_by_id["bestOf"]
@@ -63,15 +72,6 @@ class Analyser:
             return json.loads(code_string)
         new_format = code_string[45:]
         return json.loads(new_format)
-
-    @staticmethod
-    def get_matches_folder():
-        current_folder = Path(os.getcwd())
-        current_folder_name = str(current_folder).split("\\")[-1]
-        if current_folder_name == "webscrapping":
-            return Path(current_folder, "matches")
-        webscrapping = current_folder.parent
-        return Path(webscrapping, "matches")
 
     def get_json_folder(self) -> Path:
         matches = self.get_matches_folder()

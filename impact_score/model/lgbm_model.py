@@ -17,7 +17,7 @@ from pathlib import Path
 from termcolor import colored
 
 from impact_score.json_analyser.analyse_json import Analyser
-from webscrapping.os_slash import get_slash_type
+from impact_score.imports.os_slash import get_slash_type
 
 sl = get_slash_type()
 

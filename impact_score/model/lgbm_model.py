@@ -16,10 +16,19 @@ from pathlib import Path
 
 from termcolor import colored
 
-from webscrapping.model.analyse_json import Analyser
+from impact_score.json_analyser.analyse_json import Analyser
 from webscrapping.os_slash import get_slash_type
 
 sl = get_slash_type()
+
+
+def get_impact_score_reference() -> Path or None:
+    current_folder = Path(os.getcwd())
+    current_folder_name = current_folder.name
+    if current_folder_name in ("api", "datasets", "impact", "imports", "json_analyser", "model", "valorant_model"):
+        return current_folder.parent
+    Exception("Can't find impact_score folder")
+    return None
 
 
 def get_webscrapping_reference() -> Path or None:
@@ -36,8 +45,7 @@ def get_webscrapping_reference() -> Path or None:
 
 
 def get_dataset_reference() -> Path:
-    webscrapping_ref = get_webscrapping_reference()
-    return Path(webscrapping_ref, "matches", "datasets")
+    return Path(get_impact_score_reference(), "datasets")
 
 
 class ValorantLGBM:

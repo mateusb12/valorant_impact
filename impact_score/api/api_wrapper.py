@@ -1,16 +1,14 @@
 import pathlib
 import pandas as pd
-from termcolor import colored
-import fix_missing_webscrapping_folder
 import os
 
-from webscrapping.impact.match_analysis import RoundReplay
-from webscrapping.model.analyse_json import Analyser
+from impact_score.impact.match_analysis import RoundReplay
+from impact_score.json_analyser.analyse_json import Analyser
 from flask import Flask, jsonify, request
 from timeit import default_timer as timer
 from pathlib import Path
 
-from webscrapping.model.lgbm_model import get_trained_model
+from impact_score.model.lgbm_model import get_trained_model
 
 start = timer()
 app = Flask(__name__)

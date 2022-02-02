@@ -14,23 +14,22 @@ import lightgbm
 from termcolor import colored
 
 from impact_score.imports.os_slash import get_slash_type
-from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model
+from impact_score.model.lgbm_loader import load_lgbm
+from impact_score.model.lgbm_model import ValorantLGBM
 from impact_score.json_analyser.analyse_json import Analyser
 
 sl = get_slash_type()
 
 
 class RoundReplay:
-    @profile
     def __init__(self):
         self.match_id = 0
         self.analyser = Analyser()
-        self.vm: ValorantLGBM = get_trained_model()
+        self.vm: ValorantLGBM = load_lgbm()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side = [None] * 3
 
-    @profile
     def set_match(self, match_id: int):
         self.match_id = match_id
         self.analyser.set_match(match_id)
@@ -440,10 +439,17 @@ def train_model() -> lightgbm.LGBMClassifier:
     return vm.model
 
 
-@profile
 def test_performance():
     rr = RoundReplay()
     rr.set_match(43625)
+    max_rounds = rr.analyser.round_amount
+    proba_pot = []
+    for round_number in range(1, max_rounds + 1):
+        rr.choose_round(round_number)
+        proba_pot.append(rr.get_round_probability(side="atk"))
+    round_impact_df = pd.concat(proba_pot, axis=0)
+    dict_to_return = round_impact_df.to_dict('list')
+
 
 
 if __name__ == "__main__":

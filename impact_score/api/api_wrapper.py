@@ -3,17 +3,13 @@ import pandas as pd
 import os
 
 from impact_score.impact.match_analysis import RoundReplay
-from impact_score.json_analyser.analyse_json import Analyser
 from flask import Flask, jsonify
 from timeit import default_timer as timer
 from pathlib import Path
 
-from impact_score.model.lgbm_model import get_trained_model
 
 start = timer()
 app = Flask(__name__)
-analyser = Analyser()
-vv = get_trained_model()
 
 
 def get_webscrapping_path():
@@ -38,7 +34,7 @@ def get_round_impact(input_match_id):
     }
     """
     match_id = input_match_id
-    rr_instance = RoundReplay(vv.model)
+    rr_instance = RoundReplay()
     rr_instance.set_match(match_id)
     total_rounds = rr_instance.analyser.round_amount
     proba_plot = []

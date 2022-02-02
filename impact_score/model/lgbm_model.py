@@ -9,7 +9,6 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classification_report
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from timeit import default_timer as timer
 import joblib
 
 import pandas as pd
@@ -50,12 +49,10 @@ def get_dataset_reference() -> Path:
 
 
 class ValorantLGBM:
+    @profile
     def __init__(self, filename: str = None):
-        if filename:
-            self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{filename}")
-            self.old_df = self.df.copy()
-        else:
-            self.df = None
+        self.df = None
+        self.old_df = None
         self.old_df_name = filename
         self.features: List[str] = []
         self.target = ""
@@ -66,6 +63,10 @@ class ValorantLGBM:
         self.from_scratch = False
         self.df_prepared = False
         self.do_optuna = False
+
+    def setup_dataframe(self, filename: str):
+        self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{filename}")
+        self.old_df = self.df.copy()
 
     def check_multicollinearity(self) -> pd.DataFrame:
         X_variables = self.df[self.features]
@@ -98,10 +99,7 @@ class ValorantLGBM:
             if column_name == "Team_B_Name":
                 first_map_index = index + 1
                 break
-        if first_map_index != 0:
-            return df_columns[first_map_index:]
-        else:
-            return None
+        return df_columns[first_map_index:] if first_map_index != 0 else None
 
     @staticmethod
     def generate_atk_def_prefix(variable_list: List[str]) -> List[str]:
@@ -334,20 +332,10 @@ class ValorantLGBM:
         return trim.to_dict(orient="records")[0]
 
 
-def get_trained_model() -> ValorantLGBM:
-    dataset = "4500.csv"
-    start = timer()
-    v = ValorantLGBM(dataset)
-    v.train_model()
-    end = timer()
-    print(colored(f"Model loading time: {end - start}", "green"))
-    return v
-
-
 def get_dataset() -> pd.DataFrame:
     return pd.read_csv(f"{get_dataset_reference()}{sl}5000.csv")
 
 
 if __name__ == "__main__":
-    get_trained_model()
+    pass
     # vm.show_all_metrics()

@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Tuple, List
 import pandas as pd
-# from line_profiler_pycharm import profile
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.json_analyser.api_consumer import get_match_info
 
@@ -34,9 +33,7 @@ class Analyser:
         return self.trim_trash_code(body_txt)
 
     def set_match(self, input_index: int, **kwargs):
-        # self.data = kwargs["json"] if "json" in kwargs else self.open_file(input_index)
-        # self.data = get_match_info(input_index)
-        self.data = kwargs["json"] if "json" in kwargs else get_match_info(input_index)
+        self.data = get_match_info(input_index)
 
         self.raw_match_id = input_index
         model_folder = get_valorant_model_folder()
@@ -538,7 +535,3 @@ if __name__ == "__main__":
     a.set_match(44786)
     q = a.export_df()
     w = q.to_dict('list')
-    # q = a.export_side_table()
-    apple = 5 + 1
-    # q = a.generate_full_round()
-    # dm = a.export_round_events()

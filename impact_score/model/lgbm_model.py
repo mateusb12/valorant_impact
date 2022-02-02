@@ -147,14 +147,7 @@ class ValorantLGBM:
         current_folder = current_path.name
         webscrapping_path = current_path.parent if current_folder != "webscrapping" else current_path
         model_path = f"{webscrapping_path}{sl}model{sl}model.pkl"
-        if os.path.isfile(model_path):
-            self.import_model_from_file()
-            self.from_file = True
-        else:
-            print(colored(f"[model.pkl] not found at {model_path}.", "yellow"))
-            print(colored('Training model with 20 optuna iterations', "yellow"))
-            self.pandas_tasks(optuna=True)
-            self.from_scratch = True
+        self.pandas_tasks(optuna=False)
 
     def pandas_tasks(self, **kwargs):
         self.set_default_features_without_multicollinearity()
@@ -337,5 +330,8 @@ def get_dataset() -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    pass
+    vm = ValorantLGBM()
+    vm.import_model_from_file()
+    # vm.setup_dataframe("4500.csv")
+    # vm.train_model()
     # vm.show_all_metrics()

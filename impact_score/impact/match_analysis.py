@@ -22,6 +22,7 @@ sl = get_slash_type()
 
 
 class RoundReplay:
+    @profile
     def __init__(self):
         self.match_id = 0
         self.analyser = Analyser()
@@ -30,6 +31,7 @@ class RoundReplay:
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side = [None] * 3
 
+    @profile
     def set_match(self, match_id: int):
         self.match_id = match_id
         self.analyser.set_match(match_id)
@@ -115,8 +117,10 @@ class RoundReplay:
         first_row = pd.DataFrame(input_table.iloc[0]).transpose()
         displaced_table = pd.concat([first_row, displaced_table]).reset_index(drop=True)
         displaced_table = displaced_table[:-1]
-        default_pred = self.model.predict_proba(input_table)[:, 1]
-        displaced_pred = self.model.predict_proba(displaced_table)[:, 1]
+        raw_default_pred = self.model.predict_proba(input_table)
+        default_pred = raw_default_pred[:, 1]
+        raw_displaced_pred = self.model.predict_proba(displaced_table)
+        displaced_pred = raw_displaced_pred[:, 1]
         return {"default": default_pred, "displaced": displaced_pred}
 
     def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
@@ -130,6 +134,7 @@ class RoundReplay:
         input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
         input_table.loc[query_indexes[0]:last_element, 'Probability_after_event'] = new_proba
 
+    @profile
     def get_round_probability(self, **kwargs):
         """
         :param kwargs: round_number: int
@@ -439,6 +444,7 @@ def train_model() -> lightgbm.LGBMClassifier:
     return vm.model
 
 
+@profile
 def test_performance():
     rr = RoundReplay()
     rr.set_match(43625)
@@ -449,7 +455,6 @@ def test_performance():
         proba_pot.append(rr.get_round_probability(side="atk"))
     round_impact_df = pd.concat(proba_pot, axis=0)
     dict_to_return = round_impact_df.to_dict('list')
-
 
 
 if __name__ == "__main__":

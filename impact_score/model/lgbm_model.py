@@ -4,6 +4,7 @@ from typing import List, Tuple
 import lightgbm
 import optuna
 import seaborn as sns
+from line_profiler_pycharm import profile
 from matplotlib import pyplot as plt
 from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classification_report
 from sklearn.model_selection import train_test_split
@@ -182,8 +183,9 @@ class ValorantLGBM:
     def import_model_from_file(self):
         webscrapping_folder = get_webscrapping_reference()
         model_folder = Path(webscrapping_folder, "model")
-        os.chdir(model_folder)
-        self.model: lightgbm.LGBMClassifier = joblib.load('model.pkl')
+        pkl_path = Path(model_folder, "model.pkl")
+        # os.chdir(model_folder)
+        self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
 
     def get_optuna_parameters(self):
         ref = self.get_optuna_reference()
@@ -347,5 +349,5 @@ def get_dataset() -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    vm = get_trained_model()
-    vm.show_all_metrics()
+    get_trained_model()
+    # vm.show_all_metrics()

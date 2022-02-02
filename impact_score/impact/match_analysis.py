@@ -1,19 +1,28 @@
 import copy
+import os
+
 import pandas as pd
+from line_profiler_pycharm import profile
 from matplotlib import pyplot as plt
 import seaborn as sns
+from pathlib import Path
+
 import matplotlib.lines as mlines
 
 from sklearn.model_selection import train_test_split
 import lightgbm
 from termcolor import colored
 
+from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model
 from impact_score.json_analyser.analyse_json import Analyser
 
+sl = get_slash_type()
+
 
 class RoundReplay:
-    def __init__(self, input_model: lightgbm.LGBMClassifier = None):
+    @profile
+    def __init__(self):
         self.match_id = 0
         self.analyser = Analyser()
         self.vm: ValorantLGBM = get_trained_model()
@@ -21,6 +30,7 @@ class RoundReplay:
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side = [None] * 3
 
+    @profile
     def set_match(self, match_id: int):
         self.match_id = match_id
         self.analyser.set_match(match_id)
@@ -423,12 +433,6 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
     return model
 
 
-def download_missing_matches(match_id: int, series_id: int, **kwargs):
-    print("match → {} series → {}".format(match_id, series_id))
-    smd = SingleMatchDownloader(series_id, match_id=match_id, **kwargs)
-    smd.download_full_series()
-
-
 def train_model() -> lightgbm.LGBMClassifier:
     vm = ValorantLGBM("500.csv")
     vm.set_default_features_without_multicollinearity()
@@ -436,25 +440,15 @@ def train_model() -> lightgbm.LGBMClassifier:
     return vm.model
 
 
-def generate_round_replay_example(match_id: int, series_id: int) -> RoundReplay:
-    download_missing_matches(match_id, series_id)
-    model_ = train_model()
-    analysis_df_ = pd.read_csv('matches\\exports\\{}.csv'.format(match_id), index_col=False)
-
-    return RoundReplay(match_id, analysis_df_, model_)
+@profile
+def test_performance():
+    rr = RoundReplay()
+    rr.set_match(43625)
 
 
 if __name__ == "__main__":
-    rr = RoundReplay()
-    rr.set_match(44788)
-    rr.choose_round(1)
-    total_rounds = rr.analyser.round_amount
-    proba_plot = []
-    for i in range(1, total_rounds):
-        rr.choose_round(i)
-        proba_plot.append(rr.get_round_probability(side="atk"))
-    merged_proba_plot = pd.concat(proba_plot, axis=0)
-    apple = 5 + 1
+    test_performance()
+
     # round_impact_df = rr.get_round_impact_dataframe()
     # round_impact_df["Player"] = round_impact_df.index
     # dict_to_return = round_impact_df.to_dict('list')

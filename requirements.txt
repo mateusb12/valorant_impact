@@ -10,3 +10,4 @@ scikit-learn==1.0.2
 seaborn==0.11.2
 statsmodels==0.13.1
 termcolor==1.1.0
+line-profiler-pycharm=1.1.0

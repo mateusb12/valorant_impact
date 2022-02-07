@@ -125,14 +125,20 @@ class RoundReplay:
 
     def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
         situation_type = kwargs["situation"]
-        query = input_table.query("RegularTime == 0 and SpikeTime == 0")
-        query_indexes = list(query.index)
-        new_proba = 1 if self.side == "def" else 0
-        before_index = 0 if situation_type == "timeout" else 1
-        first_element = query_indexes[before_index]
-        last_element = query_indexes[-1]
-        input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
-        input_table.loc[query_indexes[0]:last_element, 'Probability_after_event'] = new_proba
+        if situation_type in ("clean_kill", "clean_defuse"):
+            last_row = input_table.iloc[-1]
+            last_index = input_table.index[-1]
+            new_proba = round(last_row["Probability_before_event"], 1)
+            input_table.loc[last_index, 'Probability_after_event'] = new_proba
+        elif situation_type in ("after_defuse", "timeout"):
+            query = input_table.query("RegularTime == 0 and SpikeTime == 0")
+            query_indexes = list(query.index)
+            new_proba = 1 if self.side == "def" else 0
+            before_index = 0 if situation_type == "timeout" else 1
+            last_element = query_indexes[-1]
+            first_element = query_indexes[before_index]
+            input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
+            input_table.loc[query_indexes[0]:last_element, 'Probability_after_event'] = new_proba
 
     @profile
     def get_round_probability(self, **kwargs):
@@ -170,15 +176,26 @@ class RoundReplay:
                 event_ids.append(query_id[0])
         table["EventID"] = event_ids
         event_types = [x["eventType"] for x in current_round_events]
-        defuse = "defuse" in event_types and event_types[-1] != "defuse"
-        timeout = max_millis >= 100000
+        if "defuse" in event_types:
+            situation_type = "clean_defuse" if event_types[-1] == "defuse" else "after_defuse"
+        else:
+            situation_type = "timeout" if max_millis >= 100000 else "clean_kill"
+
+
+        # defuse = "defuse" in event_types and event_types[-1] != "defuse"
+        # clean_defuse = "defuse" in event_types and event_types[-1] == "defuse"
+        # timeout = max_millis >= 100000
         event_types.insert(0, "start")
         table["EventType"] = event_types
 
-        if defuse:
-            self.handle_special_situation(table, situation="defuse")
-        elif timeout:
-            self.handle_special_situation(table, situation="timeout")
+        self.handle_special_situation(table, situation=situation_type)
+
+        # if defuse:
+        #     self.handle_special_situation(table, situation="defuse")
+        # elif timeout:
+        #     self.handle_special_situation(table, situation="timeout")
+        # elif clean_defuse:
+        #     self.handle_special_situation(table, situation="clean_defuse")
 
         table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
@@ -458,17 +475,8 @@ def test_performance():
 
 
 if __name__ == "__main__":
-    test_performance()
-
-    # round_impact_df = rr.get_round_impact_dataframe()
-    # round_impact_df["Player"] = round_impact_df.index
-    # dict_to_return = round_impact_df.to_dict('list')
-
-    # aux = rr.get_map_impact_dataframe(agents=True)
-    # rr.choose_round(31)
-    # print(rr.get_clutchy_rounds("atk"))
-
-    # rr.plot_round(side="atk")
-    # rr.get_map_impact_dataframe()
-    # rr.get_round_probability(round=19, side="atk", add_events=True)
-    # rr.get_map_impact_dataframe()
+    # test_performance()
+    rr2 = RoundReplay()
+    rr2.set_match(54261)
+    rr2.choose_round(17)
+    aux = rr2.get_round_probability(side="atk")

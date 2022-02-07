@@ -3,10 +3,9 @@ import pandas as pd
 import os
 
 from impact_score.impact.match_analysis import RoundReplay
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from timeit import default_timer as timer
 from pathlib import Path
-
 
 start = timer()
 app = Flask(__name__)
@@ -25,14 +24,6 @@ def homepage():
 
 @app.route('/get_round_impact/<input_match_id>', methods=["GET"])
 def get_round_impact(input_match_id):
-    """
-    Json format
-    {
-        "match_id": 44795,
-        "round": 1,
-        "side": "atk"
-    }
-    """
     match_id = input_match_id
     rr_instance = RoundReplay()
     rr_instance.set_match(match_id)
@@ -44,6 +35,37 @@ def get_round_impact(input_match_id):
     round_impact_df = pd.concat(proba_plot, axis=0)
     dict_to_return = round_impact_df.to_dict('list')
     return jsonify(dict_to_return)
+
+
+@app.route('/test_probability/', methods=["POST"])
+def test_probability():
+    """
+    Json format
+    {
+        "RegularTime": 35,
+        "SpikeTime": 0,
+        "Loadout_diff": 500,
+        "ATK_kills": 1,
+        "ATK_Initiator": 1,
+        "ATK_Duelist": 1,
+        "ATK_Sentinel": 1,
+        "ATK_Controller": 1,
+        "DEF_Kills": 1,
+        "DEF_Initiator": 0,
+        "DEF_Duelist": 2,
+        "DEF_Sentinel": 1,
+        "DEF_Controller": 1,
+        "DEF_operators": 1
+    }
+    """
+    input_json = request.get_json(force=True)
+    input_dict = dict(input_json)
+    rr_instance = RoundReplay()
+    test_model = rr_instance.model
+    aux_df = pd.DataFrame([input_dict])
+    raw_proba = test_model.predict_proba(aux_df)[0][1]
+    rounded_proba = 100 * round(raw_proba, 2)
+    return jsonify({"probability": f"{rounded_proba}%"})
 
 
 def webscrapping_fix():

@@ -12,6 +12,8 @@ sl = get_slash_type()
 def get_valorant_model_folder():
     current_folder = Path(os.getcwd())
     parent_folder = current_folder.parent
+    if parent_folder.name == "model":
+        parent_folder = parent_folder.parent
     return Path(parent_folder, 'valorant_model')
 
 

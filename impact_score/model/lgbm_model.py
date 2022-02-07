@@ -332,6 +332,6 @@ def get_dataset() -> pd.DataFrame:
 if __name__ == "__main__":
     vm = ValorantLGBM()
     vm.import_model_from_file()
-    # vm.setup_dataframe("4500.csv")
-    # vm.train_model()
-    # vm.show_all_metrics()
+    vm.setup_dataframe("4500.csv")
+    vm.train_model()
+    vm.show_all_metrics()

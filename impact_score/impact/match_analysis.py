@@ -29,7 +29,7 @@ class RoundReplay:
         self.vm: ValorantLGBM = load_lgbm()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
-        self.feature_df, self.events_data, self.side = [None] * 3
+        self.feature_df, self.events_data, self.side, self.side_dict = [None] * 4
 
     @profile
     def set_match(self, match_id: int):
@@ -47,6 +47,7 @@ class RoundReplay:
         for item in self.analyser.data["matches"]["matchDetails"]["events"]:
             aux_dict[item["roundNumber"]].append(item)
         self.events_data = aux_dict
+        self.side_dict = dict(zip(self.df.RoundNumber, self.df.FinalWinner))
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
@@ -125,10 +126,17 @@ class RoundReplay:
 
     def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
         situation_type = kwargs["situation"]
-        if situation_type in ("clean_kill", "clean_defuse"):
-            last_row = input_table.iloc[-1]
-            last_index = input_table.index[-1]
-            new_proba = round(last_row["Probability_before_event"], 1)
+        last_index = input_table.index[-1]
+        side_dict = self.side_dict
+
+        if situation_type == "clean_defuse":
+            new_proba = 1 if self.side == "def" else 0
+            input_table.loc[last_index, 'Probability_after_event'] = new_proba
+        elif situation_type == "clean_kill":
+            current_winner_number = self.side_dict[self.chosen_round]
+            current_winner = "def" if current_winner_number == 0 else "atk"
+            matching_winner = self.side == current_winner
+            new_proba = 1 if matching_winner else 0
             input_table.loc[last_index, 'Probability_after_event'] = new_proba
         elif situation_type in ("after_defuse", "timeout"):
             query = input_table.query("RegularTime == 0 and SpikeTime == 0")
@@ -166,14 +174,16 @@ class RoundReplay:
         current_round_events = self.events_data[self.chosen_round]
         round_millis = [x["roundTimeMillis"] for x in current_round_events]
         max_millis = max(round_millis)
-        event_ids = [0]
+        event_ids = []
         for x in current_round_events:
             raw_ids = [x["killId"], x["bombId"], x["resId"]]
             query_id = [x for x in raw_ids if x is not None]
             if len(query_id) != 1:
+                event_ids.append(0)
                 Exception("Error in query")
             else:
                 event_ids.append(query_id[0])
+        banana = 5 + 1
         table["EventID"] = event_ids
         event_types = [x["eventType"] for x in current_round_events]
         if "defuse" in event_types:
@@ -181,21 +191,10 @@ class RoundReplay:
         else:
             situation_type = "timeout" if max_millis >= 100000 else "clean_kill"
 
-
-        # defuse = "defuse" in event_types and event_types[-1] != "defuse"
-        # clean_defuse = "defuse" in event_types and event_types[-1] == "defuse"
-        # timeout = max_millis >= 100000
-        event_types.insert(0, "start")
+        # event_types.insert(0, "start")
         table["EventType"] = event_types
 
         self.handle_special_situation(table, situation=situation_type)
-
-        # if defuse:
-        #     self.handle_special_situation(table, situation="defuse")
-        # elif timeout:
-        #     self.handle_special_situation(table, situation="timeout")
-        # elif clean_defuse:
-        #     self.handle_special_situation(table, situation="clean_defuse")
 
         table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
@@ -475,8 +474,8 @@ def test_performance():
 
 
 if __name__ == "__main__":
-    # test_performance()
-    rr2 = RoundReplay()
-    rr2.set_match(54261)
-    rr2.choose_round(17)
-    aux = rr2.get_round_probability(side="atk")
+    rr_instance = RoundReplay()
+    rr_instance.set_match(54292)
+    rr_instance.choose_round(8)
+    aux = rr_instance.get_round_probability(side="atk")
+    pd.DataFrame(aux)

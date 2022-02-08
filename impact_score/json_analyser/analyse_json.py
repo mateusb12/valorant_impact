@@ -362,8 +362,9 @@ class Analyser:
         self.event_type = "start"
         self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
-        round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
-        round_array = [round_start]
+        # round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
+        # round_array = [round_start]
+        round_array = []
         self.round_events = self.get_round_events()
         re = self.round_events
         sides = self.get_player_sides()
@@ -374,7 +375,9 @@ class Analyser:
             timing: int = value["timing"]
             self.event_type = event_type
             situation = self.current_status
-            if event_type == "kill":
+            if event_type == "defuse":
+                self.defuse_happened = True
+            elif event_type == "kill":
                 self.current_status[value["victim"]]["alive"] = False
                 player_side = sides[value["author"]]
                 if player_side == "attacking":
@@ -384,9 +387,6 @@ class Analyser:
             elif event_type == "revival":
                 self.current_status[value["victim"]]["shieldId"] = None
                 self.current_status[value["victim"]]["alive"] = True
-            elif event_type == "defuse":
-                self.defuse_happened = True
-
             event = self.generate_single_event_values(timestamp=timing, winner=round_winner, plant=plant)
             event["ATK_kills"] = atk_kills
             event["DEF_kills"] = def_kills
@@ -534,6 +534,6 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(44786)
+    a.set_match(54292)
     q = a.export_df()
     w = q.to_dict('list')

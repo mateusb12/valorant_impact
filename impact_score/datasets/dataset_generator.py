@@ -72,8 +72,7 @@ class ValorantDatasetGenerator:
     def export_dataset(self, **kwargs):
         dataset_size = kwargs["size"]
         dataset_name = kwargs["name"]
-        matches = get_matches_folder_reference()
-        datasets = Path(matches, "datasets")
+        datasets = get_datasets_folder_reference()
         huge_df = self.create_dataset(size=dataset_size)
         huge_df.to_csv(Path(datasets, f"{dataset_name}.csv"), index=False)
         print(colored(f"Dataset {dataset_name}.csv exported", "green"))
@@ -91,5 +90,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=2000, name="2000")
+    vm.export_dataset(size=1999, name="2000")
     print(vm.broken_matches)

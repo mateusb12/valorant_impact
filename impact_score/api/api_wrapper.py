@@ -1,7 +1,6 @@
 import pathlib
 import pandas as pd
 import os
-
 from impact_score.impact.match_analysis import RoundReplay
 from flask import Flask, jsonify, request
 from timeit import default_timer as timer
@@ -50,10 +49,10 @@ def test_api():
     input_dict = dict(input_json)
     input_match_id = input_dict["match_id"]
     input_round = input_dict["round"]
-    rr_instance = RoundReplay()
-    rr_instance.set_match(input_match_id)
-    rr_instance.choose_round(input_round)
-    proba_plot = [rr_instance.get_round_probability(side="atk")]
+    rr_instance_2 = RoundReplay()
+    rr_instance_2.set_match(input_match_id)
+    rr_instance_2.choose_round(input_round)
+    proba_plot = [rr_instance_2.get_round_probability(side="atk")]
     round_impact_df = pd.concat(proba_plot, axis=0)
     dict_to_return = round_impact_df.to_dict('list')
     return jsonify(dict_to_return)

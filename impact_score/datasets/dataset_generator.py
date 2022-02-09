@@ -33,6 +33,8 @@ def get_events_folder_reference() -> Path:
     if current_folder_name == "model":
         webscrapping = current_folder.parent
         return Path(webscrapping, "matches", "events")
+    elif current_folder_name == "datasets":
+        return current_folder
 
 
 def get_match_list() -> List[int]:

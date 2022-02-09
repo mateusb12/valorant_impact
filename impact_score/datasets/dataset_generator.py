@@ -3,6 +3,7 @@ from pathlib import Path
 from random import sample
 from timeit import default_timer as timer
 from typing import List
+from itertools import chain
 
 import pandas as pd
 from termcolor import colored
@@ -27,7 +28,7 @@ def get_matches_folder_reference() -> Path:
         return Path(webscrapping, "matches")
 
 
-def get_events_folder_reference() -> Path:
+def get_datasets_folder_reference() -> Path:
     current_folder = Path(os.getcwd())
     current_folder_name = current_folder.name
     if current_folder_name == "model":
@@ -38,8 +39,10 @@ def get_events_folder_reference() -> Path:
 
 
 def get_match_list() -> List[int]:
-    matches_csv = pd.read_csv(get_events_folder_reference() / "dataset_matches.csv")
-    return matches_csv["Match Id"].tolist()
+    dataset_reference = Path(get_datasets_folder_reference(), "dataset_matches.csv")
+    matches_csv = pd.read_csv(dataset_reference)
+    nested_list = matches_csv.values.tolist()
+    return list(chain(*nested_list))
 
 
 class ValorantDatasetGenerator:
@@ -88,5 +91,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=4500, name="4500")
+    vm.export_dataset(size=2000, name="2000")
     print(vm.broken_matches)

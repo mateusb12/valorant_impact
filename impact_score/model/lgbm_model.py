@@ -142,12 +142,13 @@ class ValorantLGBM:
                                                                                     random_state=15)
             self.df_prepared = True
 
-    def train_model(self):
+    def train_model(self, **kwargs):
+        optuna_study = kwargs.get("optuna_study", False)
         current_path = Path(os.getcwd())
         current_folder = current_path.name
         webscrapping_path = current_path.parent if current_folder != "webscrapping" else current_path
         model_path = f"{webscrapping_path}{sl}model{sl}model.pkl"
-        self.pandas_tasks(optuna=False)
+        self.pandas_tasks(optuna=optuna_study)
 
     def pandas_tasks(self, **kwargs):
         self.set_default_features_without_multicollinearity()
@@ -331,7 +332,7 @@ def get_dataset() -> pd.DataFrame:
 
 if __name__ == "__main__":
     vm = ValorantLGBM()
-    vm.import_model_from_file()
-    vm.setup_dataframe("4500.csv")
-    vm.train_model()
+    # vm.import_model_from_file()
+    vm.setup_dataframe("2000.csv")
+    vm.train_model(optuna_study=True)
     vm.show_all_metrics()

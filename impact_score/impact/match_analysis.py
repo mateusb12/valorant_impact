@@ -475,7 +475,7 @@ def test_performance():
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(54292)
-    rr_instance.choose_round(8)
+    rr_instance.set_match(54498)
+    rr_instance.choose_round(1)
     aux = rr_instance.get_round_probability(side="atk")
     pd.DataFrame(aux)

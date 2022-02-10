@@ -23,7 +23,7 @@ def homepage():
 
 @app.route('/get_round_impact/<input_match_id>', methods=["GET"])
 def get_round_impact(input_match_id):
-    match_id = input_match_id
+    match_id = int(input_match_id)
     rr_instance = RoundReplay()
     rr_instance.set_match(match_id)
     total_rounds = rr_instance.analyser.round_amount

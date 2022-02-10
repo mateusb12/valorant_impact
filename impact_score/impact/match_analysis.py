@@ -31,7 +31,6 @@ class RoundReplay:
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict = [None] * 4
 
-    @profile
     def set_match(self, match_id: int):
         self.match_id = match_id
         self.analyser.set_match(match_id)
@@ -476,6 +475,9 @@ def test_performance():
 if __name__ == "__main__":
     rr_instance = RoundReplay()
     rr_instance.set_match(54498)
-    rr_instance.choose_round(3)
-    aux = rr_instance.get_round_probability(side="atk")
-    pd.DataFrame(aux)
+    total_rounds = rr_instance.analyser.round_amount
+    proba_plot = []
+    for i in range(1, total_rounds):
+        rr_instance.choose_round(i)
+        proba_plot.append(rr_instance.get_round_probability(side="atk"))
+    aux = rr_instance.get_round_probability(side="def")

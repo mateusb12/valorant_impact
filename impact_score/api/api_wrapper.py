@@ -28,7 +28,7 @@ def get_round_impact(input_match_id):
     rr_instance.set_match(match_id)
     total_rounds = rr_instance.analyser.round_amount
     proba_plot = []
-    for i in range(1, total_rounds):
+    for i in range(1, total_rounds+1):
         rr_instance.choose_round(i)
         proba_plot.append(rr_instance.get_round_probability(side="atk"))
     round_impact_df = pd.concat(proba_plot, axis=0)

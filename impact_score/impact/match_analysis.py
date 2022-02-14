@@ -124,6 +124,7 @@ class RoundReplay:
 
     def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
         situation_type = kwargs["situation"]
+        events = kwargs["events"]
         last_index = input_table.index[-1]
         side_dict = self.side_dict
 
@@ -151,6 +152,9 @@ class RoundReplay:
             input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
             input_table.loc[first_element:last_element, 'Probability_after_event'] = new_proba
 
+            if situation_type == "after_defuse":
+                defuse_index = events.index("defuse")
+                input_table.loc[defuse_index, 'Probability_after_event'] = new_proba
 
     @profile
     def get_round_probability(self, **kwargs):
@@ -206,7 +210,7 @@ class RoundReplay:
         # event_types.insert(0, "start")
         table["EventType"] = event_types
 
-        self.handle_special_situation(table, situation=situation_type)
+        self.handle_special_situation(table, situation=situation_type, events=event_types)
 
         table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
@@ -485,8 +489,16 @@ def test_performance(match_id: int):
     dict_to_return = round_impact_df.to_dict('list')
 
 
+def test_single_round(match_id: int, round_number: int):
+    rr = RoundReplay()
+    rr.set_match(match_id)
+    rr.choose_round(round_number)
+    return rr.get_round_probability(side="atk")
+
+
 if __name__ == "__main__":
-    test_performance(54900)
+    aux = test_single_round(55046, 1)
+    print(aux)
     # rr_instance = RoundReplay()
     # rr_instance.set_match(54900)
     # rr_instance.choose_round(18)

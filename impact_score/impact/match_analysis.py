@@ -144,7 +144,7 @@ class RoundReplay:
                 beginning_position = 0 if situation_type == "timeout" else 1
                 new_proba = 1 if self.side == "def" else 0
             elif situation_type == "after_explosion":
-                beginning_position = 1
+                beginning_position = 1 if len(query_indexes) > 1 else 0
                 new_proba = 1 if self.side == "atk" else 0
             last_element = query_indexes[-1]
             first_element = query_indexes[beginning_position]
@@ -473,9 +473,9 @@ def train_model() -> lightgbm.LGBMClassifier:
 
 
 @profile
-def test_performance():
+def test_performance(match_id: int):
     rr = RoundReplay()
-    rr.set_match(43625)
+    rr.set_match(match_id)
     max_rounds = rr.analyser.round_amount
     proba_pot = []
     for round_number in range(1, max_rounds + 1):
@@ -486,11 +486,12 @@ def test_performance():
 
 
 if __name__ == "__main__":
-    rr_instance = RoundReplay()
-    rr_instance.set_match(54900)
-    rr_instance.choose_round(18)
-    aux = rr_instance.get_round_probability(side="atk")
-    apple = 5 + 1
+    test_performance(54900)
+    # rr_instance = RoundReplay()
+    # rr_instance.set_match(54900)
+    # rr_instance.choose_round(18)
+    # aux = rr_instance.get_round_probability(side="atk")
+    # apple = 5 + 1
     # total_rounds = rr_instance.analyser.round_amount + 1
     # proba_plot = []
     # for i in range(1, total_rounds):

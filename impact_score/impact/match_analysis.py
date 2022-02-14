@@ -22,14 +22,13 @@ sl = get_slash_type()
 
 
 class RoundReplay:
-    @profile
     def __init__(self):
         self.match_id = 0
         self.analyser = Analyser()
         self.vm: ValorantLGBM = load_lgbm()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
-        self.feature_df, self.events_data, self.side, self.side_dict = [None] * 4
+        self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -137,15 +136,21 @@ class RoundReplay:
             matching_winner = self.side == current_winner
             new_proba = 1 if matching_winner else 0
             input_table.loc[last_index, 'Probability_after_event'] = new_proba
-        elif situation_type in ("after_defuse", "timeout"):
-            query = input_table.query("RegularTime == 0 and SpikeTime == 0")
+        else:
+            query = input_table.query("RegularTime == 0 and SpikeTime <= 0")
             query_indexes = list(query.index)
-            new_proba = 1 if self.side == "def" else 0
-            before_index = 0 if situation_type == "timeout" else 1
+            beginning_position, new_proba = None, None
+            if situation_type in ("after_defuse", "timeout"):
+                beginning_position = 0 if situation_type == "timeout" else 1
+                new_proba = 1 if self.side == "def" else 0
+            elif situation_type == "after_explosion":
+                beginning_position = 1
+                new_proba = 1 if self.side == "atk" else 0
             last_element = query_indexes[-1]
-            first_element = query_indexes[before_index]
+            first_element = query_indexes[beginning_position]
             input_table.loc[first_element:last_element, 'Probability_before_event'] = new_proba
-            input_table.loc[query_indexes[0]:last_element, 'Probability_after_event'] = new_proba
+            input_table.loc[first_element:last_element, 'Probability_after_event'] = new_proba
+
 
     @profile
     def get_round_probability(self, **kwargs):
@@ -182,13 +187,21 @@ class RoundReplay:
                 Exception("Error in query")
             else:
                 event_ids.append(query_id[0])
-        banana = 5 + 1
         table["EventID"] = event_ids
         event_types = [x["eventType"] for x in current_round_events]
+        after_explosion = False
+        if "plant" in event_types:
+            plant_millis = round_millis[event_types.index("plant")]
+            self.explosion_millis = plant_millis + 45000
+            if max_millis >= self.explosion_millis:
+                after_explosion = True
+
         if "defuse" in event_types:
             situation_type = "clean_defuse" if event_types[-1] == "defuse" else "after_defuse"
+        elif after_explosion:
+            situation_type = "after_explosion"
         else:
-            situation_type = "timeout" if max_millis >= 100000 else "clean_kill"
+            situation_type = "timeout" if max_millis >= 100000 and "plant" not in event_types else "clean_kill"
 
         # event_types.insert(0, "start")
         table["EventType"] = event_types
@@ -474,10 +487,13 @@ def test_performance():
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(54498)
-    total_rounds = rr_instance.analyser.round_amount
-    proba_plot = []
-    for i in range(1, total_rounds):
-        rr_instance.choose_round(i)
-        proba_plot.append(rr_instance.get_round_probability(side="atk"))
-    aux = rr_instance.get_round_probability(side="def")
+    rr_instance.set_match(54900)
+    rr_instance.choose_round(18)
+    aux = rr_instance.get_round_probability(side="atk")
+    apple = 5 + 1
+    # total_rounds = rr_instance.analyser.round_amount + 1
+    # proba_plot = []
+    # for i in range(1, total_rounds):
+    #     rr_instance.choose_round(i)
+    #     proba_plot.append(rr_instance.get_round_probability(side="atk"))
+    # aux = rr_instance.get_round_probability(side="def")

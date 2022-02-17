@@ -74,6 +74,8 @@ class ValorantDatasetGenerator:
         dataset_name = kwargs["name"]
         datasets = get_datasets_folder_reference()
         huge_df = self.create_dataset(size=dataset_size)
+        map_name_dummy = pd.get_dummies(huge_df["MapName"], prefix="MapName")
+        huge_df = pd.concat([huge_df, map_name_dummy], axis=1)
         huge_df.to_csv(Path(datasets, f"{dataset_name}.csv"), index=False)
         print(colored(f"Dataset {dataset_name}.csv exported", "green"))
 
@@ -90,5 +92,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=500, name="500")
+    vm.export_dataset(size=100, name="100")
     print(vm.broken_matches)

@@ -31,17 +31,17 @@ def get_impact_score_reference() -> Path or None:
     return None
 
 
-def get_webscrapping_reference() -> Path or None:
+def get_impact_score_folder_reference() -> Path or None:
     current_folder = Path(os.getcwd())
     current_folder_name = current_folder.name
     if current_folder_name in ("model", "api", "impact"):
-        webscrapping_p = current_folder.parent
+        folder_p = current_folder.parent
     elif current_folder_name == "model_improvement":
-        webscrapping_p = current_folder.parent.parent
+        folder_p = current_folder.parent.parent
     else:
         Exception("Can't find webscrapping folder")
         return None
-    return webscrapping_p
+    return folder_p
 
 
 def get_dataset_reference() -> Path:
@@ -69,7 +69,7 @@ class ValorantLGBM:
         self.old_df = self.df.copy()
 
     def check_multicollinearity(self) -> pd.DataFrame:
-        X_variables = self.df[self.features]
+        X_variables = self.df[self.model.feature_name_]
         vif_data = pd.DataFrame()
         vif_data["feature"] = X_variables.columns
         vif_data["VIF"] = [variance_inflation_factor(X_variables.values, i) for i in range(X_variables.shape[1])]
@@ -173,11 +173,17 @@ class ValorantLGBM:
         joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
-        webscrapping_folder = get_webscrapping_reference()
-        model_folder = Path(webscrapping_folder, "model")
+        impact_folder = get_impact_score_folder_reference()
+        model_folder = Path(impact_folder, "model")
         pkl_path = Path(model_folder, "model.pkl")
         # os.chdir(model_folder)
         self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
+
+    def export_model(self):
+        impact_folder = get_impact_score_folder_reference()
+        model_folder = Path(impact_folder, "model")
+        pkl_path = Path(model_folder, "model.pkl")
+        joblib.dump(self.model, 'model.pkl')
 
     def get_optuna_parameters(self):
         ref = self.get_optuna_reference()
@@ -332,7 +338,9 @@ def get_dataset() -> pd.DataFrame:
 
 if __name__ == "__main__":
     vm = ValorantLGBM()
-    # vm.import_model_from_file()
-    vm.setup_dataframe("2000.csv")
-    vm.train_model(optuna_study=True)
-    vm.show_all_metrics()
+    vm.import_model_from_file()
+    # vm.setup_dataframe("2000.csv")
+    # vm.train_model(optuna_study=False)
+    # col = vm.check_multicollinearity()
+    # vm.train_model(optuna_study=True)
+    # vm.show_all_metrics()

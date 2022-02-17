@@ -70,7 +70,7 @@ class ValorantDatasetGenerator:
         return pd.concat(dataset_list)
 
     def export_dataset(self, **kwargs):
-        dataset_size = kwargs["size"]
+        dataset_size = (kwargs["size"]) - 1
         dataset_name = kwargs["name"]
         datasets = get_datasets_folder_reference()
         huge_df = self.create_dataset(size=dataset_size)
@@ -90,5 +90,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=99, name="100")
+    vm.export_dataset(size=500, name="500")
     print(vm.broken_matches)

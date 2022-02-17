@@ -4,7 +4,6 @@ from typing import List, Tuple
 import lightgbm
 import optuna
 import seaborn as sns
-from line_profiler_pycharm import profile
 from matplotlib import pyplot as plt
 from sklearn.metrics import brier_score_loss, log_loss, confusion_matrix, classification_report
 from sklearn.model_selection import train_test_split
@@ -49,7 +48,6 @@ def get_dataset_reference() -> Path:
 
 
 class ValorantLGBM:
-    @profile
     def __init__(self, filename: str = None):
         self.df = None
         self.old_df = None
@@ -66,10 +64,12 @@ class ValorantLGBM:
 
     def setup_dataframe(self, filename: str):
         self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{filename}")
+        self.set_map_name_dummy()
         self.old_df = self.df.copy()
 
     def check_multicollinearity(self) -> pd.DataFrame:
-        X_variables = self.df[self.model.feature_name_]
+        features = self.model.feature_name_
+        X_variables = self.df[features]
         vif_data = pd.DataFrame()
         vif_data["feature"] = X_variables.columns
         vif_data["VIF"] = [variance_inflation_factor(X_variables.values, i) for i in range(X_variables.shape[1])]
@@ -85,21 +85,14 @@ class ValorantLGBM:
         global_features = ["RegularTime", "SpikeTime", "DEF_operators", "Loadout_diff"]
         raw_features = ["weaponValue", "shields", "remainingCreds"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
+        map_tags = self.df["MapName"].unique()
+        map_columns = [f"MapName_{map_name}" for map_name in map_tags]
         team_features = raw_features + roles
         prefix_team_features = self.generate_atk_def_prefix(team_features)
-        trimmed = global_features + prefix_team_features
+        trimmed = global_features + prefix_team_features + map_columns
         if "delete" in kwargs:
             trimmed = [item for item in trimmed if item not in kwargs["delete"]]
         return trimmed
-
-    def handle_dummy_column_names(self) -> Tuple[str] or None:
-        first_map_index = 0
-        df_columns = tuple(self.df.columns)
-        for index, column_name in enumerate(df_columns):
-            if column_name == "Team_B_Name":
-                first_map_index = index + 1
-                break
-        return df_columns[first_map_index:] if first_map_index != 0 else None
 
     @staticmethod
     def generate_atk_def_prefix(variable_list: List[str]) -> List[str]:
@@ -110,9 +103,15 @@ class ValorantLGBM:
     def set_default_features_without_multicollinearity(self):
         raw_list = ["weaponValue", "shields", "remainingCreds"]
         delete_list = self.generate_atk_def_prefix(raw_list)
-        self.set_features(self.get_default_features(delete=delete_list))
+        model_features = self.get_default_features(delete=delete_list)
+        self.set_features(model_features)
         self.set_target("FinalWinner")
-        self.df = self.df[self.features + [self.target]]
+        final_features = self.features + [self.target]
+        self.df = self.df[final_features]
+
+    def set_map_name_dummy(self):
+        map_name_dummy = pd.get_dummies(self.df["MapName"], prefix="MapName")
+        self.df = pd.concat([self.df, map_name_dummy], axis=1)
 
     def set_delta_setup(self):
         self.set_delta_features()
@@ -141,15 +140,15 @@ class ValorantLGBM:
                                                                                     random_state=15)
             self.df_prepared = True
 
-    def pandas_tasks(self):
-        self.set_default_features_without_multicollinearity()
-        self.prepare_df()
-
     def train_model(self, **kwargs):
         self.do_optuna = kwargs.get("optuna_study", False)
         self.pandas_tasks()
         self.train_model_from_scratch()
-        self.export_model()
+        # self.export_model()
+
+    def pandas_tasks(self):
+        self.set_default_features_without_multicollinearity()
+        self.prepare_df()
 
     def train_model_from_scratch(self):
         if self.do_optuna:
@@ -269,7 +268,7 @@ class ValorantLGBM:
     def show_all_metrics(self):
         if self.from_file:
             print(colored("Impossible to show metrics. You should instantiate this class with a csv dataset", "red"))
-        self.pandas_tasks()
+        # self.pandas_tasks()
         self.get_feature_importance()
         self.get_model_precision()
         self.get_brier_score()
@@ -328,9 +327,8 @@ def get_dataset() -> pd.DataFrame:
 
 if __name__ == "__main__":
     vm = ValorantLGBM()
-    vm.import_model_from_file()
+    # vm.import_model_from_file()
     vm.setup_dataframe("2000.csv")
-    # vm.train_model(optuna_study=False)
     # col = vm.check_multicollinearity()
-    # vm.train_model(optuna_study=True)
-    vm.show_all_metrics()
+    vm.train_model(optuna_study=False)
+    # vm.show_all_metrics()

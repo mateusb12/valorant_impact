@@ -83,7 +83,7 @@ class ValorantLGBM:
 
     def get_default_features(self, **kwargs) -> List[str]:
         global_features = ["RegularTime", "SpikeTime", "DEF_operators", "Loadout_diff"]
-        raw_features = ["weaponValue", "shields", "remainingCreds", "kills"]
+        raw_features = ["weaponValue", "shields", "remainingCreds"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         team_features = raw_features + roles
         prefix_team_features = self.generate_atk_def_prefix(team_features)
@@ -109,7 +109,6 @@ class ValorantLGBM:
 
     def set_default_features_without_multicollinearity(self):
         raw_list = ["weaponValue", "shields", "remainingCreds"]
-        # raw_list = ["loadoutValue", "remainingCreds"]
         delete_list = self.generate_atk_def_prefix(raw_list)
         self.set_features(self.get_default_features(delete=delete_list))
         self.set_target("FinalWinner")
@@ -142,21 +141,15 @@ class ValorantLGBM:
                                                                                     random_state=15)
             self.df_prepared = True
 
-    def train_model(self, **kwargs):
-        optuna_study = kwargs.get("optuna_study", False)
-        current_path = Path(os.getcwd())
-        current_folder = current_path.name
-        webscrapping_path = current_path.parent if current_folder != "webscrapping" else current_path
-        model_path = f"{webscrapping_path}{sl}model{sl}model.pkl"
-        self.pandas_tasks(optuna=optuna_study)
-
-    def pandas_tasks(self, **kwargs):
+    def pandas_tasks(self):
         self.set_default_features_without_multicollinearity()
         self.prepare_df()
-        optuna_study = kwargs["optuna"]
-        if optuna_study:
-            self.do_optuna = True
+
+    def train_model(self, **kwargs):
+        self.do_optuna = kwargs.get("optuna_study", False)
+        self.pandas_tasks()
         self.train_model_from_scratch()
+        self.export_model()
 
     def train_model_from_scratch(self):
         if self.do_optuna:
@@ -170,7 +163,7 @@ class ValorantLGBM:
                                              num_threads=optuna_dict["num_threads"],
                                              min_sum_hessian_in_leaf=optuna_dict["min_sum_hessian_in_leaf"])
         self.model.fit(self.X_train, self.Y_train)
-        joblib.dump(self.model, 'model.pkl')
+        # joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
         impact_folder = get_impact_score_folder_reference()
@@ -180,9 +173,6 @@ class ValorantLGBM:
         self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
 
     def export_model(self):
-        impact_folder = get_impact_score_folder_reference()
-        model_folder = Path(impact_folder, "model")
-        pkl_path = Path(model_folder, "model.pkl")
         joblib.dump(self.model, 'model.pkl')
 
     def get_optuna_parameters(self):
@@ -279,7 +269,7 @@ class ValorantLGBM:
     def show_all_metrics(self):
         if self.from_file:
             print(colored("Impossible to show metrics. You should instantiate this class with a csv dataset", "red"))
-        self.pandas_tasks(optuna=False)
+        self.pandas_tasks()
         self.get_feature_importance()
         self.get_model_precision()
         self.get_brier_score()
@@ -339,8 +329,8 @@ def get_dataset() -> pd.DataFrame:
 if __name__ == "__main__":
     vm = ValorantLGBM()
     vm.import_model_from_file()
-    # vm.setup_dataframe("2000.csv")
+    vm.setup_dataframe("2000.csv")
     # vm.train_model(optuna_study=False)
     # col = vm.check_multicollinearity()
     # vm.train_model(optuna_study=True)
-    # vm.show_all_metrics()
+    vm.show_all_metrics()

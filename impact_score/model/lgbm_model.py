@@ -85,11 +85,11 @@ class ValorantLGBM:
         global_features = ["RegularTime", "SpikeTime", "DEF_operators", "Loadout_diff"]
         raw_features = ["weaponValue", "shields", "remainingCreds"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
-        map_tags = self.df["MapName"].unique()
-        map_columns = [f"MapName_{map_name}" for map_name in map_tags]
+        # map_tags = self.df["MapName"].unique()
+        # map_columns = [f"MapName_{map_name}" for map_name in map_tags]
         team_features = raw_features + roles
         prefix_team_features = self.generate_atk_def_prefix(team_features)
-        trimmed = global_features + prefix_team_features + map_columns
+        trimmed = global_features + prefix_team_features
         if "delete" in kwargs:
             trimmed = [item for item in trimmed if item not in kwargs["delete"]]
         return trimmed
@@ -268,7 +268,6 @@ class ValorantLGBM:
     def show_all_metrics(self):
         if self.from_file:
             print(colored("Impossible to show metrics. You should instantiate this class with a csv dataset", "red"))
-        # self.pandas_tasks()
         self.get_feature_importance()
         self.get_model_precision()
         self.get_brier_score()
@@ -331,4 +330,4 @@ if __name__ == "__main__":
     vm.setup_dataframe("2000.csv")
     # col = vm.check_multicollinearity()
     vm.train_model(optuna_study=False)
-    # vm.show_all_metrics()
+    vm.show_all_metrics()

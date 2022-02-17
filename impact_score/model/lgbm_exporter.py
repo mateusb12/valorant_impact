@@ -7,7 +7,7 @@ def update_pkl():
     """
     vm = ValorantLGBM()
     vm.setup_dataframe("2000.csv")
-    vm.train_model(optuna_study=False)
+    vm.train_model(optuna_study=True)
     vm.export_model()
     vm.show_all_metrics()
 

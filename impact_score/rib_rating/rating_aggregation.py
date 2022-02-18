@@ -14,13 +14,14 @@ class RatingAggregator:
     def aggregate(self) -> pd.DataFrame:
         aggregate_pot = []
         start = timer()
+        self.ids = self.ids[:5]
         size = len(self.ids)
         for index, match_id in enumerate(self.ids):
             loop = timer()
             time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_id)
             self.ra.set_match(match_id)
             aggregate_pot.append(self.ra.export_player_performance())
-        return pd.concat(aggregate_pot)
+        return pd.concat(aggregate_pot, axis=0, ignore_index=True)
 
 
 if __name__ == '__main__':

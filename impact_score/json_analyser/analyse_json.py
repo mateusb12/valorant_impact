@@ -199,8 +199,14 @@ class Analyser:
                 "round_number": m["roundNumber"],
                 "timing": m["roundTimeMillis"],
                 "author": m["playerId"],
-                "event": m["eventType"],
                 "victim": m["referencePlayerId"],
+                "event": m["eventType"],
+                "damage_type": m["damageType"],
+                "weapon_id": m["weaponId"],
+                "ability": m["ability"],
+                "probability_before": m["attackingWinProbabilityBefore"],
+                "probability_after": m["attackingWinProbabilityAfter"],
+                "impact": m["impact"],
             }
             for m in self.data["matches"]["matchDetails"]["events"]
             if m["roundId"] == self.chosen_round
@@ -531,9 +537,22 @@ class Analyser:
             agent_pick_dict[player_name] = agent_name
         return agent_pick_dict
 
+    def export_player_details(self) -> dict:
+        self.set_config(round=1)
+        map_dict = self.get_series_by_id_match()
+        details_dict = {}
+        for item in map_dict["players"]:
+            player_name = item["player"]["ign"]
+            agent_id = item["agentId"]
+            agent_name = self.agent_data[str(agent_id)]["name"]
+            player_id = item["playerId"]
+            details_dict[player_id] = {"agent_name": agent_name, "player_name": player_name}
+        return details_dict
+
 
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(54498)
+    r = a.export_player_details()
     q = a.export_df()
     w = q.to_dict('list')

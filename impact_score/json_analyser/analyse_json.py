@@ -271,6 +271,7 @@ class Analyser:
                 agent_id = str(value["agentId"])
                 shield_id = str(value["shieldId"])
                 shield_value = shield_table[int(shield_id)] if shield_id != "None" else 0
+                # print(f"{agent_id} has {shield_value} shield")
                 agent_role = self.agent_data[agent_id]["role"]
                 team_number = value["name"]["team_number"]
                 team_side = self.current_round_sides[team_number]

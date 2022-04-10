@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 import lightgbm
 from termcolor import colored
 
+from impact_score.impact.impact_consumer import export_impact
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM
@@ -381,10 +382,22 @@ class RoundReplay:
         color_dict = {"atk": "red", "def": "blue"}
         marker_dict = {"atk": "#511C29", "def": "darkblue"}
         round_data = self.get_round_probability(side=chosen_side)
+        kills_data_df = pd.DataFrame(export_impact(self.match_id, self.analyser)[f"Round_{round_number}"])
+        kills_data_df["RoundTime"] = kills_data_df["timing"] / 1000
+        single_stamps = kills_data_df["timing"].tolist()
+        duplicated_stamps = [int(ele) for index, ele in enumerate(single_stamps) for i in range(2)]
+        la = kills_data_df["probability_before"].tolist()
+        lb = kills_data_df["probability_after"].tolist()
+        interpolated_probs = []
+        for index in range(len(la)):
+            interpolated_probs.append(float(la[index]))
+            interpolated_probs.append(float(lb[index]))
+
+        plot_data = {"Round time": duplicated_stamps, "Win_probability": ['%.2f' % elem for elem in interpolated_probs]}
 
         sns.set_context(rc={'patch.linewidth': 2.0})
         sns.set(font_scale=1.3)
-        ax = sns.lineplot(x="Round time", y="Win_probability", data=round_data,
+        ax = sns.lineplot(x="Round time", y="Win_probability", data=plot_data,
                           linewidth=0, zorder=0, color=color_dict[chosen_side])
         ax.set(xlabel='Round time (s)', ylabel='Win probability (%)')
         ax.xaxis.labelpad = 10
@@ -397,9 +410,12 @@ class RoundReplay:
         plt.axhline(y=0, color="black")
         plt.axhline(y=50, linestyle="-", color="grey", linewidth=1.5)
         plt.grid(True, which='both', linestyle='--', zorder=0, linewidth=0.9)
+        plt.show()
 
-        x_data = list(round_data["Round time"])
-        y_data = list(round_data["Win_probability"])
+        # x_data = list(round_data["Round time"])
+        # y_data = list(round_data["Win_probability"])
+        x_data = plot_data["Round time"]
+        y_data = plot_data["Win_probability"]
         marker_colors = [marker_dict[chosen_side]] * len(x_data)
 
         def annotation(content: str, x_coord: float, y_coord: float, orientation: str):
@@ -497,11 +513,10 @@ def test_single_round(match_id: int, round_number: int):
 
 
 if __name__ == "__main__":
-    aux = test_single_round(55046, 1)
-    print(aux)
-    # rr_instance = RoundReplay()
-    # rr_instance.set_match(54900)
-    # rr_instance.choose_round(18)
+    rr_instance = RoundReplay()
+    rr_instance.set_match(60206)
+    rr_instance.choose_round(2)
+    # rr_instance.plot_round(side="atk", marker_margin=0.15)
     # aux = rr_instance.get_round_probability(side="atk")
     # apple = 5 + 1
     # total_rounds = rr_instance.analyser.round_amount + 1

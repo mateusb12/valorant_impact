@@ -1,11 +1,9 @@
 import copy
-import os
 
 import pandas as pd
 from line_profiler_pycharm import profile
 from matplotlib import pyplot as plt
 import seaborn as sns
-from pathlib import Path
 
 import matplotlib.lines as mlines
 
@@ -13,7 +11,7 @@ from sklearn.model_selection import train_test_split
 import lightgbm
 from termcolor import colored
 
-from impact_score.impact.impact_consumer import export_impact
+from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM

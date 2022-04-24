@@ -31,5 +31,22 @@ def export_impact(match_id: int, input_analyser: Analyser) -> dict:
     return match_impact_dict
 
 
+def export_players_impact(match_id: int, input_analyser: Analyser) -> dict:
+    match_data = export_impact(match_id, input_analyser)
+    player_impact_dict = {}
+
+    for round_n in match_data.values():
+        for event in round_n:
+            author = event['author']
+            if author not in player_impact_dict and author is not None:
+                player_impact_dict[author] = 0
+            if author is not None:
+                impact = float(event['impact'])
+                player_impact_dict[author] += impact
+
+    return player_impact_dict
+
+
 if __name__ == "__main__":
     test = export_impact(match_id=60206, input_analyser=Analyser())
+    print(test)

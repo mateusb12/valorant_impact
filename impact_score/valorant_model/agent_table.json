@@ -64,12 +64,12 @@
 		"role": "Initiator"
 	},
 	"17": {
-		"name": "Neon",
-		"role": "Duelist"
-	},
-	"18": {
 		"name": "Chamber",
 		"role": "Sentinel"
+	},
+	"18": {
+		"name": "Neon",
+		"role": "Duelist"
 	},
 	"19": {
 		"name": "NA"

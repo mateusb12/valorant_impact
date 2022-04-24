@@ -516,6 +516,8 @@ if __name__ == "__main__":
     rr_instance = RoundReplay()
     rr_instance.set_match(60206)
     rr_instance.choose_round(2)
+    aux = rr_instance.get_round_probability(side="atk")
+    print(aux)
     # rr_instance.plot_round(side="atk", marker_margin=0.15)
     # aux = rr_instance.get_round_probability(side="atk")
     # apple = 5 + 1

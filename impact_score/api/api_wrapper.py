@@ -2,7 +2,7 @@ import pathlib
 import pandas as pd
 import os
 
-from impact_score.impact.impact_consumer import export_impact
+from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.impact.match_analysis import RoundReplay
 from flask import Flask, jsonify, request
 from timeit import default_timer as timer

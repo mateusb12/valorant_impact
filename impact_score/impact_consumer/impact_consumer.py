@@ -1,9 +1,7 @@
 from typing import Union, Dict, Any
 
-import requests
-
-# from impact_score.impact.match_analysis import RoundReplay
 from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.json_analyser.api_consumer import get_impact_details
 
 
 def export_impact(match_id: int, input_analyser: Analyser) -> dict:

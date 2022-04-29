@@ -12,6 +12,7 @@ from impact_score.json_analyser.analyse_json import Analyser
 
 start = timer()
 app = Flask(__name__)
+print("Starting API")
 
 
 def get_webscrapping_path():
@@ -27,6 +28,29 @@ def homepage():
 
 @app.route('/get_round_impact/<input_match_id>', methods=["GET"])
 def get_round_impact(input_match_id):
+    """
+    Export a json with round details
+    :param input_match_id:
+    :return: json format example
+    {
+        "Round_1": {
+            "ability": "null",
+            "author": "keznit",
+            "author_agent": "Jett",
+            "damage_type": "weapon",
+            "event": "kill",
+            "impact": "0.112",
+            "probability_before": "0.467",
+            "probability_after": "0.355",
+            "round_number": 1,
+            "timing": 21510,
+            "victim": "Jamppi",
+            "victim_agent": "Killjoy",
+            "weapon_id": 12,
+            "weapon_name": "Ghost"
+        }
+    }
+    """
     match_id = int(input_match_id)
     rr_instance = RoundReplay()
     rr_instance.set_match(match_id)

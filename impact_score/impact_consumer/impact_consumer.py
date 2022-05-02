@@ -79,6 +79,19 @@ def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> 
 
 
 def export_probability_points(match_id: int) -> dict:
+    """
+    Export the probability points of each player in a match.
+    :param match_id:
+    :return: Dict with the following format
+    {
+        "Round_1": {
+            "probability_points": [0.4976, 0.4672, 0.3551, 0.2318, 0.2709, 0.4709],
+            "timestamp_points": [0, 8299, 42780, 44737, 56215, 63842, 64286, 92686]
+            "kill_feed_points": ['keznit Ghost ScreaM', 'keznit Ghost soulcas', 'Nivera headhunter NagZ',
+             'Jamppi Classic keznit', 'Mazino Classic Nivera', 'Delz1k Frenzy L1NK'],
+        }
+    }
+    """
     data = get_impact_details(match_id)
     round_amount = max(int(key[6:]) for key in data.keys())
     map_probability_points = {f"Round_{i}": None for i in range(1, round_amount + 1)}
@@ -86,8 +99,11 @@ def export_probability_points(match_id: int) -> dict:
     def get_single_round_plots(round_n: int) -> dict:
         probability_points = []
         kill_feed_points = []
+        timestamp_points = []
         for event in data[f"Round_{round_n}"]:
-            probability_points.extend((event["probability_before"], event["probability_after"]))
+            probability_points.extend((float(event["probability_before"]), float(event["probability_after"])))
+            timing = event["timing"]/1000
+            timestamp_points.extend((timing, timing))
 
             if event['author'] is not None:
                 kill_feed_string = ""
@@ -108,7 +124,8 @@ def export_probability_points(match_id: int) -> dict:
                 elif event['event'] == 'revival':
                     kill_feed_string = f"{event['author']} revived {event['victim']}"
                 kill_feed_points.append(kill_feed_string)
-        return {"probability_points": probability_points, "kill_feed_points": kill_feed_points}
+        return {"probability_points": probability_points, "timestamp_points": timestamp_points,
+                "kill_feed_points": kill_feed_points}
 
     for j in range(1, round_amount + 1):
         map_probability_points[f"Round_{j}"] = get_single_round_plots(j)

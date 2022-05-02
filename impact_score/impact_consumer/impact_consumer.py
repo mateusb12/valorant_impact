@@ -3,6 +3,8 @@ from typing import Union, Dict, Any
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.json_analyser.api_consumer import get_impact_details
 
+import pandas as pd
+
 
 def export_impact(match_id: int, input_analyser: Analyser) -> dict:
     """
@@ -102,7 +104,7 @@ def export_probability_points(match_id: int) -> dict:
         timestamp_points = []
         for event in data[f"Round_{round_n}"]:
             probability_points.extend((float(event["probability_before"]), float(event["probability_after"])))
-            timing = event["timing"]/1000
+            timing = event["timing"] / 1000
             timestamp_points.extend((timing, timing))
 
             if event['author'] is not None:
@@ -124,6 +126,7 @@ def export_probability_points(match_id: int) -> dict:
                 elif event['event'] == 'revival':
                     kill_feed_string = f"{event['author']} revived {event['victim']}"
                 kill_feed_points.append(kill_feed_string)
+
         return {"probability_points": probability_points, "timestamp_points": timestamp_points,
                 "kill_feed_points": kill_feed_points}
 
@@ -133,8 +136,36 @@ def export_probability_points(match_id: int) -> dict:
     return map_probability_points
 
 
+def generate_probability_dataframe(data: dict) -> pd.DataFrame:
+    """
+    Generate a dataframe with the probability points of each player in a match.
+    :param data: output from export_probability_points()
+    :return: timestamp: [0, 8.299, 42.780, 44.737, 56.215, 63.842, 64.286, 92.686]
+             probability_points: [0.4976, 0.4672, 0.3551, 0.2318, 0.2709, 0.4709],
+            kill_feed_points: ['keznit Ghost ScreaM', 'keznit Ghost soulcas', 'Nivera headhunter NagZ', etc]
+            labels: [A, B, C, D, E, F, G]
+    """
+    # data = export_probability_points(match_id)[f"Round_{round_number}"]
+
+    def intersperse(lst, item):
+        result = [item] * (len(lst) * 2 - 1)
+        result[0::2] = lst
+        return result
+
+    labels = [chr(i) for i in range(65, 74)]
+    labels = intersperse(labels, None)[:-1]
+
+    kill_feed = intersperse(data["kill_feed_points"], None)
+    kill_feed.insert(0, "Round Start")
+    kill_feed.insert(1, None)
+    kill_feed.insert(len(kill_feed), None)
+
+    return pd.DataFrame({"timestamp": data["timestamp_points"], "probability": data["probability_points"],
+                         "label": labels, "kill_feed": kill_feed})
+
+
 if __name__ == "__main__":
-    #test = export_impact(match_id=60206, input_analyser=Analyser())
-    #test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
+    # test = export_impact(match_id=60206, input_analyser=Analyser())
+    # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     test3 = export_probability_points(match_id=60206)
     print(test3)

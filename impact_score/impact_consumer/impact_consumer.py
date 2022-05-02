@@ -78,7 +78,46 @@ def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> 
         return player_impact_dict
 
 
+def export_probability_points(match_id: int) -> dict:
+    data = get_impact_details(match_id)
+    round_amount = max(int(key[6:]) for key in data.keys())
+    map_probability_points = {f"Round_{i}": None for i in range(1, round_amount + 1)}
+
+    def get_single_round_plots(round_n: int) -> dict:
+        probability_points = []
+        kill_feed_points = []
+        for event in data[f"Round_{round_n}"]:
+            probability_points.extend((event["probability_before"], event["probability_after"]))
+
+            if event['author'] is not None:
+                kill_feed_string = ""
+                if event['event'] == 'kill':
+                    means = "b"
+                    if event['damage_type'] == 'weapon':
+                        try:
+                            means = event['weapon_name']
+                        except KeyError:
+                            means = "Overdrive"
+                    elif event['damage_type'] == 'ability':
+                        means = event['ability']
+                    kill_feed_string = f"{event['author']} {means} {event['victim']}"
+                elif event['event'] == 'plant':
+                    kill_feed_string = f"{event['author']} planted the bomb"
+                elif event['event'] == 'defuse':
+                    kill_feed_string = f"{event['author']} defused the bomb"
+                elif event['event'] == 'revival':
+                    kill_feed_string = f"{event['author']} revived {event['victim']}"
+                kill_feed_points.append(kill_feed_string)
+        return {"probability_points": probability_points, "kill_feed_points": kill_feed_points}
+
+    for j in range(1, round_amount + 1):
+        map_probability_points[f"Round_{j}"] = get_single_round_plots(j)
+
+    return map_probability_points
+
+
 if __name__ == "__main__":
-    test = export_impact(match_id=60206, input_analyser=Analyser())
-    test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
-    print(test)
+    #test = export_impact(match_id=60206, input_analyser=Analyser())
+    #test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
+    test3 = export_probability_points(match_id=60206)
+    print(test3)

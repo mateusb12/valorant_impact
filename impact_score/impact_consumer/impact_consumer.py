@@ -1,7 +1,12 @@
+import time
 from typing import Union, Dict, Any
+
+from matplotlib import ticker
+from matplotlib.lines import Line2D
 
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.json_analyser.api_consumer import get_impact_details
+import matplotlib.pyplot as plt
 
 import pandas as pd
 
@@ -104,7 +109,8 @@ def export_probability_points(match_id: int) -> dict:
         timestamp_points = []
         for event in data[f"Round_{round_n}"]:
             probability_points.extend((float(event["probability_before"]), float(event["probability_after"])))
-            timing = event["timing"] / 1000
+            # timing = event["timing"] / 1000
+            timing = event["timing"]
             timestamp_points.extend((timing, timing))
 
             if event['author'] is not None:
@@ -145,6 +151,7 @@ def generate_probability_dataframe(data: dict) -> pd.DataFrame:
             kill_feed_points: ['keznit Ghost ScreaM', 'keznit Ghost soulcas', 'Nivera headhunter NagZ', etc]
             labels: [A, B, C, D, E, F, G]
     """
+
     # data = export_probability_points(match_id)[f"Round_{round_number}"]
 
     def intersperse(lst, item):
@@ -162,6 +169,52 @@ def generate_probability_dataframe(data: dict) -> pd.DataFrame:
 
     return pd.DataFrame({"timestamp": data["timestamp_points"], "probability": data["probability_points"],
                          "label": labels, "kill_feed": kill_feed})
+
+
+def generate_probability_graph(match_id: int, round_number: int) -> None:
+    data = export_probability_points(match_id)[f"Round_{round_number}"]
+    y_values = data["probability_points"]
+    x_values = data["timestamp_points"]
+    df = generate_probability_dataframe(data)
+    plt.figure(figsize=(12, 5))
+    plt.title('Attackers probability over time')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Probability (%)')
+    markers_on = list(range(1, len(x_values), 2))
+    ax = plt.gca()
+    n = list(df["label"])
+
+    for i, txt in enumerate(n):
+        if txt is None:
+            plt.text(x_values[i], y_values[i] + 0.007, n[i - 1], horizontalalignment='center',
+                     verticalalignment='bottom',
+                     fontsize=12)
+
+    legend_elements = []
+
+    for event in df["kill_feed"]:
+        if event is not None:
+            label_index = chr(65 + len(legend_elements))
+            new_label = f"{label_index} → {event}"
+            new_element = Line2D([0], [0], marker='o', color='w', label=new_label, markerfacecolor='r', markersize=10)
+            legend_elements.append(new_element)
+    plt.legend(handles=legend_elements, loc=(1.04, 0.45))
+    plt.grid(linewidth=0.4)
+
+    plt.plot(df["timestamp"], df["probability"], color="red", linewidth=1.0,
+             marker='o', markersize=6, markerfacecolor="black", markevery=markers_on)
+
+    plt.axhline(y=0, color='white', linestyle='-')
+
+    bomb_query = df[df['kill_feed'].str.contains("bomb") == True]
+    if len(bomb_query) == 1:
+        bomb_stamp = bomb_query["timestamp"].to_list()[0]
+        plt.axvline(x=bomb_stamp, color='pink', linestyle='-', linewidth=2.0)
+
+    formatter = ticker.FuncFormatter(lambda ms, x: time.strftime('%M:%S', time.gmtime(ms // 1000)))
+    ax.xaxis.set_major_formatter(formatter)
+    ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1))
+    plt.show()
 
 
 if __name__ == "__main__":

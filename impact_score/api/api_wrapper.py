@@ -1,6 +1,10 @@
 import pathlib
+from json import dump
+
 import pandas as pd
 import os
+
+import requests
 
 from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.impact.match_analysis import RoundReplay
@@ -12,6 +16,7 @@ from impact_score.json_analyser.analyse_json import Analyser
 
 start = timer()
 app = Flask(__name__)
+app.config['JSON_SORT_KEYS'] = False
 print("Starting API")
 
 
@@ -121,6 +126,44 @@ def test_probability():
     raw_proba = test_model.predict_proba(aux_df)[0][1]
     rounded_proba = 100 * round(raw_proba, 2)
     return jsonify({"probability": f"{rounded_proba}%"})
+
+
+@app.route('/get_agent_table', methods=["GET"])
+def get_agent_table():
+    raw_dict = {
+        "1": {"name": "Breach", "role": "Initiator"},
+        "2": {"name": "Raze", "role": "Duelist"},
+        "3": {"name": "Cypher", "role": "Sentinel"},
+        "4": {"name": "Sova", "role": "Initiator"},
+        "5": {"name": "Killjoy", "role": "Sentinel"},
+        "6": {"name": "Viper", "role": "Controller"},
+        "7": {"name": "Phoenix", "role": "Duelist"},
+        "8": {"name": "Brimstone", "role": "Controller"},
+        "9": {"name": "Sage", "role": "Sentinel"},
+        "10": {"name": "Reyna", "role": "Duelist"},
+        "11": {"name": "Omen", "role": "Controller"},
+        "12": {"name": "Jett", "role": "Duelist"},
+        "13": {"name": "Skye", "role": "Initiator"},
+        "14": {"name": "Yoru", "role": "Duelist"},
+        "15": {"name": "Astra", "role": "Controller"},
+        "16": {"name": "KAY/O", "role": "Initiator"},
+        "17": {"name": "Chamber", "role": "Sentinel"},
+        "18": {"name": "Neon", "role": "Duelist"},
+        "19": {"name": "Fade", "role": "Initiator"},
+    }
+
+    return jsonify(raw_dict)
+
+
+@app.route('/update_agent_table', methods=["POST"])
+def update_agent_table():
+    link = "http://192.168.31.33:5000/get_agent_table"
+    response = requests.get(link)
+    updated_json = dict(response.json())
+    agent_path = Path(Path(os.getcwd()).parent, 'valorant_model', 'agent_table.json')
+    with open(agent_path, "w") as outfile:
+        dump(updated_json, outfile, indent=2)
+    return jsonify({"status": "ok", "new_data": updated_json})
 
 
 def webscrapping_fix():

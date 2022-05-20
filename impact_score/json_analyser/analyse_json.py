@@ -26,6 +26,7 @@ class Analyser:
         self.match_id, self.series_id, self.team_a, self.team_b, self.series_by_id = [None] * 5
         self.match_dict, self.defending_first_team, self.round_amount, self.current_round_sides = [None] * 4
         self.match_link, self.round_number, self.team_number_dict, self.defuse_happened, self.event_type = [None] * 5
+        self.config_set = None
 
     def open_file(self, input_index: int) -> dict:
         input_file = f"{input_index}.json"
@@ -111,8 +112,10 @@ class Analyser:
         if round_number >= 13:
             self.attacking_first_team = new_attack
 
+        self.config_set = True
+
     @staticmethod
-    def handle_sides(round_amount: int):
+    def handle_sides(round_amount: int) -> dict:
         side_pattern = ["normal"] * 12
         if round_amount > 24:
             side_pattern += ["inverse"] * 12
@@ -126,30 +129,54 @@ class Analyser:
         return {i: side for i, side in enumerate(side_pattern, 1)}
 
     def get_player_sides(self) -> dict:
+        """
+        Get the sides of each player in the current round
+        :return:    {3340: 'defending',
+                    3894: 'defending',
+                    2810: 'defending',
+                    2125: 'attacking'}
+        """
+        if self.config_set is None:
+            raise Exception("You should use Analyser.set_config(round=x) beforehand!")
         raw_side_dict = self.current_round_sides
         player_db = self.current_status
         return {key: raw_side_dict[value["team_number"]] for key, value in player_db.items()}
 
-    def get_team_a(self):
+    def get_team_a(self) -> dict:
+        """
+        Get the team A of the current map
+        :return: {'id': 3975, 'name': 'Pioneers'}
+        """
         aux = self.series_by_id
         return {"id": aux["team1"]["id"], "name": aux["team1"]["name"]}
 
-    def get_team_b(self):
+    def get_team_b(self) -> dict:
+        """
+        Get the team B of the current map
+        :return: {'id': 588, 'name': 'Knights'}
+        """
         aux = self.series_by_id
         return {"id": aux["team2"]["id"], "name": aux["team2"]["name"]}
 
-    def get_plant_timestamp(self):
+    def get_plant_timestamp(self) -> float or None:
         for h in self.round_events:
             if h["event"] == "plant":
                 return h["timing"]
         return None
 
-    def get_series_by_id_match(self):
+    def get_series_by_id_match(self) -> dict:
         for match in self.series_by_id["matches"]:
             if match["seriesMatchNumber"] == self.chosen_map:
                 return match
 
     def export_player_names(self):
+        """
+        Export the player names in format of a dictionary
+        :return:    {'ban': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'Frosty': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'Genghsta': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'HUYNH': {'gained': 0, 'lost': 0, 'delta': 0},
+        """
         self.set_config(round=1)
         return {
             value["name"]["ign"]: {"gained": 0, "lost": 0, "delta": 0} for item, value in self.current_status.items()
@@ -554,6 +581,7 @@ class Analyser:
 if __name__ == "__main__":
     a = Analyser()
     a.set_match(54498)
-    r = a.export_player_details()
+    #a.get_player_sides()
+    #r = a.export_player_details()
     q = a.export_df()
-    w = q.to_dict('list')
+    #w = q.to_dict('list')

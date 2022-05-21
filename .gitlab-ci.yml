@@ -1,5 +1,4 @@
 production:
-  type: deploy
   script:
     - apt-get update -qy
     - apt-get install -y ruby-dev

@@ -580,8 +580,11 @@ class Analyser:
 
 if __name__ == "__main__":
     a = Analyser()
-    a.set_match(54498)
-    #a.get_player_sides()
-    #r = a.export_player_details()
+    a.set_match(65588)
+    a.set_config(round=1)
+    events = a.round_events
+    # a.get_player_sides()
+    # r = a.export_player_details()
     q = a.export_df()
-    #w = q.to_dict('list')
+    print(q)
+    # w = q.to_dict('list')

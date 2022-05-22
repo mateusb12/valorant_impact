@@ -220,5 +220,7 @@ def generate_probability_graph(match_id: int, round_number: int) -> None:
 if __name__ == "__main__":
     # test = export_impact(match_id=60206, input_analyser=Analyser())
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
-    test3 = export_probability_points(match_id=60206)
-    print(test3)
+    # test3 = export_probability_points(match_id=65588)
+    a = Analyser()
+    test4 = export_impact(match_id=65588, input_analyser=a)
+    print(test4)

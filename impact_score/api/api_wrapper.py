@@ -157,6 +157,10 @@ def get_agent_table():
 
 @app.route('/update_agent_table', methods=["POST"])
 def update_agent_table():
+    """
+    This function updates the agent_table.json file in the valorant_model folder.
+    It does this by making a GET request and then writing response to the agent_table.json file.
+    """
     link = "http://192.168.31.33:5000/get_agent_table"
     response = requests.get(link)
     updated_json = dict(response.json())

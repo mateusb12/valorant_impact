@@ -216,17 +216,22 @@ class RoundReplay:
                        "Impact"]]
 
         if "add_events" in kwargs and kwargs["add_events"]:
-            extra_df = self.round_events_dataframe()
-            table.reset_index(drop=True, inplace=True)
-            extra_df.reset_index(drop=True, inplace=True)
-            table = pd.concat([table, extra_df], axis=1)
-            wp = list(table["Win_probability"])
-            # new_diff = [x - wp[i - 1] for i, x in enumerate(wp)][1:]
-            # new_diff.insert(0, 0)
-            # table["Difference (%)"] = new_diff
-
-            table = table[["Round", "Round time", "Stamps", "Difference (%)", "Actors", "Means", "Victims",
-                           "Win_probability", "Final Winner", "Integer time"]]
+            event_df = pd.DataFrame(current_round_events)
+            event_df = event_df.fillna(0)
+            int_columns = ['killId', 'tradedByKillId', 'tradedForKillId', 'bombId', 'resId',
+                           'playerId', 'referencePlayerId', 'weaponId']
+            event_df[int_columns] = event_df[int_columns].astype(int)
+            weapon_name_data = {int(key): value["name"] for key, value in self.analyser.weapon_data.items()}
+            player_data = self.analyser.export_player_details()
+            player_names = {key: value["player_name"] for key, value in player_data.items()}
+            player_agents = {key: value["agent_name"] for key, value in player_data.items()}
+            player_names[0], player_agents[0], weapon_name_data[0] = 0, 0, 0
+            table["Killer"] = event_df["playerId"].map(player_names).values
+            table["KillerAgent"] = event_df["playerId"].map(player_agents).values
+            table["Weapon"] = event_df["weaponId"].map(weapon_name_data).values
+            table["Ability"] = event_df["ability"].values
+            table["Victim"] = event_df["referencePlayerId"].map(player_names).values
+            table["VictimAgent"] = event_df["referencePlayerId"].map(player_agents).values
 
         table = table.fillna(0)
         return table
@@ -490,19 +495,6 @@ def train_model() -> lightgbm.LGBMClassifier:
     return vm.model
 
 
-@profile
-def test_performance(match_id: int):
-    rr = RoundReplay()
-    rr.set_match(match_id)
-    max_rounds = rr.analyser.round_amount
-    proba_pot = []
-    for round_number in range(1, max_rounds + 1):
-        rr.choose_round(round_number)
-        proba_pot.append(rr.get_round_probability(side="atk"))
-    round_impact_df = pd.concat(proba_pot, axis=0)
-    dict_to_return = round_impact_df.to_dict('list')
-
-
 def test_single_round(match_id: int, round_number: int):
     rr = RoundReplay()
     rr.set_match(match_id)
@@ -512,9 +504,9 @@ def test_single_round(match_id: int, round_number: int):
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(60206)
-    rr_instance.choose_round(2)
-    aux = rr_instance.get_round_probability(side="atk")
+    rr_instance.set_match(65587)
+    rr_instance.choose_round(3)
+    aux = rr_instance.get_round_probability(side="atk", add_events=True)
     print(aux)
     # rr_instance.plot_round(side="atk", marker_margin=0.15)
     # aux = rr_instance.get_round_probability(side="atk")

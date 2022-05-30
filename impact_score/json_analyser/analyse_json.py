@@ -248,10 +248,7 @@ class Analyser:
                 current_map = match
                 for r in current_map["rounds"]:
                     if r["id"] == self.chosen_round:
-                        if r["winningTeamNumber"] == self.attacking_first_team:
-                            return 1
-                        else:
-                            return 0
+                        return 1 if r["winningTeamNumber"] == self.attacking_first_team else 0
 
     def generate_average_distance(self) -> pd.DataFrame:
         self.set_config(round=1)
@@ -525,7 +522,6 @@ class Analyser:
 
     def export_round_events(self) -> dict:
         self.set_config(round=1)
-        # self.set_config(map=self.chosen_map, round=self.chosen_round)
         export_events = self.data["matches"]["matchDetails"]["events"]
 
         for event in export_events:

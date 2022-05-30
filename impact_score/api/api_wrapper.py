@@ -130,29 +130,14 @@ def test_probability():
 
 @app.route('/get_agent_table', methods=["GET"])
 def get_agent_table():
-    raw_dict = {
-        "1": {"name": "Breach", "role": "Initiator"},
-        "2": {"name": "Raze", "role": "Duelist"},
-        "3": {"name": "Cypher", "role": "Sentinel"},
-        "4": {"name": "Sova", "role": "Initiator"},
-        "5": {"name": "Killjoy", "role": "Sentinel"},
-        "6": {"name": "Viper", "role": "Controller"},
-        "7": {"name": "Phoenix", "role": "Duelist"},
-        "8": {"name": "Brimstone", "role": "Controller"},
-        "9": {"name": "Sage", "role": "Sentinel"},
-        "10": {"name": "Reyna", "role": "Duelist"},
-        "11": {"name": "Omen", "role": "Controller"},
-        "12": {"name": "Jett", "role": "Duelist"},
-        "13": {"name": "Skye", "role": "Initiator"},
-        "14": {"name": "Yoru", "role": "Duelist"},
-        "15": {"name": "Astra", "role": "Controller"},
-        "16": {"name": "KAY/O", "role": "Initiator"},
-        "17": {"name": "Chamber", "role": "Sentinel"},
-        "18": {"name": "Neon", "role": "Duelist"},
-        "19": {"name": "Fade", "role": "Initiator"},
-    }
-
-    return jsonify(raw_dict)
+    link = "https://backend-prod.rib.gg/v1/content"
+    response = requests.get(link)
+    updated_json = dict(response.json())
+    updated_agents = updated_json["agents"]
+    agent_dict = {agent["id"]: {"name": agent["name"], "role": agent["role"]} for agent in updated_agents}
+    agent_dict = {k: agent_dict[k] for k in sorted(agent_dict)}
+    agent_dict = {str(k): agent_dict[k] for k in agent_dict}
+    return jsonify(agent_dict)
 
 
 @app.route('/update_agent_table', methods=["POST"])

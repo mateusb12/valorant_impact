@@ -10,39 +10,13 @@ from termcolor import colored
 
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.model.time_analyser import time_metrics
-
-
-def get_json_folder_reference() -> Path:
-    current_folder = Path(os.getcwd())
-    current_folder_name = current_folder.name
-    if current_folder_name == "model":
-        webscrapping = current_folder.parent
-        return Path(webscrapping, "matches", "json")
-
-
-def get_matches_folder_reference() -> Path:
-    current_folder = Path(os.getcwd())
-    current_folder_name = current_folder.name
-    if current_folder_name == "model":
-        webscrapping = current_folder.parent
-        return Path(webscrapping, "matches")
-
-
-def get_datasets_folder_reference() -> Path:
-    current_folder = Path(os.getcwd())
-    current_folder_name = current_folder.name
-    if current_folder_name == "model":
-        webscrapping = current_folder.parent
-        return Path(webscrapping, "matches", "events")
-    elif current_folder_name == "datasets":
-        return current_folder
+from impact_score.path_reference.folder_ref import datasets_reference
 
 
 def get_match_list() -> List[int]:
-    dataset_reference = Path(get_datasets_folder_reference(), "dataset_matches.csv")
+    dataset_reference = Path(datasets_reference(), "dataset_matches.csv")
     matches_csv = pd.read_csv(dataset_reference)
-    nested_list = matches_csv.values.tolist()
-    return list(chain(*nested_list))
+    return matches_csv["Match Id"].tolist()
 
 
 class ValorantDatasetGenerator:
@@ -72,7 +46,7 @@ class ValorantDatasetGenerator:
     def export_dataset(self, **kwargs):
         dataset_size = (kwargs["size"]) - 1
         dataset_name = kwargs["name"]
-        datasets = get_datasets_folder_reference()
+        datasets = datasets_reference()
         huge_df = self.create_dataset(size=dataset_size)
         map_name_dummy = pd.get_dummies(huge_df["MapName"], prefix="MapName")
         huge_df = pd.concat([huge_df, map_name_dummy], axis=1)

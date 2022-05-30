@@ -508,12 +508,14 @@ class Analyser:
                 'MapName', 'MatchID', 'SeriesID', 'bestOF',
                 'FinalWinner']
 
-    def export_df(self):
+    def export_df(self) -> pd.DataFrame:
         self.set_config(round=1)
         report = self.generate_map_metrics()
         raw = pd.DataFrame(report)
         raw = self.add_teams_to_df(raw)
         raw["Loadout_diff"] = raw["ATK_loadoutValue"] - raw["DEF_loadoutValue"]
+        team_positions = self.generate_average_distance()
+        raw = raw.join(team_positions)
         return raw
 
     def add_teams_to_df(self, input_df: pd.DataFrame) -> pd.DataFrame:

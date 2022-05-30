@@ -247,7 +247,7 @@ class ValorantLGBM:
         plt.show()
 
     def get_brier_score(self):
-        print("Brier score → {}".format(brier_score_loss(self.Y_test, pd.DataFrame(self.pred_proba_test)[1])))
+        print(f"Brier score → {brier_score_loss(self.Y_test, pd.DataFrame(self.pred_proba_test)[1])}")
 
     def get_confusion_matrix(self):
         plt.figure(figsize=(8, 6))

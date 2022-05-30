@@ -490,7 +490,6 @@ def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClass
 
 def train_model() -> lightgbm.LGBMClassifier:
     vm = ValorantLGBM("500.csv")
-    vm.set_default_features_without_multicollinearity()
     vm.train_model()
     return vm.model
 

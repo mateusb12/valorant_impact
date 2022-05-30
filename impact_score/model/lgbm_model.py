@@ -17,6 +17,7 @@ from termcolor import colored
 
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.imports.os_slash import get_slash_type
+from impact_score.model.dataset_preparation.dataset_prep import prepare_dataset
 
 sl = get_slash_type()
 
@@ -63,17 +64,8 @@ class ValorantLGBM:
         self.do_optuna = False
 
     def setup_dataframe(self, filename: str):
-        self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{filename}")
-        self.set_map_name_dummy()
+        self.df = prepare_dataset(filename)
         self.old_df = self.df.copy()
-
-    def check_multicollinearity(self) -> pd.DataFrame:
-        features = self.model.feature_name_
-        X_variables = self.df[features]
-        vif_data = pd.DataFrame()
-        vif_data["feature"] = X_variables.columns
-        vif_data["VIF"] = [variance_inflation_factor(X_variables.values, i) for i in range(X_variables.shape[1])]
-        return vif_data
 
     def set_features(self, features: List[str]):
         self.features = features
@@ -99,15 +91,6 @@ class ValorantLGBM:
         atk_p = [f"ATK_{item}" for item in variable_list]
         def_p = [f"DEF_{item}" for item in variable_list]
         return atk_p + def_p
-
-    def set_default_features_without_multicollinearity(self):
-        raw_list = ["weaponValue", "shields", "remainingCreds"]
-        delete_list = self.generate_atk_def_prefix(raw_list)
-        model_features = self.get_default_features(delete=delete_list)
-        self.set_features(model_features)
-        self.set_target("FinalWinner")
-        final_features = self.features + [self.target]
-        self.df = self.df[final_features]
 
     def set_map_name_dummy(self):
         map_name_dummy = pd.get_dummies(self.df["MapName"], prefix="MapName")
@@ -327,7 +310,7 @@ def get_dataset() -> pd.DataFrame:
 if __name__ == "__main__":
     vm = ValorantLGBM()
     # vm.import_model_from_file()
-    vm.setup_dataframe("2000.csv")
+    vm.setup_dataframe("4000.csv")
     # col = vm.check_multicollinearity()
     vm.train_model(optuna_study=False)
     vm.show_all_metrics()

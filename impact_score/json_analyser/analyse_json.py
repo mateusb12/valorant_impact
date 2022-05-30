@@ -2,7 +2,11 @@ import json
 import os
 from pathlib import Path
 from typing import Tuple, List
+
+import numpy as np
 import pandas as pd
+from scipy.spatial.distance import pdist
+
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.json_analyser.api_consumer import get_match_info
 
@@ -51,8 +55,7 @@ class Analyser:
         self.series_by_id = self.data["series"]["seriesById"]
         self.best_of: int = self.series_by_id["bestOf"]
 
-        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [
-                                                                                                                    None] * 5
+        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [None] * 5
         self.map_id, self.map_name, self.round_table, self.reverse_round_table, self.match_id = [None] * 5
         self.match_dict = self.series_by_id["matches"]
         self.match_id = self.data["matches"]["matchDetails"]["id"]
@@ -250,6 +253,29 @@ class Analyser:
                         else:
                             return 0
 
+    def generate_average_distance(self) -> pd.DataFrame:
+        self.set_config(round=1)
+        location_data = self.data["matches"]["matchDetails"]["locations"]
+        side_dict = {key: value["team_number"] for key, value in self.current_status.items()}
+
+        location_df = pd.DataFrame(location_data)
+        location_df['team'] = location_df['playerId'].map(side_dict)
+        location_df['index'] = range(1, len(location_df) + 1)
+
+        dfb = location_df.groupby(["roundNumber", "roundTimeMillis", "team"])
+        index_dict = {}
+        for group_name, df_group in dfb:
+            # print(group_name)
+            # print(df_group)
+            coord_zip = list(zip(df_group["locationX"], df_group["locationY"]))
+            avg_distance = np.mean(pdist(coord_zip))
+            indexes = df_group["index"].tolist()
+            for index in indexes:
+                index_dict[index] = avg_distance
+
+        location_df["avg_distance"] = location_df["index"].map(index_dict)
+        return location_df
+
     def get_valid_maps(self) -> dict:
         match_list = self.series_by_id["matches"]
         return {i["id"]: i["seriesMatchNumber"] for i in match_list if i["riotId"] is not None}
@@ -396,8 +422,6 @@ class Analyser:
         self.event_type = "start"
         self.current_status = self.generate_player_table()
         round_winner = self.get_round_winner()
-        # round_start = self.generate_single_event_values(timestamp=0, winner=round_winner, plant=plant)
-        # round_array = [round_start]
         round_array = []
         self.round_events = self.get_round_events()
         re = self.round_events
@@ -582,7 +606,6 @@ if __name__ == "__main__":
     a = Analyser()
     a.set_match(65588)
     a.set_config(round=1)
-    events = a.round_events
     # a.get_player_sides()
     # r = a.export_player_details()
     q = a.export_df()

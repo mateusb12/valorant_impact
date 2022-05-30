@@ -55,7 +55,8 @@ class Analyser:
         self.series_by_id = self.data["series"]["seriesById"]
         self.best_of: int = self.series_by_id["bestOf"]
 
-        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [None] * 5
+        self.attacking_first_team, self.current_status, self.chosen_map, self.chosen_round, self.round_events = [
+                                                                                                                    None] * 5
         self.map_id, self.map_name, self.round_table, self.reverse_round_table, self.match_id = [None] * 5
         self.match_dict = self.series_by_id["matches"]
         self.match_id = self.data["matches"]["matchDetails"]["id"]
@@ -260,18 +261,34 @@ class Analyser:
         location_df['index'] = range(1, len(location_df) + 1)
 
         dfb = location_df.groupby(["roundNumber", "roundTimeMillis", "team"])
-        index_dict = {}
+        location_dict = {key: {} for key in range(1, self.round_amount+1)}
         for group_name, df_group in dfb:
-            # print(group_name)
-            # print(df_group)
+            current_round = df_group["roundNumber"].iloc[0]
+            current_timestamp = df_group["roundTimeMillis"].iloc[0]
+            side = "atk" if self.current_status[df_group["playerId"].iloc[0]]["attacking_side"] is True else "def"
             coord_zip = list(zip(df_group["locationX"], df_group["locationY"]))
             avg_distance = np.mean(pdist(coord_zip))
-            indexes = df_group["index"].tolist()
-            for index in indexes:
-                index_dict[index] = avg_distance
+            aux = {"attack": 0, "defense": 0}
+            if current_timestamp not in location_dict[current_round]:
+                location_dict[current_round][current_timestamp] = aux
+            if side == "atk":
+                location_dict[current_round][current_timestamp]["attack"] = avg_distance
+            else:
+                location_dict[current_round][current_timestamp]["defense"] = avg_distance
 
-        location_df["avg_distance"] = location_df["index"].map(index_dict)
-        return location_df
+        pre_df = {"roundNumber": [], "timestamp": [], "atkCompaction": [], "defCompaction": []}
+        for round_number, value in location_dict.items():
+            pre_df["roundNumber"].append(0)
+            pre_df["timestamp"].append(0)
+            pre_df["atkCompaction"].append(147)
+            pre_df["defCompaction"].append(184)
+            for timestamp, ts_data in value.items():
+                pre_df["roundNumber"].append(round_number)
+                pre_df["timestamp"].append(timestamp)
+                pre_df["atkCompaction"].append(ts_data["attack"])
+                pre_df["defCompaction"].append(ts_data["defense"])
+        final_df = pd.DataFrame(pre_df)[["atkCompaction", "defCompaction"]]
+        return final_df.fillna(0)
 
     def get_valid_maps(self) -> dict:
         match_list = self.series_by_id["matches"]
@@ -602,6 +619,7 @@ if __name__ == "__main__":
     a = Analyser()
     a.set_match(65588)
     a.set_config(round=1)
+    a.generate_average_distance()
     # a.get_player_sides()
     # r = a.export_player_details()
     q = a.export_df()

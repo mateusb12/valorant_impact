@@ -65,6 +65,8 @@ class ValorantLGBM:
 
     def setup_dataframe(self, filename: str):
         self.df = prepare_dataset(filename)
+
+    def setup_features_target(self):
         self.old_df = self.df.copy()
         self.set_target("FinalWinner")
         self.features = [col for col in self.df.columns if col != self.target]
@@ -189,8 +191,17 @@ class ValorantLGBM:
         plt.title("Model performance metrics")
         plt.show()
 
-    def get_brier_score(self):
-        print(f"Brier score → {brier_score_loss(self.Y_test, pd.DataFrame(self.pred_proba_test)[1])}")
+    def get_brier_score(self) -> float:
+        y_true = self.Y_test
+        if self.pred_proba is None:
+            self.pred_proba = self.model.predict_proba(self.X_train)
+        if self.pred_proba_test is None:
+            self.pred_proba_test = self.model.predict_proba(self.X_test)
+        y_prob_df = pd.DataFrame(self.pred_proba_test)
+        y_prob = y_prob_df[1]
+        brier = brier_score_loss(y_true, y_prob)
+        print(f"Brier score → {brier}")
+        return brier
 
     def get_confusion_matrix(self):
         plt.figure(figsize=(8, 6))
@@ -271,5 +282,6 @@ if __name__ == "__main__":
     vm = ValorantLGBM()
     # vm.import_model_from_file()
     vm.setup_dataframe("4000.csv")
+    vm.setup_features_target()
     vm.train_model(optuna_study=False)
     vm.show_all_metrics()

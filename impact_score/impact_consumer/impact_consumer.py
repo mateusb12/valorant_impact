@@ -4,6 +4,7 @@ from typing import Union, Any
 from matplotlib import ticker
 from matplotlib.lines import Line2D
 
+from impact_score.impact_consumer.probability_consumer import export_probabilities
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.json_analyser.api_consumer import get_impact_details
 import matplotlib.pyplot as plt
@@ -33,6 +34,7 @@ def export_impact(match_id: int, input_analyser: Analyser) -> dict:
     analyser.set_config(round=1)
     details = analyser.export_player_details()
     max_round = analyser.round_amount
+    probabilities_df = export_probabilities(match_id)
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
     for item in range(1, max_round + 1):
         analyser.set_config(round=item)

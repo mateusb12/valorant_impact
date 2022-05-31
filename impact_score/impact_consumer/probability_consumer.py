@@ -17,4 +17,5 @@ def export_probabilities(input_match_id):
 
 
 if __name__ == "__main__":
-    export_probabilities(64606)
+    aux = export_probabilities(64606)
+    print("done")

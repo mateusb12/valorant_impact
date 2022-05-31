@@ -52,7 +52,7 @@ class ValorantLGBM:
     def __init__(self, filename: str = None):
         self.df = None
         self.old_df = None
-        self.old_df_name = filename
+        self.filename = filename
         self.features: List[str] = []
         self.target = ""
         self.model = None
@@ -66,6 +66,8 @@ class ValorantLGBM:
     def setup_dataframe(self, filename: str):
         self.df = prepare_dataset(filename)
         self.old_df = self.df.copy()
+        self.set_target("FinalWinner")
+        self.features = [col for col in self.df.columns if col != self.target]
 
     def set_features(self, features: List[str]):
         self.features = features
@@ -73,65 +75,23 @@ class ValorantLGBM:
     def set_target(self, target: str):
         self.target = target
 
-    def get_default_features(self, **kwargs) -> List[str]:
-        global_features = ["RegularTime", "SpikeTime", "DEF_operators", "Loadout_diff"]
-        raw_features = ["weaponValue", "shields", "remainingCreds"]
-        roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
-        # map_tags = self.df["MapName"].unique()
-        # map_columns = [f"MapName_{map_name}" for map_name in map_tags]
-        team_features = raw_features + roles
-        prefix_team_features = self.generate_atk_def_prefix(team_features)
-        trimmed = global_features + prefix_team_features
-        if "delete" in kwargs:
-            trimmed = [item for item in trimmed if item not in kwargs["delete"]]
-        return trimmed
-
-    @staticmethod
-    def generate_atk_def_prefix(variable_list: List[str]) -> List[str]:
-        atk_p = [f"ATK_{item}" for item in variable_list]
-        def_p = [f"DEF_{item}" for item in variable_list]
-        return atk_p + def_p
-
-    def set_map_name_dummy(self):
-        map_name_dummy = pd.get_dummies(self.df["MapName"], prefix="MapName")
-        self.df = pd.concat([self.df, map_name_dummy], axis=1)
-
-    def set_delta_setup(self):
-        self.set_delta_features()
-        self.set_features(["delta_loadoutValue", "delta_operators", "delta_Initiator", "delta_Duelist",
-                           "delta_Sentinel", "delta_Controller", "SpikeTime", "RegularTime"])
-        self.set_target("FinalWinner")
-        self.trim_df()
-
-    def set_delta_features(self):
-        delta_features = ["loadoutValue", "operators", "Initiator", "Duelist", "Sentinel", "Controller"]
-        for feature in delta_features:
-            self.df[f"delta_{feature}"] = self.df[f"ATK_{feature}"] - self.df[f"DEF_{feature}"]
-
-    def trim_df(self):
-        combined = self.features + [self.target]
-        self.df = self.df[combined]
+    def train_model(self, **kwargs):
+        self.do_optuna = kwargs.get("optuna_study", False)
+        self.prepare_df()
+        self.train_model_from_scratch()
+        # self.export_model()
 
     def prepare_df(self):
         if not self.df_prepared:
             if self.df is None:
-                self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{'4500.csv'}")
+                # self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{'4500.csv'}")
+                self.df = prepare_dataset(self.filename)
             self.X = self.df.drop([self.target], axis='columns')
             self.Y = self.df[self.target]
             self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y,
                                                                                     train_size=0.8, test_size=0.2,
                                                                                     random_state=15)
             self.df_prepared = True
-
-    def train_model(self, **kwargs):
-        self.do_optuna = kwargs.get("optuna_study", False)
-        self.pandas_tasks()
-        self.train_model_from_scratch()
-        # self.export_model()
-
-    def pandas_tasks(self):
-        self.set_default_features_without_multicollinearity()
-        self.prepare_df()
 
     def train_model_from_scratch(self):
         if self.do_optuna:

@@ -271,6 +271,5 @@ if __name__ == "__main__":
     vm = ValorantLGBM()
     # vm.import_model_from_file()
     vm.setup_dataframe("4000.csv")
-    # col = vm.check_multicollinearity()
     vm.train_model(optuna_study=False)
     vm.show_all_metrics()

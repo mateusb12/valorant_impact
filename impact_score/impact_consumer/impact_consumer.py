@@ -1,5 +1,5 @@
 import time
-from typing import Union, Dict, Any
+from typing import Union, Any
 
 from matplotlib import ticker
 from matplotlib.lines import Line2D
@@ -37,6 +37,8 @@ def export_impact(match_id: int, input_analyser: Analyser) -> dict:
     for item in range(1, max_round + 1):
         analyser.set_config(round=item)
         for event in analyser.round_events:
+            id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
+            event_id = next(filter(None, id_pool), None)
             author_id = event["author"]
             victim_id = event["victim"]
             weapon_id = event["weapon_id"]

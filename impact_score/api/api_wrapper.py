@@ -7,6 +7,7 @@ import os
 import requests
 
 from impact_score.impact_consumer.impact_consumer import export_impact
+from impact_score.impact_consumer.probability_consumer import export_probabilities
 from impact_score.impact.match_analysis import RoundReplay
 from flask import Flask, jsonify, request
 from timeit import default_timer as timer
@@ -56,16 +57,7 @@ def get_round_impact(input_match_id):
         }
     }
     """
-    match_id = int(input_match_id)
-    rr_instance = RoundReplay()
-    rr_instance.set_match(match_id)
-    total_rounds = rr_instance.analyser.round_amount
-    proba_plot = []
-    for i in range(1, total_rounds + 1):
-        rr_instance.choose_round(i)
-        proba_plot.append(rr_instance.get_round_probability(side="atk"))
-    round_impact_df = pd.concat(proba_plot, axis=0)
-    dict_to_return = round_impact_df.to_dict('list')
+    dict_to_return = export_probabilities(input_match_id)
     return jsonify(dict_to_return)
 
 

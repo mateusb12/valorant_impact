@@ -238,6 +238,10 @@ class Analyser:
                 "probability_before": m["attackingWinProbabilityBefore"],
                 "probability_after": m["attackingWinProbabilityAfter"],
                 "impact": m["impact"],
+                "kill_id": m["killId"],
+                "round_id": m["roundId"],
+                "bomb_id": m["bombId"],
+                "res_id": m["resId"]
             }
             for m in self.data["matches"]["matchDetails"]["events"]
             if m["roundId"] == self.chosen_round

@@ -1,4 +1,5 @@
 import time
+from random import random
 from typing import Union, Any
 
 from matplotlib import ticker
@@ -34,13 +35,25 @@ def export_impact(match_id: int, input_analyser: Analyser) -> dict:
     analyser.set_config(round=1)
     details = analyser.export_player_details()
     max_round = analyser.round_amount
-    probabilities_df = export_probabilities(match_id)
+    # random_ids = [int(round(3500 + (7000 - 3500) * random())) for _ in range(2000)]
+    prob_df = pd.DataFrame(export_probabilities(match_id))
+    # prob_before = pd.Series(prob_df["Probability_before_event"].values, index=prob_df["EventID"]).to_dict()
+    prob_before = prob_df["Probability_before_event"].to_list()
+    prob_after = prob_df["Probability_after_event"].to_list()
+    impact = prob_df["Impact"].to_list()
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
     for item in range(1, max_round + 1):
         analyser.set_config(round=item)
-        for event in analyser.round_events:
+        for index, event in enumerate(analyser.round_events):
             id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
             event_id = next(filter(None, id_pool), None)
+            # if event_id is None:
+                # event_id = random_ids.pop()
+            print(index)
+            event["event_id"] = event_id
+            event["probability_before"] = prob_before[index]
+            event["probability_after"] = prob_after[index]
+            event["impact"] = impact[index]
             author_id = event["author"]
             victim_id = event["victim"]
             weapon_id = event["weapon_id"]
@@ -225,6 +238,7 @@ if __name__ == "__main__":
     # test = export_impact(match_id=60206, input_analyser=Analyser())
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     # test3 = export_probability_points(match_id=65588)
+    aux = 5 + 1
     a = Analyser()
-    test4 = export_impact(match_id=65588, input_analyser=a)
-    print(test4)
+    # test4 = export_impact(match_id=65588, input_analyser=a)
+    print("hey")

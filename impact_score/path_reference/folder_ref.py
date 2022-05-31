@@ -16,8 +16,16 @@ def datasets_reference() -> Path:
     return Path(ref, 'datasets')
 
 
-def impact_reference() -> Path:
+def root_impact_reference() -> Path:
     return Path(ref, 'impact_score')
+
+
+def root_project_folder_reference() -> Path:
+    return ref
+
+
+def impact_reference() -> Path:
+    return Path(ref, 'impact')
 
 
 def json_analyser_reference() -> Path:

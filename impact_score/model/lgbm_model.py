@@ -18,6 +18,8 @@ from termcolor import colored
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.dataset_preparation.dataset_prep import prepare_dataset
+from impact_score.path_reference.folder_ref import impact_reference, root_impact_reference, \
+    root_project_folder_reference
 
 sl = get_slash_type()
 
@@ -110,7 +112,7 @@ class ValorantLGBM:
         # joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
-        impact_folder = get_impact_score_folder_reference()
+        impact_folder = root_project_folder_reference()
         model_folder = Path(impact_folder, "model")
         pkl_path = Path(model_folder, "model.pkl")
         # os.chdir(model_folder)

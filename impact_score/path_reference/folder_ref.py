@@ -34,3 +34,7 @@ def json_analyser_reference() -> Path:
 
 def valorant_model_reference() -> Path:
     return Path(ref, 'valorant_model')
+
+
+def model_reference() -> Path:
+    return Path(ref, 'model')

@@ -1,12 +1,10 @@
 import os
-from typing import List, Tuple
+from typing import List
 
 import lightgbm
 import optuna
 from sklearn.metrics import brier_score_loss
-from sklearn.model_selection import train_test_split, cross_val_score
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-import numpy as np
+from sklearn.model_selection import train_test_split
 import joblib
 
 import pandas as pd
@@ -17,8 +15,7 @@ from termcolor import colored
 from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.dataset_preparation.dataset_prep import prepare_dataset
-from impact_score.path_reference.folder_ref import impact_reference, root_impact_reference, \
-    root_project_folder_reference, model_reference
+from impact_score.path_reference.folder_ref import model_reference
 
 sl = get_slash_type()
 
@@ -58,22 +55,16 @@ class ValorantLGBM:
         self.target = ""
         self.model = None
         self.X, self.Y, self.X_train, self.Y_train, self.X_test, self.Y_test = [None] * 6
-        self.pred_proba, self.pred_proba_test = [None] * 2
-        self.from_file = False
-        self.from_scratch = False
         self.df_prepared = False
         self.do_optuna = False
 
     def setup_dataframe(self, filename: str):
         self.df = prepare_dataset(filename)
 
-    def setup_features_target(self):
+    def setup_features_and_target(self):
         self.old_df = self.df.copy()
         self.set_target("FinalWinner")
         self.features = [col for col in self.df.columns if col != self.target]
-
-    def set_features(self, features: List[str]):
-        self.features = features
 
     def set_target(self, target: str):
         self.target = target
@@ -81,13 +72,12 @@ class ValorantLGBM:
     def train_model(self, **kwargs):
         self.do_optuna = kwargs.get("optuna_study", False)
         self.prepare_df()
-        self.train_model_from_scratch()
+        self.fit_model()
         # self.export_model()
 
     def prepare_df(self):
         if not self.df_prepared:
             if self.df is None:
-                # self.df = pd.read_csv(f"{get_dataset_reference()}{sl}{'4500.csv'}")
                 self.df = prepare_dataset(self.filename)
             self.X = self.df.drop([self.target], axis='columns')
             self.Y = self.df[self.target]
@@ -96,7 +86,7 @@ class ValorantLGBM:
                                                                                     random_state=15)
             self.df_prepared = True
 
-    def train_model_from_scratch(self):
+    def fit_model(self):
         if self.do_optuna:
             self.optuna_study(trials=20)
         optuna_dict = self.get_optuna_parameters()
@@ -111,10 +101,9 @@ class ValorantLGBM:
         # joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
-        impact_folder = root_project_folder_reference()
-        model_folder = Path(impact_folder, "model")
+        # model_folder = Path(impact_folder, "model")
+        model_folder = model_reference()
         pkl_path = Path(model_folder, "model.pkl")
-        # os.chdir(model_folder)
         self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
 
     def export_model(self):
@@ -209,11 +198,22 @@ def get_dataset() -> pd.DataFrame:
 
 def get_trained_model() -> ValorantLGBM:
     model_obj = ValorantLGBM()
-    # vm.import_model_from_file()
     model_obj.setup_dataframe("4000.csv")
-    model_obj.setup_features_target()
+    model_obj.setup_features_and_target()
     model_obj.train_model(optuna_study=False)
     return model_obj
+
+
+def get_pkl_model() -> ValorantLGBM:
+    model_obj = ValorantLGBM()
+    model_obj.import_model_from_file()
+    return model_obj
+
+
+def existing_pkl() -> bool:
+    model_folder = model_reference()
+    pkl_ref = Path(model_folder, "model.pkl")
+    return pkl_ref.exists()
 
 
 if __name__ == "__main__":

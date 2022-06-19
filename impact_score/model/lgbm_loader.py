@@ -41,3 +41,5 @@ def load_lgbm() -> ValorantLGBM:  # sourcery skip: use-named-expression
 
 if __name__ == "__main__":
     load_lgbm()
+
+

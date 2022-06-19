@@ -62,7 +62,6 @@ class Analyser:
         self.chosen_round = round_table[kwargs["round"]]
         match_json = [item for item in self.match_dict if item["id"] == self.match_id][0]
         self.chosen_map: str = match_json["seriesMatchNumber"]
-        # self.chosen_round: int = kwargs["round"]
         self.attacking_first_team: int = match_json["attackingFirstTeamNumber"]
         opposite_side = {1: 2, 2: 1}
         self.defending_first_team: int = opposite_side[self.attacking_first_team]
@@ -103,7 +102,7 @@ class Analyser:
 
         return {i: side for i, side in enumerate(side_pattern, 1)}
 
-    def get_player_sides(self) -> dict:
+    def get_player_sides(self) -> dict or None:
         """
         Get the sides of each player in the current round
         :return:    {3340: 'defending',
@@ -112,7 +111,8 @@ class Analyser:
                     2125: 'attacking'}
         """
         if self.config_set is None:
-            raise Exception("You should use Analyser.set_config(round=x) beforehand!")
+            print("You should use Analyser.set_config(round=x) beforehand!")
+            return None
         raw_side_dict = self.current_round_sides
         player_db = self.current_status
         return {key: raw_side_dict[value["team_number"]] for key, value in player_db.items()}
@@ -140,8 +140,8 @@ class Analyser:
         return None
 
     def get_series_by_id_match(self) -> dict:
-        for match in self.series_by_id["matches"]:
-            if match["seriesMatchNumber"] == self.chosen_map:
+        for match in self.data["series"]["seriesById"]["matches"]:
+            if match["id"] == self.match_id:
                 return match
 
     def export_player_names(self):
@@ -170,9 +170,11 @@ class Analyser:
         ign_table = {
             b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
             for b in self.get_series_by_id_match()["players"]
-        }  # for b in self.data["series"]["seriesById"]["matches"][self.chosen_map]["players"]
+        }
 
         player_dict = {}
+        if self.chosen_round is None:
+            self.chosen_round = self.get_round_table()[1]
 
         for i in self.data["matches"]["matchDetails"]["economies"]:
             if i["roundId"] == self.chosen_round:

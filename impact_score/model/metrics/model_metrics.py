@@ -10,13 +10,12 @@ from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model
 
 class ModelMetrics:
     def __init__(self, input_lgbm: ValorantLGBM):
-        obj = input_lgbm
-        self.model = obj.model
-        self.X = obj.X
-        self.X_train = obj.X_train
-        self.X_test = obj.X_test
-        self.Y_train = obj.Y_train
-        self.Y_test = obj.Y_test
+        self.model = input_lgbm.model
+        self.X = input_lgbm.X
+        self.X_train = input_lgbm.X_train
+        self.X_test = input_lgbm.X_test
+        self.Y_train = input_lgbm.Y_train
+        self.Y_test = input_lgbm.Y_test
         self.pred_proba, self.pred_proba_test = [None] * 2
 
     def get_brier_score(self) -> float:
@@ -94,14 +93,11 @@ class ModelMetrics:
         self.get_f1_score()
 
 
-def main():
+def __main():
     vm = get_trained_model()
-    # vm.setup_dataframe("4000.csv")
-    # vm.setup_features_target()
-    # vm.train_model(optuna_study=False)
     mm = ModelMetrics(vm)
     mm.show_all()
 
 
 if __name__ == "__main__":
-    main()
+    __main()

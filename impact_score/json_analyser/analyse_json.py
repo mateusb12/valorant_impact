@@ -9,16 +9,9 @@ from scipy.spatial.distance import pdist
 
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.json_analyser.api_consumer import get_match_info
+from impact_score.path_reference.folder_ref import valorant_model_reference
 
 sl = get_slash_type()
-
-
-def get_valorant_model_folder():
-    current_folder = Path(os.getcwd())
-    parent_folder = current_folder.parent
-    if parent_folder.name == "model":
-        parent_folder = parent_folder.parent
-    return Path(parent_folder, 'valorant_model')
 
 
 class Analyser:
@@ -32,18 +25,11 @@ class Analyser:
         self.match_link, self.round_number, self.team_number_dict, self.defuse_happened, self.event_type = [None] * 5
         self.config_set = None
 
-    def open_file(self, input_index: int) -> dict:
-        input_file = f"{input_index}.json"
-        json_folder = self.get_json_folder()
-        data_file = open(f'{json_folder}\\{input_file}', encoding="utf-8")
-        body_txt = data_file.read()
-        return self.trim_trash_code(body_txt)
-
     def set_match(self, input_index: int, **kwargs):
         self.data = get_match_info(input_index)
 
         self.raw_match_id = input_index
-        model_folder = get_valorant_model_folder()
+        model_folder = valorant_model_reference()
         weapon_file = open(f'{model_folder}{sl}weapon_table.json')
         self.weapon_data = json.load(weapon_file)
 
@@ -65,21 +51,6 @@ class Analyser:
 
         self.team_a = self.get_team_a()
         self.team_b = self.get_team_b()
-
-    @staticmethod
-    def trim_trash_code(code_string: str):
-        """
-        Trim the trash code from the json file, making the json readable
-        """
-        first_segment = code_string[:24]
-        if first_segment != "window.__INITIAL_STATE__":
-            return json.loads(code_string)
-        new_format = code_string[45:]
-        return json.loads(new_format)
-
-    def get_json_folder(self) -> Path:
-        matches = self.get_matches_folder()
-        return Path(matches, "json")
 
     def set_config(self, **kwargs):
         """
@@ -294,12 +265,6 @@ class Analyser:
         final_df = pd.DataFrame(pre_df)[["atkCompaction", "defCompaction"]]
         return final_df.fillna(0)
 
-    def get_valid_maps(self) -> dict:
-        match_list = self.series_by_id["matches"]
-        return {i["id"]: i["seriesMatchNumber"] for i in match_list if i["riotId"] is not None}
-
-        # return {j["id"]: i for i, j in match_list if j["riotId"] is not None}
-
     def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple:
         if round_millis >= 100000 or self.defuse_happened:
             regular_time = 0
@@ -495,23 +460,6 @@ class Analyser:
             map_events += self.generate_full_round()
         return map_events
 
-    def get_first_round(self) -> list:
-        return self.data["matches"]["matchDetails"]["economies"][0]["roundId"]
-
-    @staticmethod
-    def get_feature_labels() -> List[str]:
-        """
-        Returns a list of all the features used in the model
-        """
-        return ['RoundID', 'RoundNumber', 'RoundTime', 'ATK_wealth', 'DEF_wealth',
-                'ATK_alive', 'DEF_alive', 'DEF_has_OP', 'Def_has_Odin',
-                'RegularTime', 'SpikeTime', 'ATK_bank', 'DEF_bank',
-                'ATK_initiators', 'ATK_duelists', 'ATK_sentinels', 'ATK_controllers',
-                'DEF_initiators', 'DEF_duelists', 'DEF_sentinels', 'DEF_controllers',
-                'ATK_Shields', 'DEF_Shields',
-                'MapName', 'MatchID', 'SeriesID', 'bestOF',
-                'FinalWinner']
-
     def export_df(self) -> pd.DataFrame:
         self.set_config(round=1)
         report = self.generate_map_metrics()
@@ -572,30 +520,6 @@ class Analyser:
             event["weapon"] = weapon
 
         return export_events
-
-    def export_side_table(self) -> dict:
-        self.set_config(round=1)
-        team_1 = self.team_a
-        team_2 = self.team_b
-        round_amount = self.round_amount
-        side_dict = {}
-        for round_number in range(1, round_amount + 1):
-            self.set_config(round=round_number)
-            current_round_sides = self.current_round_sides
-            sides = {team_1["name"]: 1, team_2["name"]: 2}
-            side_dict[round_number] = {team_1["name"]: current_round_sides[sides[team_1["name"]]],
-                                       team_2["name"]: current_round_sides[sides[team_2["name"]]]}
-        return side_dict
-
-    def export_initial_sides(self) -> dict:
-        team_1 = self.team_a["name"]
-        team_2 = self.team_b["name"]
-        mirror = {1: 2, 2: 1}
-        attacking_first = self.attacking_first_team
-        defending_first = mirror[attacking_first]
-        team_numbers = {1: team_1, 2: team_2}
-        return {"attacking_first": team_numbers[self.attacking_first_team],
-                "defending_first": team_numbers[defending_first]}
 
     def export_player_agent_picks(self) -> dict:
         self.set_config(round=1)

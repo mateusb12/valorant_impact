@@ -5,7 +5,7 @@ from sklearn.metrics import log_loss, brier_score_loss, confusion_matrix, classi
 from sklearn.model_selection import cross_val_score
 from termcolor import colored
 
-from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model
+from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model, get_pkl_model
 
 
 class ModelMetrics:

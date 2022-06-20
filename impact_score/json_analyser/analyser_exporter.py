@@ -1,4 +1,4 @@
-from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.json_analyser.analyse_json import Analyser, get_map_dict, create_player_table
 from impact_score.json_analyser.analyser_file_loader import get_agent_data, get_weapon_data
 
 
@@ -6,41 +6,13 @@ class AnalyserExporter:
     def __init__(self, data: dict, match_id: int):
         self.data = data
         self.match_id = match_id
-        self.map_dict = self.get_map_dict()
+        self.map_dict = get_map_dict(data, match_id)
         self.attacking_first_team: int = self.map_dict["attackingFirstTeamNumber"]
-        self.current_status = self.create_player_table()
+        self.defending_first_team: int = 1 if self.attacking_first_team == 2 else 2
+        self.current_status = create_player_table(data, self.map_dict)
+        self.round_events = None
         self.agent_data = get_agent_data()
         self.weapon_data = get_weapon_data()
-
-    def create_player_table(self) -> dict:
-        ign_table = {
-            b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
-            for b in self.get_map_dict()["players"]
-        }
-
-        player_dict = {}
-
-        for i in self.data["matches"]["matchDetails"]["economies"]:
-            if i["roundNumber"] == 1:
-                player_id = i["playerId"]
-                aux = {"name": ign_table[player_id],
-                       "agentId": i["agentId"],
-                       "combatScore": i["score"],
-                       "weaponId": i["weaponId"],
-                       "shieldId": i["armorId"],
-                       "loadoutValue": i["loadoutValue"],
-                       "spentCreds": i["spentCreds"],
-                       "remainingCreds": i["remainingCreds"],
-                       "attacking_side": ign_table[player_id]["team_number"] == self.attacking_first_team,
-                       "team_number": ign_table[player_id]["team_number"],
-                       "alive": True}
-                player_dict[player_id] = aux
-        return player_dict
-
-    def get_map_dict(self) -> dict:
-        for match in self.data["series"]["seriesById"]["matches"]:
-            if match["id"] == self.match_id:
-                return match
 
     def export_round_events(self) -> dict:
         events = self.data["matches"]["matchDetails"]["events"]
@@ -75,7 +47,7 @@ class AnalyserExporter:
         return events
 
     def export_player_agent_picks(self) -> dict:
-        map_dict = self.get_map_dict()
+        map_dict = self.map_dict
         agent_pick_dict = {}
         for item in map_dict["players"]:
             player_name = item["player"]["ign"]
@@ -85,7 +57,7 @@ class AnalyserExporter:
         return agent_pick_dict
 
     def export_player_details(self) -> dict:
-        map_dict = self.get_map_dict()
+        map_dict = self.map_dict
         details_dict = {}
         for item in map_dict["players"]:
             player_name = item["player"]["ign"]

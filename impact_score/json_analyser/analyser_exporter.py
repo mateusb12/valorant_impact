@@ -1,5 +1,6 @@
 from impact_score.json_analyser.analyse_json import Analyser, get_map_dict, create_player_table
 from impact_score.json_analyser.analyser_file_loader import get_agent_data, get_weapon_data
+from impact_score.json_analyser.analyser_pool import analyser_pool
 
 
 class AnalyserExporter:
@@ -69,7 +70,8 @@ class AnalyserExporter:
 
 
 def __main():
-    a = Analyser()
+    ap = analyser_pool
+    a = ap.acquire()
     a.set_match(65588)
     ae = AnalyserExporter(a.data, a.match_id)
     a = ae.export_round_events()

@@ -4,7 +4,7 @@ from impact_score.json_analyser.analyser_file_loader import get_agent_data, get_
 from impact_score.json_analyser.api_consumer import get_match_info
 
 
-class AnalyserPoolException(Exception):
+class NoMoreAnalysersException(Exception):
     """No more objects in pool"""
     pass
 
@@ -13,7 +13,7 @@ class CoreAnalyser:
     def __init__(self, input_agent_data: dict, input_weapon_data: dict):
         self.chosen_round = 1
         self.map_dict, self.attacking_first_team, self.defending_first_team, self.round_events = None, None, None, None
-        self.data, self.current_status, self.match_id = None, None, None
+        self.data, self.current_status, self.match_id, self.round_amount = None, None, None, None
         self.agent_data = input_agent_data
         self.weapon_data = input_weapon_data
 
@@ -24,6 +24,7 @@ class CoreAnalyser:
         self.attacking_first_team: int = self.map_dict["attackingFirstTeamNumber"]
         self.defending_first_team: int = 1 if self.attacking_first_team == 2 else 2
         self.current_status = create_player_table(self.data, self.map_dict)
+        self.round_amount = self.map_dict["team1Score"] + self.map_dict["team2Score"]
 
     def choose_round(self, desired_round: int):
         self.chosen_round = desired_round
@@ -46,7 +47,7 @@ class ReusablePool:
 
     def acquire(self) -> CoreAnalyser:
         if len(self._available_pool) <= 0:
-            raise AnalyserPoolException("No more objects in pool")
+            raise NoMoreAnalysersException("No more objects in pool")
         r = self._available_pool[0]
         self._available_pool.remove(r)
         self.in_use.append(r)
@@ -56,11 +57,11 @@ class ReusablePool:
         self._available_pool.append(item)
         self.in_use.remove(item)
 
-    def __call__(self):
-        if self._current >= self._size:
-            return None
-        self._current += 1
-        return self._available_pool[self._current - 1]
+    # def __call__(self):
+    #     if self._current >= self._size:
+    #         return None
+    #     self._current += 1
+    #     return self._available_pool[self._current - 1]
 
     def add(self, item):
         self._available_pool.append(item)

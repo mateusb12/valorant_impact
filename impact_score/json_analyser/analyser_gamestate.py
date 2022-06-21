@@ -7,6 +7,7 @@ class AnalyserGamestate:
         self.a = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
         self.current_round_sides = self.tools.get_current_sides()
+        self.round_table = self.tools.get_round_table()
 
     def create_player_gamestate_dict(self, input_value: dict, input_shield_table: dict):
         weapon_id = str(input_value["weaponId"])
@@ -39,6 +40,7 @@ class AnalyserGamestate:
                 shield_value = shield_table[int(shield_id)] if shield_id != "None" else 0
                 agent_role = self.a.agent_data[agent_id]["role"]
                 team_number = value["name"]["team_number"]
+                round_sides = self.current_round_sides
                 team_side = self.current_round_sides[team_number]
                 cont_dict = {"loadoutValue": value["loadoutValue"], "weaponValue": weapon_price,
                              "remainingCreds": value["remainingCreds"], "operators": 1 if weapon_id == "15" else 0,
@@ -53,8 +55,8 @@ class AnalyserGamestate:
         regular_time, spike_time = self.tools.generate_spike_timings(kwargs["timestamp"], kwargs["plant"])
         round_winner = kwargs["winner"] if "winner" in kwargs else None
         final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.a.map_name,
-                      "FinalWinner": round_winner, "RoundID": self.a.chosen_round, "MatchID": self.a.match_id,
-                      "RoundNumber": self.a.round_number, "RoundTime": round_time}
+                      "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
+                      "MatchID": self.a.match_id, "RoundNumber": self.a.chosen_round, "RoundTime": round_time}
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():

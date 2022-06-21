@@ -32,6 +32,9 @@ class CoreAnalyser:
         self.chosen_round = desired_round
         self.round_events = get_round_events(self.data, self.chosen_round)
 
+    def get_last_round(self) -> int:
+        return self.round_amount
+
     def check_id(self):
         print(f"Using object {id(self)}")
 
@@ -58,12 +61,6 @@ class ReusablePool:
     def release(self, item: CoreAnalyser):
         self._available_pool.append(item)
         self.in_use.remove(item)
-
-    # def __call__(self):
-    #     if self._current >= self._size:
-    #         return None
-    #     self._current += 1
-    #     return self._available_pool[self._current - 1]
 
     def add(self, item):
         self._available_pool.append(item)

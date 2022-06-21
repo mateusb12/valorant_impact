@@ -58,6 +58,18 @@ class AnalyserExporter:
             details_dict[player_id] = {"agent_name": agent_name, "player_name": player_name}
         return details_dict
 
+    def export_player_names(self):
+        """
+        Export the player names in format of a dictionary
+        :return:    {'ban': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'Frosty': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'Genghsta': {'gained': 0, 'lost': 0, 'delta': 0},
+                    'HUYNH': {'gained': 0, 'lost': 0, 'delta': 0},
+        """
+        return {
+            value["name"]["ign"]: {"gained": 0, "lost": 0, "delta": 0} for item, value in self.a.current_status.items()
+        }
+
 
 def __main():
     a = analyser_pool.acquire()

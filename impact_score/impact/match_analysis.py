@@ -13,6 +13,10 @@ from termcolor import colored
 
 # from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.imports.os_slash import get_slash_type
+from impact_score.json_analyser.analyser_exporter import AnalyserExporter
+from impact_score.json_analyser.analyser_pool import analyser_pool, CoreAnalyser
+from impact_score.json_analyser.analyser_tools import AnalyserTools
+from impact_score.json_analyser.analyser_wrapper import AnalyserWrapper
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM
 from impact_score.json_analyser.analyse_json import Analyser
@@ -23,21 +27,27 @@ sl = get_slash_type()
 class RoundReplay:
     def __init__(self):
         self.match_id = 0
-        self.analyser = Analyser()
+        # self.analyser = Analyser()
+
         self.vm: ValorantLGBM = load_lgbm()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
+        self.analyser, self.exporter, self.wrapper, self.tools = [None] * 4
 
     def set_match(self, match_id: int):
         self.match_id = match_id
+        self.analyser: CoreAnalyser = analyser_pool.acquire()
         self.analyser.set_match(match_id)
-        self.player_impact = self.analyser.export_player_names()
+        self.exporter: AnalyserExporter = AnalyserExporter(self.analyser)
+        self.tools: AnalyserTools = AnalyserTools(self.analyser)
+        self.wrapper: AnalyserWrapper = AnalyserWrapper(self.analyser)
+        self.player_impact = self.exporter.export_player_names()
         self.round_amount = self.analyser.get_last_round()
-        self.df = self.analyser.export_df()
+        self.df = self.wrapper.export_df()
         self.feature_df = self.df[self.vm.get_model_features()]
-        self.query = self.df.query("MatchID == {}".format(match_id))
-        self.round_table = self.get_round_table()
+        self.query = self.df.query(f"MatchID == {match_id}")
+        self.round_table = self.tools.get_round_table()
         self.chosen_round = None
         event_list = self.analyser.data["matches"]["matchDetails"]["events"]
         aux_dict = {i: [] for i in range(1, self.round_amount + 1)}
@@ -67,7 +77,7 @@ class RoundReplay:
         return self.round_table[round_index]
 
     def get_round_dataframe(self, round_index: int):
-        return self.df.query('RoundID == {}'.format(self.get_round_id(round_index)))
+        return self.df.query(f'RoundID == {self.get_round_id(round_index)}')
 
     def get_plant_stamp(self, round_number: int) -> int or None:
         rdf = self.get_round_dataframe(round_number)
@@ -125,7 +135,6 @@ class RoundReplay:
         situation_type = kwargs["situation"]
         events = kwargs["events"]
         last_index = input_table.index[-1]
-        side_dict = self.side_dict
 
         if situation_type == "clean_defuse":
             new_proba = 1 if self.side == "def" else 0
@@ -222,7 +231,7 @@ class RoundReplay:
                            'playerId', 'referencePlayerId', 'weaponId']
             event_df[int_columns] = event_df[int_columns].astype(int)
             weapon_name_data = {int(key): value["name"] for key, value in self.analyser.weapon_data.items()}
-            player_data = self.analyser.export_player_details()
+            player_data = self.exporter.export_player_details()
             player_names = {key: value["player_name"] for key, value in player_data.items()}
             player_agents = {key: value["agent_name"] for key, value in player_data.items()}
             player_names[0], player_agents[0], weapon_name_data[0] = 0, 0, 0
@@ -266,20 +275,19 @@ class RoundReplay:
 
     def get_round_story(self) -> dict:
         round_story = []
-        round_events = self.analyser.export_round_events()
+        round_events = self.exporter.export_round_events()
         for i in round_events:
             if i["roundNumber"] == self.chosen_round:
-                output = "None"
                 if i["eventType"] == "kill":
-                    output = "{} [{}] {}".format(i["killer_name"], i["weapon"]["name"], i["victim_name"])
+                    output = f'{i["killer_name"]} [{i["weapon"]["name"]}] {i["victim_name"]}'
                 elif i["eventType"] == "plant":
-                    output = "{} {}".format(i["killer_name"], "planted the spike")
+                    output = f'{i["killer_name"]} planted the spike'
                 elif i["eventType"] == "defuse":
-                    output = "{} {}".format(i["killer_name"], "defused the spike")
+                    output = f'{i["killer_name"]} defused the spike'
                 elif i["eventType"] == "revival":
-                    output = "{} revived {}".format(i["killer_name"], i["victim_name"])
+                    output = f'{i["killer_name"]} revived {i["victim_name"]}'
                 else:
-                    output = "{} {}".format(i["killer_name"], "exception")
+                    output = f'{i["killer_name"]} exception'
                 round_story.append(output)
         rs_dict = {"A": "Round start"}
         for i, x in enumerate(round_story):
@@ -320,9 +328,9 @@ class RoundReplay:
         for i in range(1, self.round_amount + 1):
             self.choose_round(i)
             cr = self.get_round_impact_dataframe()
-            aux = cr.iloc[cr.index.get_loc(player_name)]
+            name = cr.iloc[cr.index.get_loc(player_name)]
             aux["RoundNumber"] = i
-            pot.append(aux)
+            pot.append(name)
         res = pd.DataFrame(pot)
         res["RoundNumber"] = res["RoundNumber"].astype(int)
         res['Name'] = res.index
@@ -363,7 +371,7 @@ class RoundReplay:
         impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas, "MatchID": match_id}
         aux_impact = pd.DataFrame(impact_table)
         if "agents" in kwargs:
-            agent_dict = self.analyser.export_player_agent_picks()
+            agent_dict = self.exporter.export_player_agent_picks()
             aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
         return aux_impact
 

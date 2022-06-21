@@ -75,6 +75,16 @@ class AnalyserTools:
         aux = self.a.data["series"]["seriesById"]
         return {"id": aux["team2"]["id"], "name": aux["team2"]["name"]}
 
+    def get_round_table(self) -> dict:
+        """
+        Returns a dictionary of rounds raw order and their IDs
+        :return: round[6] = 509225
+        """
+        return {
+            round_data["roundNumber"]: round_data["roundId"]
+            for round_data in self.a.data["matches"]["matchDetails"]["events"]
+        }
+
 
 def __main():
     a = analyser_pool.acquire()

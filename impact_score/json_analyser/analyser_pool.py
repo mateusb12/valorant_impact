@@ -45,14 +45,15 @@ class ReusablePool:
         self.in_use = []
         self._size = size
         self._current = 0
-        raw_agent_data = get_agent_data()
-        raw_weapon_data = get_weapon_data()
+        self.raw_agent_data = get_agent_data()
+        self.raw_weapon_data = get_weapon_data()
         for _ in range(size):
-            self.add(CoreAnalyser(raw_agent_data, raw_weapon_data))
+            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data))
 
     def acquire(self) -> CoreAnalyser:
         if len(self._available_pool) <= 0:
-            raise NoMoreAnalysersException("No more objects in pool")
+            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data))
+            # raise NoMoreAnalysersException("No more objects in pool")
         r = self._available_pool[0]
         self._available_pool.remove(r)
         self.in_use.append(r)

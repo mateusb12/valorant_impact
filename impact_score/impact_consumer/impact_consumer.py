@@ -7,15 +7,21 @@ from matplotlib.lines import Line2D
 
 from impact_score.impact_consumer.probability_consumer import export_probabilities
 from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.json_analyser.analyser_exporter import AnalyserExporter
+from impact_score.json_analyser.analyser_pool import CoreAnalyser
+from impact_score.json_analyser.analyser_tools import AnalyserTools
 from impact_score.json_analyser.api_consumer import get_impact_details
 import matplotlib.pyplot as plt
 
 import pandas as pd
 
 
-def export_impact(match_id: int, input_analyser: Analyser) -> dict:
+def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_df: pd.DataFrame) -> dict:
     """
     Export the impact of each player in a match.
+    :param prob_df:
+    :param core_analyser:
+    :param exporter:
     :param match_id: The match id. (60206)
     :param input_analyser: Analyser object instance.
     :return: Dictionary containing event details. For example:
@@ -30,25 +36,23 @@ def export_impact(match_id: int, input_analyser: Analyser) -> dict:
                 "probability_after": "0.2709"
                 "timing": "26185",
     """
-    analyser = input_analyser
-    analyser.set_match(match_id)
-    analyser.set_config(round=1)
-    details = analyser.export_player_details()
+    analyser = core_analyser
+    details = exporter.export_player_details()
     max_round = analyser.round_amount
     # random_ids = [int(round(3500 + (7000 - 3500) * random())) for _ in range(2000)]
-    prob_df = pd.DataFrame(export_probabilities(match_id))
+    # prob_df = pd.DataFrame(export_probabilities(match_id))
     # prob_before = pd.Series(prob_df["Probability_before_event"].values, index=prob_df["EventID"]).to_dict()
     prob_before = prob_df["Probability_before_event"].to_list()
     prob_after = prob_df["Probability_after_event"].to_list()
     impact = prob_df["Impact"].to_list()
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
     for item in range(1, max_round + 1):
-        analyser.set_config(round=item)
+        analyser.choose_round(item)
         for index, event in enumerate(analyser.round_events):
             id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
             event_id = next(filter(None, id_pool), None)
             # if event_id is None:
-                # event_id = random_ids.pop()
+            # event_id = random_ids.pop()
             print(index)
             event["event_id"] = event_id
             event["probability_before"] = prob_before[index]

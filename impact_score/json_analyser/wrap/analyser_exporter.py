@@ -1,4 +1,4 @@
-from impact_score.json_analyser.analyser_pool import analyser_pool, CoreAnalyser
+from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
 
 
 class AnalyserExporter:

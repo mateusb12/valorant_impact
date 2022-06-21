@@ -1,6 +1,6 @@
-from impact_score.json_analyser.analyser_gamestate import AnalyserGamestate
-from impact_score.json_analyser.analyser_pool import CoreAnalyser, analyser_pool
-from impact_score.json_analyser.analyser_tools import AnalyserTools
+from impact_score.json_analyser.core.analyser_gamestate import AnalyserGamestate
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
+from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import pdist

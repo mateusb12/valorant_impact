@@ -1,7 +1,7 @@
 # Create a Custom exception for the analyser pool
-from impact_score.json_analyser.analyse_json import get_map_dict, create_player_table, get_round_events
-from impact_score.json_analyser.analyser_file_loader import get_agent_data, get_weapon_data
-from impact_score.json_analyser.api_consumer import get_match_info
+from impact_score.json_analyser.core.simple_tools import get_map_dict, create_player_table, get_round_events
+from impact_score.json_analyser.core.analyser_file_loader import get_agent_data, get_weapon_data
+from impact_score.json_analyser.core.api_consumer import get_match_info
 
 
 class NoMoreAnalysersException(Exception):

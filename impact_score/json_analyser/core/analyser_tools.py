@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from impact_score.json_analyser.analyser_pool import CoreAnalyser, analyser_pool
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
 
 
 class AnalyserTools:

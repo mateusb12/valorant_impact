@@ -2,10 +2,6 @@ import copy
 
 import pandas as pd
 # from line_profiler_pycharm import profile
-from matplotlib import pyplot as plt
-import seaborn as sns
-
-import matplotlib.lines as mlines
 
 from sklearn.model_selection import train_test_split
 import lightgbm
@@ -13,10 +9,11 @@ from termcolor import colored
 
 # from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.imports.os_slash import get_slash_type
-from impact_score.json_analyser.analyser_exporter import AnalyserExporter
-from impact_score.json_analyser.analyser_pool import analyser_pool, CoreAnalyser
-from impact_score.json_analyser.analyser_tools import AnalyserTools
-from impact_score.json_analyser.analyser_wrapper import AnalyserWrapper
+from impact_score.json_analyser.wrap.analyser_exporter import AnalyserExporter
+from impact_score.json_analyser.wrap.analyser_loader import get_analyser
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser
+from impact_score.json_analyser.core.analyser_tools import AnalyserTools
+from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM
 
@@ -36,8 +33,7 @@ class RoundReplay:
 
     def set_match(self, match_id: int):
         self.match_id = match_id
-        self.analyser: CoreAnalyser = analyser_pool.acquire()
-        self.analyser.set_match(match_id)
+        self.analyser: CoreAnalyser = get_analyser(match_id)
         self.exporter: AnalyserExporter = AnalyserExporter(self.analyser)
         self.tools: AnalyserTools = AnalyserTools(self.analyser)
         self.wrapper: AnalyserWrapper = AnalyserWrapper(self.analyser)

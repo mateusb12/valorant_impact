@@ -1,5 +1,5 @@
-from impact_score.json_analyser.analyser_pool import CoreAnalyser, analyser_pool
-from impact_score.json_analyser.analyser_tools import AnalyserTools
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
+from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 
 
 class AnalyserGamestate:

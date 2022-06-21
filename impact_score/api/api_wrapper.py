@@ -13,9 +13,8 @@ from flask import Flask, jsonify, request
 from timeit import default_timer as timer
 from pathlib import Path
 
-from impact_score.json_analyser.analyse_json import Analyser
-from impact_score.json_analyser.analyser_exporter import AnalyserExporter
-from impact_score.json_analyser.analyser_pool import analyser_pool
+from impact_score.json_analyser.wrap.analyser_exporter import AnalyserExporter
+from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 start = timer()
 app = Flask(__name__)
@@ -66,8 +65,7 @@ def get_round_impact(input_match_id):
 @app.route('/get_match_impact/<input_match_id>', methods=["GET"])
 def get_match_impact(input_match_id):
     match_id = int(input_match_id)
-    analyser = analyser_pool.acquire()
-    analyser.set_match(match_id)
+    analyser = get_analyser(match_id)
     ae = AnalyserExporter(analyser)
     prob_df = pd.DataFrame(export_probabilities(match_id))
     details_dict = export_impact(analyser, ae, prob_df)

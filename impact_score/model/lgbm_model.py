@@ -12,7 +12,6 @@ from pathlib import Path
 
 from termcolor import colored
 
-from impact_score.json_analyser.analyse_json import Analyser
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.model.dataset_preparation.dataset_prep import prepare_dataset
 from impact_score.path_reference.folder_ref import model_reference
@@ -178,18 +177,18 @@ class ValorantLGBM:
                 "DEF_loadoutValue": 23700, "DEF_operators": 0, "DEF_kills": 1,
                 "DEF_Initiator": 2, "DEF_Duelist": 1, "DEF_Sentinel": 1, "DEF_Controller": 1}
 
-    def query_example(self, **kwargs) -> dict:
-        match = kwargs["match"]
-        round_ = kwargs["round_"]
-        timing = kwargs["timing"]
-        a = Analyser()
-        a.set_match(match)
-        df = a.export_df()
-        match_query = df[df["MatchID"] == match]
-        round_query = match_query[match_query["RoundNumber"] == round_]
-        timing_query = round_query[round_query["RegularTime"] == timing]
-        trim = timing_query[self.get_model_features()]
-        return trim.to_dict(orient="records")[0]
+    # def query_example(self, **kwargs) -> dict:
+    #     match = kwargs["match"]
+    #     round_ = kwargs["round_"]
+    #     timing = kwargs["timing"]
+    #     a = Analyser()
+    #     a.set_match(match)
+    #     df = a.export_df()
+    #     match_query = df[df["MatchID"] == match]
+    #     round_query = match_query[match_query["RoundNumber"] == round_]
+    #     timing_query = round_query[round_query["RegularTime"] == timing]
+    #     trim = timing_query[self.get_model_features()]
+    #     return trim.to_dict(orient="records")[0]
 
 
 def get_dataset() -> pd.DataFrame:

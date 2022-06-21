@@ -1,16 +1,11 @@
 import time
-from random import random
-from typing import Union, Any
 
 from matplotlib import ticker
 from matplotlib.lines import Line2D
 
-from impact_score.impact_consumer.probability_consumer import export_probabilities
-from impact_score.json_analyser.analyse_json import Analyser
-from impact_score.json_analyser.analyser_exporter import AnalyserExporter
-from impact_score.json_analyser.analyser_pool import CoreAnalyser
-from impact_score.json_analyser.analyser_tools import AnalyserTools
-from impact_score.json_analyser.api_consumer import get_impact_details
+from impact_score.json_analyser.wrap.analyser_exporter import AnalyserExporter
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser
+from impact_score.json_analyser.core.api_consumer import get_impact_details
 import matplotlib.pyplot as plt
 
 import pandas as pd
@@ -73,37 +68,37 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
     return match_impact_dict
 
 
-def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> Union[int, dict[Any, int]]:
-    """
-    Export the impact of each player in a match.
-    :param match_id: The match id. (60206)
-    :param input_analyser: Analyser object instance.
-    :param kwargs: player_name="crashies"
-    :return: Dictionary with impact for each player, unless kwargs player_name is set. Example:
-    {
-        "keznit": 0.9838,
-        "Nivera": 1.141,
-        "Jamppi": 3.176,
-        "Mazino": 1.852,
-        "ScreaM": 0.988
-    }
-    """
-    match_data = export_impact(match_id, input_analyser)
-    player_impact_dict = {}
-
-    for round_n in match_data.values():
-        for event in round_n:
-            author = event['author']
-            if author not in player_impact_dict and author is not None:
-                player_impact_dict[author] = 0
-            if author is not None:
-                impact = float(event['impact'])
-                player_impact_dict[author] += impact
-
-    if "player_name" in kwargs:
-        return player_impact_dict[kwargs["player_name"]]
-    else:
-        return player_impact_dict
+# def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> Union[int, dict[Any, int]]:
+#     """
+#     Export the impact of each player in a match.
+#     :param match_id: The match id. (60206)
+#     :param input_analyser: Analyser object instance.
+#     :param kwargs: player_name="crashies"
+#     :return: Dictionary with impact for each player, unless kwargs player_name is set. Example:
+#     {
+#         "keznit": 0.9838,
+#         "Nivera": 1.141,
+#         "Jamppi": 3.176,
+#         "Mazino": 1.852,
+#         "ScreaM": 0.988
+#     }
+#     """
+#     match_data = export_impact(match_id, input_analyser)
+#     player_impact_dict = {}
+#
+#     for round_n in match_data.values():
+#         for event in round_n:
+#             author = event['author']
+#             if author not in player_impact_dict and author is not None:
+#                 player_impact_dict[author] = 0
+#             if author is not None:
+#                 impact = float(event['impact'])
+#                 player_impact_dict[author] += impact
+#
+#     if "player_name" in kwargs:
+#         return player_impact_dict[kwargs["player_name"]]
+#     else:
+#         return player_impact_dict
 
 
 def export_probability_points(match_id: int) -> dict:
@@ -243,6 +238,5 @@ if __name__ == "__main__":
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     # test3 = export_probability_points(match_id=65588)
     aux = 5 + 1
-    a = Analyser()
     # test4 = export_impact(match_id=65588, input_analyser=a)
     print("hey")

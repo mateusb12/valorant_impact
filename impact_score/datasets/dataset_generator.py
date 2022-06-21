@@ -1,14 +1,13 @@
-import os
 from pathlib import Path
 from random import sample
 from timeit import default_timer as timer
 from typing import List
-from itertools import chain
 
 import pandas as pd
 from termcolor import colored
 
-from impact_score.json_analyser.analyse_json import Analyser
+from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
+from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 from impact_score.model.time_analyser import time_metrics
 from impact_score.path_reference.folder_ref import datasets_reference
 
@@ -21,7 +20,8 @@ def get_match_list() -> List[int]:
 
 class ValorantDatasetGenerator:
     def __init__(self):
-        self.a = Analyser()
+        self.a: CoreAnalyser = analyser_pool.acquire()
+        self.wrapper: AnalyserWrapper = AnalyserWrapper(self.a)
         self.match_list = get_match_list()
         self.dataset_index = []
         self.broken_matches = []
@@ -35,7 +35,7 @@ class ValorantDatasetGenerator:
             time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_index)
             self.a.set_match(match_index)
             try:
-                match_df = self.a.export_df()
+                match_df = self.wrapper.export_df()
             except KeyError:
                 print(colored(f"Match #{match_index} is broken", "red"))
                 self.broken_matches.append(match_index)

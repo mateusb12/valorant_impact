@@ -1,4 +1,4 @@
-from impact_score.json_analyser.api_consumer import get_match_info
+from impact_score.json_analyser.core.api_consumer import get_match_info
 import pandas as pd
 
 

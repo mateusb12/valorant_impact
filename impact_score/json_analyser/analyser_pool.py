@@ -13,7 +13,8 @@ class CoreAnalyser:
     def __init__(self, input_agent_data: dict, input_weapon_data: dict):
         self.chosen_round = 1
         self.map_dict, self.attacking_first_team, self.defending_first_team, self.round_events = None, None, None, None
-        self.data, self.current_status, self.match_id, self.round_amount = None, None, None, None
+        self.data, self.current_status, self.match_id, self.round_amount, self.map_name = None, None, None, None, None
+        self.defuse_happened, self.round_number, self.event_type = None, None, None
         self.agent_data = input_agent_data
         self.weapon_data = input_weapon_data
 
@@ -25,6 +26,7 @@ class CoreAnalyser:
         self.defending_first_team: int = 1 if self.attacking_first_team == 2 else 2
         self.current_status = create_player_table(self.data, self.map_dict)
         self.round_amount = self.map_dict["team1Score"] + self.map_dict["team2Score"]
+        self.map_name = self.map_dict["map"]["name"]
 
     def choose_round(self, desired_round: int):
         self.chosen_round = desired_round

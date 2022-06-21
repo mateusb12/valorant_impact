@@ -52,7 +52,7 @@ class ValorantLGBM:
         self.filename = filename
         self.features: List[str] = []
         self.target = ""
-        self.model = None
+        self.model: lightgbm = None
         self.X, self.Y, self.X_train, self.Y_train, self.X_test, self.Y_test = [None] * 6
         self.df_prepared = False
         self.do_optuna = False
@@ -105,7 +105,7 @@ class ValorantLGBM:
         pkl_path = Path(model_folder, "model.pkl")
         self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
 
-    def export_model(self):
+    def export_model_to_pkl(self):
         joblib.dump(self.model, 'model.pkl')
 
     @staticmethod
@@ -217,6 +217,7 @@ def existing_pkl() -> bool:
 
 if __name__ == "__main__":
     vm = get_trained_model()
+    print(vm.model.feature_name_)
     # # vm.import_model_from_file()
     # vm.setup_dataframe("4000.csv")
     # vm.setup_features_target()

@@ -8,8 +8,8 @@ def update_pkl():
     vm = ValorantLGBM()
     vm.setup_dataframe("2000.csv")
     vm.train_model(optuna_study=True)
-    vm.export_model()
-    vm.show_all_metrics()
+    vm.export_model_to_pkl()
+    # vm.show_all_metrics()
 
 
 if __name__ == "__main__":

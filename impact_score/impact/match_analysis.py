@@ -19,7 +19,6 @@ from impact_score.json_analyser.analyser_tools import AnalyserTools
 from impact_score.json_analyser.analyser_wrapper import AnalyserWrapper
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM
-from impact_score.json_analyser.analyse_json import Analyser
 
 sl = get_slash_type()
 

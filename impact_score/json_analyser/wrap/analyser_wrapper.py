@@ -1,7 +1,7 @@
 import pandas as pd
 
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
-from impact_score.json_analyser.core.analyser_round import AnalyserRound
+from impact_score.json_analyser.core.analyser_round_aggregator import AnalyserRound
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 
 

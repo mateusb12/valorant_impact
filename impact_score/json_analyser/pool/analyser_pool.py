@@ -1,6 +1,6 @@
 # Create a Custom exception for the analyser pool
-from impact_score.json_analyser.core.simple_tools import get_map_dict, create_player_table, get_round_events
-from impact_score.json_analyser.core.analyser_file_loader import get_agent_data, get_weapon_data
+from impact_score.json_analyser.core.simple_operations import get_map_dict, create_player_table, get_round_events
+from impact_score.json_analyser.core.analyser_file_loader import load_agent_data, load_weapon_data
 from impact_score.json_analyser.core.api_consumer import get_match_info
 
 
@@ -45,8 +45,8 @@ class ReusablePool:
         self.in_use = []
         self._size = size
         self._current = 0
-        self.raw_agent_data = get_agent_data()
-        self.raw_weapon_data = get_weapon_data()
+        self.raw_agent_data = load_agent_data()
+        self.raw_weapon_data = load_weapon_data()
         for _ in range(size):
             self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data))
 

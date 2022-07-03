@@ -11,38 +11,44 @@ class AnalyserRound:
         self.a = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
         self.ag = AnalyserGamestate(input_core_analyser)
+        self.sides = {}
+        self.atk_kills = 0
+        self.def_kills = 0
+        self.round_winner, self.plant = None, None
 
     def pick_round(self, round_number: int):
         self.a.choose_round(round_number)
-
-    def generate_full_round(self) -> list:
-        plant = self.tools.get_plant_timestamp()
         self.a.defuse_happened = False
         self.a.event_type = "start"
-        round_winner = self.tools.get_round_winner()
+        self.round_winner = self.tools.get_round_winner()
+        self.plant = self.tools.get_plant_timestamp()
+        self.sides = self.tools.get_player_sides()
+
+    def generate_single_gamestate(self, value: dict) -> dict:
+        event_type: str = value["event"]
+        timing: int = value["timing"]
+        if event_type == "defuse":
+            self.a.defuse_happened = True
+        elif event_type == "kill":
+            self.a.current_status[value["victim"]]["alive"] = False
+            player_side = self.sides[value["author"]]
+            if player_side == "attacking":
+                self.atk_kills += 1
+            elif player_side == "defending":
+                self.def_kills += 1
+        elif event_type == "revival":
+            self.a.current_status[value["victim"]]["shieldId"] = None
+            self.a.current_status[value["victim"]]["alive"] = True
+        event = self.ag.generate_single_event_values(timestamp=timing, winner=self.round_winner, plant=self.plant)
+        event["ATK_kills"] = self.atk_kills
+        event["DEF_kills"] = self.def_kills
+        return event
+
+    def generate_full_round(self) -> list:
         round_array = []
-        sides = self.tools.get_player_sides()
-        atk_kills = 0
-        def_kills = 0
         for value in self.a.round_events:
-            event_type: str = value["event"]
-            timing: int = value["timing"]
-            if event_type == "defuse":
-                self.a.defuse_happened = True
-            elif event_type == "kill":
-                self.a.current_status[value["victim"]]["alive"] = False
-                player_side = sides[value["author"]]
-                if player_side == "attacking":
-                    atk_kills += 1
-                elif player_side == "defending":
-                    def_kills += 1
-            elif event_type == "revival":
-                self.a.current_status[value["victim"]]["shieldId"] = None
-                self.a.current_status[value["victim"]]["alive"] = True
-            event = self.ag.generate_single_event_values(timestamp=timing, winner=round_winner, plant=plant)
-            event["ATK_kills"] = atk_kills
-            event["DEF_kills"] = def_kills
-            round_array.append(event)
+            gamestate = self.generate_single_gamestate(value)
+            round_array.append(gamestate)
         return round_array
 
     def generate_average_distance(self) -> pd.DataFrame:
@@ -54,7 +60,7 @@ class AnalyserRound:
         location_df['index'] = range(1, len(location_df) + 1)
 
         dfb = location_df.groupby(["roundNumber", "roundTimeMillis", "team"])
-        location_dict = {key: {} for key in range(1, self.a.round_amount+1)}
+        location_dict = {key: {} for key in range(1, self.a.round_amount + 1)}
         for group_name, df_group in dfb:
             current_round = df_group["roundNumber"].iloc[0]
             current_timestamp = df_group["roundTimeMillis"].iloc[0]
@@ -88,7 +94,7 @@ def __main():
     a = analyser_pool.acquire()
     a.set_match(68821)
     ar = AnalyserRound(a)
-    ar.pick_round(2)
+    ar.pick_round(4)
     aux = ar.generate_full_round()
     print(aux)
 

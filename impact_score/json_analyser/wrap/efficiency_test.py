@@ -3,7 +3,7 @@ import time
 # Check the run time of a function
 import warnings
 
-from impact_score.json_analyser.deprecated.analyse_json import Analyser
+from impact_score.deprecated.analyse_json import Analyser
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool
 from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 

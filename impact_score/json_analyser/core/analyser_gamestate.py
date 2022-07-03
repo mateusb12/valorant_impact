@@ -26,11 +26,16 @@ class AnalyserGamestate:
     def get_team_side(self, team_number: int):
         return self.current_round_sides[team_number]
 
+    @staticmethod
+    def is_alive(player_dict: dict):
+        return player_dict["alive"]
+
     def get_player_gamestate_dict(self, player_dict: dict):
         weapon_price = self.get_weapon_price(player_dict["weaponId"])
         agent_role = self.get_agent_role(player_dict["agentId"])
         shield_value = self.get_shield_value(player_dict["shieldId"])
-        return {"loadoutValue": player_dict["loadoutValue"], "weaponValue": weapon_price,
+        return {"loadoutValue": player_dict["loadoutValue"],
+                "weaponValue": weapon_price,
                 "remainingCreds": player_dict["remainingCreds"],
                 "operators": 1 if player_dict["weaponId"] == "15" else 0,
                 "shields": shield_value, agent_role: 1}
@@ -44,7 +49,7 @@ class AnalyserGamestate:
         def_dict = {item: 0 for item in features}
 
         for value in player_table.values():
-            if player_state := value["alive"]:
+            if self.is_alive(value):
                 team_side = self.get_team_side(value["name"]["team_number"])
                 cont_dict = self.get_player_gamestate_dict(value)
                 for feature, feature_value in cont_dict.items():
@@ -69,7 +74,8 @@ class AnalyserGamestate:
 def __main():
     a = get_analyser(68821)
     ag = AnalyserGamestate(a)
-    ag.generate_single_event_values(timestamp=0, winner=1, plant=91990)
+    aux = ag.generate_single_event_values(timestamp=0, winner=1, plant=91990)
+    print(aux)
 
 
 if __name__ == "__main__":

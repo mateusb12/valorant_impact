@@ -294,19 +294,28 @@ class RoundReplay:
         player_impact_table = copy.deepcopy(self.player_impact)
         for index in range(len(prob_table)):
             row = prob_table.iloc[index]
-            current_time = int(row["Integer time"])
-            stamp = row["Stamps"]
-            means = row["Means"]
-            if stamp != "A" and means != "spike":
-                actor_diff = row["Difference (%)"]
-                actor = row["Actors"]
-                victim = row["Victims"]
-                victim_diff = 0 if means == "revived" else -actor_diff
-                if actor_diff >= 0:
-                    player_impact_table[actor]["gained"] += actor_diff
-                else:
-                    player_impact_table[actor]["gained"] += -actor_diff
-                player_impact_table[victim]["lost"] += abs(victim_diff)
+            event_type = row["EventType"]
+            if event_type != "start":
+                actor = row["Killer"]
+                victim = row["Victim"]
+                impact_value = row["Impact"]
+                player_impact_table[actor]["gained"] += impact_value
+                if event_type == "kill":
+                    player_impact_table[victim]["lost"] += impact_value
+
+            # means = [row[x] for x in ["Weapon", "Ability"] if row[x] != 0]
+            # means = means[0] if means else 0
+            # stamp = row["Stamps"]
+            # if stamp != "A" and means != "spike":
+            #     actor_diff = row["Difference (%)"]
+            #     actor = row["Actors"]
+            #     victim = row["Victims"]
+            #     victim_diff = 0 if means == "revived" else -actor_diff
+            #     if actor_diff >= 0:
+            #         player_impact_table[actor]["gained"] += actor_diff
+            #     else:
+            #         player_impact_table[actor]["gained"] += -actor_diff
+            #     player_impact_table[victim]["lost"] += abs(victim_diff)
         for key, value in player_impact_table.items():
             value["delta"] = value["gained"] - value["lost"]
         return player_impact_table
@@ -414,8 +423,14 @@ def test_single_round(match_id: int, round_number: int):
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(65587)
+    rr_instance.set_match(69549)
     rr_instance.choose_round(3)
+    impact = rr_instance.get_map_impact_dataframe()
+    rounded_columns = ["Gain", "Lost", "Delta"]
+    # Change rounded_columns to % format
+    for col in rounded_columns:
+        impact[col] = impact[col].round(2) * 100
+        impact[col] = impact[col].astype(int)
     aux = rr_instance.get_round_probability(side="atk", add_events=True)
     print(aux)
     # rr_instance.plot_round(side="atk", marker_margin=0.15)

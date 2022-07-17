@@ -1,6 +1,6 @@
 # Create a Custom exception for the analyser pool
 from impact_score.json_analyser.core.simple_operations import get_map_dict, create_player_table, get_round_events
-from impact_score.json_analyser.core.analyser_file_loader import load_agent_data, load_weapon_data
+from impact_score.json_analyser.core.analyser_file_loader import load_agent_data, load_weapon_data, load_ability_data
 from impact_score.json_analyser.core.api_consumer import get_match_info
 
 
@@ -10,13 +10,14 @@ class NoMoreAnalysersException(Exception):
 
 
 class CoreAnalyser:
-    def __init__(self, input_agent_data: dict, input_weapon_data: dict):
+    def __init__(self, input_agent_data: dict, input_weapon_data: dict, input_ability_data: dict):
         self.chosen_round = 1
         self.map_dict, self.attacking_first_team, self.defending_first_team, self.round_events = None, None, None, None
         self.data, self.current_status, self.match_id, self.round_amount, self.map_name = None, None, None, None, None
         self.defuse_happened, self.round_number, self.event_type = None, None, None
         self.agent_data = input_agent_data
         self.weapon_data = input_weapon_data
+        self.ability_data = input_ability_data
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -47,12 +48,13 @@ class ReusablePool:
         self._current = 0
         self.raw_agent_data = load_agent_data()
         self.raw_weapon_data = load_weapon_data()
+        self.raw_ability_data = load_ability_data()
         for _ in range(size):
-            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data))
+            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data, self.raw_ability_data))
 
     def acquire(self) -> CoreAnalyser:
         if len(self._available_pool) <= 0:
-            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data))
+            self.add(CoreAnalyser(self.raw_agent_data, self.raw_weapon_data, self.raw_ability_data))
             # raise NoMoreAnalysersException("No more objects in pool")
         r = self._available_pool[0]
         self._available_pool.remove(r)

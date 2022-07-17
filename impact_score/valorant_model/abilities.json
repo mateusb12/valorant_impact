@@ -1,0 +1,71 @@
+{
+    "0": {
+        "name": "aftershock"
+    },
+    "1": {
+        "name": "bladestorm"
+    },
+    "2": {
+        "name": "blast-pack"
+    },
+    "3": {
+        "name": "blaze"
+    },
+    "4": {
+        "name": "boombot"
+    },
+    "5": {
+        "name": "fast-lane"
+    },
+    "6": {
+        "name": "fragment"
+    },
+    "7": {
+        "name": "headhunter"
+    },
+    "8": {
+        "name": "hot-hands"
+    },
+    "9": {
+        "name": "hunters-fury"
+    },
+    "10": {
+        "name": "molly"
+    },
+    "11": {
+        "name": "nanoswarm"
+    },
+    "12": {
+        "name": "orbital-strike"
+    },
+    "13": {
+        "name": "overdrive"
+    },
+    "14": {
+        "name": "paint-shells"
+    },
+    "15": {
+        "name": "relay-bolt"
+    },
+    "16": {
+        "name": "shock-dart"
+    },
+    "17": {
+        "name": "showstopper"
+    },
+    "18": {
+        "name": "snake-bite"
+    },
+    "19": {
+        "name": "tour-de-force"
+    },
+    "20": {
+        "name": "trailblazer"
+    },
+    "21": {
+        "name": "trapwire"
+    },
+    "22": {
+        "name": "turret"
+    }
+}

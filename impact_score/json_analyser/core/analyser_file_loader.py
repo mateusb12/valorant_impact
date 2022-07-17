@@ -20,3 +20,12 @@ def load_agent_data():
 def load_map_data():
     map_file = open(f'{model_folder}{sl}map_table.json')
     return json.load(map_file)
+
+
+def __main():
+    aux = load_map_data()
+    print(aux)
+
+
+if __name__ == "__main__":
+    __main()

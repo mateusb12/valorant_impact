@@ -6,6 +6,11 @@ from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser
 class AnalyserTools:
     def __init__(self, input_core_analyser: CoreAnalyser):
         self.a = input_core_analyser
+        series_by_id = self.a.data["series"]["seriesById"]
+        self.team_details: dict = {1: series_by_id["team1"], 2: series_by_id["team2"]}
+        self.team_details[1]["number"] = 1
+        self.team_details[2]["number"] = 2
+        self.round_details: list = self.a.map_dict["rounds"]
 
     def get_plant_timestamp(self) -> float or None:
         return next((h["timing"] for h in self.a.round_events if h["event"] == "plant"), None)
@@ -85,8 +90,28 @@ class AnalyserTools:
             for round_data in self.a.data["matches"]["matchDetails"]["events"]
         }
 
+    def generate_round_info(self) -> dict:
+        final_winner_dict = {"attacking": 1, "defending": 0}
+        for item in self.round_details:
+            self.a.choose_round(item["number"])
+            current_sides = self.get_current_sides()
+            current_sides_inverse = {v: k for k, v in current_sides.items()}
+            item["attacking"] = {"name": self.team_details[current_sides_inverse["attacking"]]["name"],
+                                 "id": self.team_details[current_sides_inverse["attacking"]]["number"]}
+            item["defending"] = {"name": self.team_details[current_sides_inverse["defending"]]["name"],
+                                 "id": self.team_details[current_sides_inverse["defending"]]["number"]}
+            item["finalWinner"] = final_winner_dict[current_sides[item["winningTeamNumber"]]]
+        return {item["number"]: item for item in self.round_details}
+
 
 def __main():
     a = analyser_pool.acquire()
     a.set_match(68821)
     aw = AnalyserTools(a)
+    aw.generate_round_info()
+    q = aw.round_details
+    print(q)
+
+
+if __name__ == "__main__":
+    __main()

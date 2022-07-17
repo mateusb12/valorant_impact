@@ -87,23 +87,27 @@ class RoundReplay:
         return None
 
     def get_clutchy_rounds(self, chosen_side: str) -> dict:
-        dtb = self.get_round_table()
-        round_amount = max(dtb, key=dtb.get)
+        # dtb = self.get_round_table()
+        dtb = self.tools.generate_round_info()
+        winner_dict = {0: "def", 1: "atk"}
+        # round_amount = max(dtb, key=dtb.get)
+        round_amount = max(dtb.keys())
         minimum_probabilities_dict = {}
         original_round = self.chosen_round
         for i in range(1, round_amount + 1):
             self.chosen_round = i
-            aux = self.get_round_probability(side=chosen_side)
-            winner = list(aux["Final Winner"])[0]
+            prob = self.get_round_probability(side=chosen_side, add_events=True)
+            winner = winner_dict[dtb[i]["finalWinner"]]
             if winner == chosen_side:
-                round_id = list(aux["Round"])[0]
-                min_prob = min(list(aux["Win_probability"]))
-                minimum_probabilities_dict[round_id] = min_prob
+                round_id = dtb[i]["number"]
+                min_prob = min(list(prob["Probability_before_event"]))
+                minimum_probabilities_dict[round_id] = round(100*min_prob, 2)
 
         self.chosen_round = original_round
-        return dict(
+        sorted_d = dict(
             sorted(minimum_probabilities_dict.items(), key=lambda item: item[1])
         )
+        return {key: f"{value}%" for key, value in sorted_d.items()}
 
     @staticmethod
     def displace_column(input_df: pd.DataFrame, column_name: str):
@@ -425,14 +429,15 @@ if __name__ == "__main__":
     rr_instance = RoundReplay()
     rr_instance.set_match(69549)
     rr_instance.choose_round(3)
-    impact = rr_instance.get_map_impact_dataframe()
-    rounded_columns = ["Gain", "Lost", "Delta"]
-    # Change rounded_columns to % format
-    for col in rounded_columns:
-        impact[col] = impact[col].round(2) * 100
-        impact[col] = impact[col].astype(int)
-    aux = rr_instance.get_round_probability(side="atk", add_events=True)
-    print(aux)
+    print(rr_instance.get_clutchy_rounds(chosen_side="atk"))
+    # impact = rr_instance.get_map_impact_dataframe()
+    # rounded_columns = ["Gain", "Lost", "Delta"]
+    # # Change rounded_columns to % format
+    # for col in rounded_columns:
+    #     impact[col] = impact[col].round(2) * 100
+    #     impact[col] = impact[col].astype(int)
+    # aux = rr_instance.get_round_probability(side="atk", add_events=True)
+    # print(aux)
     # rr_instance.plot_round(side="atk", marker_margin=0.15)
     # aux = rr_instance.get_round_probability(side="atk")
     # apple = 5 + 1

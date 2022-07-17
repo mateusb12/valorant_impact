@@ -14,7 +14,7 @@ class CoreAnalyser:
         self.chosen_round = 1
         self.map_dict, self.attacking_first_team, self.defending_first_team, self.round_events = None, None, None, None
         self.data, self.current_status, self.match_id, self.round_amount, self.map_name = None, None, None, None, None
-        self.defuse_happened, self.round_number, self.event_type = None, None, None
+        self.defuse_happened, self.round_number, self.event_type, self.team_details = None, None, None, None
         self.agent_data = input_agent_data
         self.weapon_data = input_weapon_data
         self.ability_data = input_ability_data
@@ -74,13 +74,14 @@ class ReusablePool:
 
 analyser_pool = ReusablePool(2)
 
-# def __main():
-#     pool = ReusablePool(2)
-#     r = pool.acquire()
-#     r2 = pool.acquire()
-#     r.check_id()
-#     r2.check_id()
-#
-#
-# if __name__ == "__main__":
-#     __main()
+
+def __main():
+    pool = ReusablePool(2)
+    r = pool.acquire()
+    r2 = pool.acquire()
+    r.check_id()
+    r2.check_id()
+
+
+if __name__ == "__main__":
+    __main()

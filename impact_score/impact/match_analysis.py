@@ -179,8 +179,8 @@ class RoundReplay:
         side = kwargs["side"]
         self.side = side
         if side == "def":
-            table['Probability_before_event'] = table['Probability_before_event'].apply(lambda y: 1 - y)
-            table['Probability_after_event'] = table['Probability_after_event'].apply(lambda y: 1 - y)
+            table['Probability_before_event'] = 1 - table['Probability_before_event']
+            table['Probability_after_event'] = 1 - table['Probability_after_event']
         table["Round"] = round_number
         current_round_events = self.events_data[self.chosen_round]
         round_millis = [x["roundTimeMillis"] for x in current_round_events]

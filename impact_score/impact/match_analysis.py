@@ -3,11 +3,9 @@ import copy
 import pandas as pd
 # from line_profiler_pycharm import profile
 
-from sklearn.model_selection import train_test_split
 import lightgbm
 from termcolor import colored
 
-# from impact_score.impact_consumer.impact_consumer import export_impact
 from impact_score.imports.os_slash import get_slash_type
 from impact_score.json_analyser.wrap.analyser_exporter import AnalyserExporter
 from impact_score.json_analyser.wrap.analyser_loader import get_analyser
@@ -17,13 +15,14 @@ from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 from impact_score.model.lgbm_loader import load_lgbm
 from impact_score.model.lgbm_model import ValorantLGBM
 
-sl = get_slash_type()
+
+class PlayerNotFoundException(Exception):
+    pass
 
 
 class RoundReplay:
     def __init__(self):
         self.match_id = 0
-        # self.analyser = Analyser()
 
         self.vm: ValorantLGBM = load_lgbm()
         self.model: lightgbm.LGBMClassifier = self.vm.model
@@ -40,7 +39,6 @@ class RoundReplay:
         self.player_impact = self.exporter.export_player_names()
         self.round_amount = self.analyser.get_last_round()
         self.df = self.wrapper.export_df()
-        self.feature_df = self.df[self.vm.get_model_features()]
         self.query = self.df.query(f"MatchID == {match_id}")
         self.round_table = self.tools.get_round_table()
         self.chosen_round = None
@@ -55,72 +53,37 @@ class RoundReplay:
         self.chosen_round = round_number
         print(colored(f"Round {round_number} selected", "yellow"))
 
-    def is_player_in_this_match(self, player_name: str) -> bool:
+    def __is_player_in_this_match(self, player_name: str) -> bool:
         return player_name in self.player_impact
 
-    def get_round_table(self) -> dict:
+    def __get_round_table(self) -> dict:
         g = self.query[["RoundNumber", "RoundID"]]
         g.drop_duplicates()
         return dict(zip(g.RoundNumber, g.RoundID))
+
+    def __get_round_id(self, round_index: int) -> int:
+        return self.round_table[round_index]
+
+    def __get_round_dataframe(self, round_index: int):
+        return self.df.query(f'RoundID == {self.__get_round_id(round_index)}')
 
     def get_round_winners(self) -> dict:
         g = self.query[["RoundNumber", "FinalWinner"]]
         g.drop_duplicates()
         return dict(zip(g.RoundNumber, g.FinalWinner))
 
-    def get_round_id(self, round_index: int) -> int:
-        return self.round_table[round_index]
-
-    def get_round_dataframe(self, round_index: int):
-        return self.df.query(f'RoundID == {self.get_round_id(round_index)}')
-
-    def get_plant_stamp(self, round_number: int) -> int or None:
-        rdf = self.get_round_dataframe(round_number)
-        if max(rdf.SpikeTime) == 0:
-            return None
-        for i in rdf.iterrows():
-            current_index = i[0]
-            current_time = i[1].RegularTime
-            next_time = tuple(rdf["RegularTime"].loc[[current_index + 1]])[0]
-            if current_time != 0 and next_time == 0:
-                return round(tuple(rdf["RoundTime"].loc[[current_index]])[0] / 1000, 0)
-        return None
-
-    def get_clutchy_rounds(self, chosen_side: str) -> dict:
-        # dtb = self.get_round_table()
-        dtb = self.tools.generate_round_info()
-        winner_dict = {0: "def", 1: "atk"}
-        # round_amount = max(dtb, key=dtb.get)
-        round_amount = max(dtb.keys())
-        minimum_probabilities_dict = {}
-        original_round = self.chosen_round
-        for i in range(1, round_amount + 1):
-            self.chosen_round = i
-            prob = self.get_round_probability(side=chosen_side, add_events=True)
-            winner = winner_dict[dtb[i]["finalWinner"]]
-            if winner == chosen_side:
-                round_id = dtb[i]["number"]
-                min_prob = min(list(prob["Probability_before_event"]))
-                minimum_probabilities_dict[round_id] = round(100*min_prob, 2)
-
-        self.chosen_round = original_round
-        sorted_d = dict(
-            sorted(minimum_probabilities_dict.items(), key=lambda item: item[1])
-        )
-        return {key: f"{value}%" for key, value in sorted_d.items()}
-
     @staticmethod
-    def displace_column(input_df: pd.DataFrame, column_name: str):
+    def __displace_column(input_df: pd.DataFrame, column_name: str):
         column = list(input_df[column_name])
         last = column[-1]
         displaced = column[1:]
         displaced.append(last)
         input_df[column_name] = displaced
 
-    def get_displaced_preds(self, input_table: pd.DataFrame) -> dict:
+    def __get_displaced_preds(self, input_table: pd.DataFrame) -> dict:
         displaced_table = input_table.copy()
-        self.displace_column(displaced_table, "RegularTime")
-        self.displace_column(displaced_table, "SpikeTime")
+        self.__displace_column(displaced_table, "RegularTime")
+        self.__displace_column(displaced_table, "SpikeTime")
         first_row = pd.DataFrame(input_table.iloc[0]).transpose()
         displaced_table = pd.concat([first_row, displaced_table]).reset_index(drop=True)
         displaced_table = displaced_table[:-1]
@@ -130,7 +93,7 @@ class RoundReplay:
         displaced_pred = raw_displaced_pred[:, 1]
         return {"default": default_pred, "displaced": displaced_pred}
 
-    def handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
+    def __handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
         situation_type = kwargs["situation"]
         events = kwargs["events"]
         last_index = input_table.index[-1]
@@ -163,6 +126,27 @@ class RoundReplay:
                 defuse_index = events.index("defuse")
                 input_table.loc[defuse_index, 'Probability_after_event'] = new_proba
 
+    def get_clutchy_rounds(self, chosen_side: str) -> dict:
+        dtb = self.tools.generate_round_info()
+        winner_dict = {0: "def", 1: "atk"}
+        round_amount = max(dtb.keys())
+        minimum_probabilities_dict = {}
+        original_round = self.chosen_round
+        for i in range(1, round_amount + 1):
+            self.chosen_round = i
+            prob = self.get_round_probability(side=chosen_side, add_events=True)
+            winner = winner_dict[dtb[i]["finalWinner"]]
+            if winner == chosen_side:
+                round_id = dtb[i]["number"]
+                min_prob = min(list(prob["Probability_before_event"]))
+                minimum_probabilities_dict[round_id] = round(100 * min_prob, 2)
+
+        self.chosen_round = original_round
+        sorted_d = dict(
+            sorted(minimum_probabilities_dict.items(), key=lambda item: item[1])
+        )
+        return {key: f"{value}%" for key, value in sorted_d.items()}
+
     # @profile
     def get_round_probability(self, **kwargs):
         """
@@ -172,10 +156,10 @@ class RoundReplay:
         :return: pd.DataFrame table with the probabilities of each round
         """
         round_number = self.chosen_round
-        old_table = self.get_round_dataframe(round_number)
+        old_table = self.__get_round_dataframe(round_number)
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
-        displaced_dict = self.get_displaced_preds(table)
+        displaced_dict = self.__get_displaced_preds(table)
         displaced_pred = displaced_dict["displaced"]
         default_pred = displaced_dict["default"]
         table["Probability_before_event"] = displaced_pred
@@ -217,7 +201,7 @@ class RoundReplay:
         # event_types.insert(0, "start")
         table["EventType"] = event_types
 
-        self.handle_special_situation(table, situation=situation_type, events=event_types)
+        self.__handle_special_situation(table, situation=situation_type, events=event_types)
 
         table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
         table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
@@ -244,56 +228,7 @@ class RoundReplay:
         table = table.fillna(0)
         return table
 
-    def round_events_dataframe(self) -> pd.DataFrame:
-        stamps = ["A"]
-        actors = ["None"]
-        means = ["None"]
-        victims = ["None"]
-        story = self.get_round_story()
-        for key, value in story.items():
-            action_list = value.split(" ")
-            if 'Round' not in action_list and 'spike' not in action_list and '[None]' not in action_list:
-                stamps.append(key)
-                actors.append(action_list[0])
-                if "[" in action_list[1]:
-                    means.append(action_list[1][1:-1])
-                else:
-                    means.append(action_list[1])
-                victims.append(action_list[2])
-            elif 'spike' in action_list:
-                stamps.append(key)
-                actors.append(action_list[0])
-                means.append("spike")
-                victims.append("spike")
-            elif '[None]' in action_list:
-                stamps.append(key)
-                actors.append(action_list[0])
-                means.append("spike")
-                victims.append(action_list[0])
-        return pd.DataFrame({"Stamps": stamps, "Actors": actors, "Means": means, "Victims": victims})
-
-    def get_round_story(self) -> dict:
-        round_story = []
-        round_events = self.exporter.export_round_events()
-        for i in round_events:
-            if i["roundNumber"] == self.chosen_round:
-                if i["eventType"] == "kill":
-                    output = f'{i["killer_name"]} [{i["weapon"]["name"]}] {i["victim_name"]}'
-                elif i["eventType"] == "plant":
-                    output = f'{i["killer_name"]} planted the spike'
-                elif i["eventType"] == "defuse":
-                    output = f'{i["killer_name"]} defused the spike'
-                elif i["eventType"] == "revival":
-                    output = f'{i["killer_name"]} revived {i["victim_name"]}'
-                else:
-                    output = f'{i["killer_name"]} exception'
-                round_story.append(output)
-        rs_dict = {"A": "Round start"}
-        for i, x in enumerate(round_story):
-            rs_dict[self.letterify(i + 1, displace=True)] = x
-        return rs_dict
-
-    def get_round_impact(self) -> dict:
+    def __get_round_impact(self) -> dict:
         prob_table = self.get_round_probability(side="def", add_events=True)
         player_impact_table = copy.deepcopy(self.player_impact)
         for index in range(len(prob_table)):
@@ -306,53 +241,32 @@ class RoundReplay:
                 player_impact_table[actor]["gained"] += impact_value
                 if event_type == "kill":
                     player_impact_table[victim]["lost"] += impact_value
-
-            # means = [row[x] for x in ["Weapon", "Ability"] if row[x] != 0]
-            # means = means[0] if means else 0
-            # stamp = row["Stamps"]
-            # if stamp != "A" and means != "spike":
-            #     actor_diff = row["Difference (%)"]
-            #     actor = row["Actors"]
-            #     victim = row["Victims"]
-            #     victim_diff = 0 if means == "revived" else -actor_diff
-            #     if actor_diff >= 0:
-            #         player_impact_table[actor]["gained"] += actor_diff
-            #     else:
-            #         player_impact_table[actor]["gained"] += -actor_diff
-            #     player_impact_table[victim]["lost"] += abs(victim_diff)
         for key, value in player_impact_table.items():
             value["delta"] = value["gained"] - value["lost"]
         return player_impact_table
 
-    def get_round_impact_dataframe(self) -> pd.DataFrame:
-        impact_dict = self.get_round_impact()
-        impact_df = pd.DataFrame(impact_dict).T
-        impact_df["delta"] = impact_df["gained"] - impact_df["lost"]
-        impact_df = impact_df[["gained", "lost", "delta"]]
-        return impact_df
-
-    def get_player_most_impactful_rounds(self, player_name: str) -> pd.DataFrame:
+    def get_player_most_impactful_rounds(self, input_player_name: str) -> pd.DataFrame:
+        if not self.__is_player_in_this_match(input_player_name):
+            raise PlayerNotFoundException(f"Player {input_player_name} not in this match")
         pot = []
+        columns = ["Name", "Round", "Gained", "Lost", "Delta"]
+        player_name = input_player_name.lower()
         for i in range(1, self.round_amount + 1):
             self.choose_round(i)
-            cr = self.get_round_impact_dataframe()
-            name = cr.iloc[cr.index.get_loc(player_name)]
-            aux["RoundNumber"] = i
-            pot.append(name)
-        res = pd.DataFrame(pot)
-        res["RoundNumber"] = res["RoundNumber"].astype(int)
-        res['Name'] = res.index
-        res = res[["Name", "RoundNumber", "gained", "lost", "delta"]]
-        res = res.sort_values("delta", ascending=False)
-        res = res.reset_index(drop=True)
+            impact_dict = self.__get_round_impact()
+            impact_dict_lower = {k.lower(): v for k, v in impact_dict.items()}
+            player_impact = impact_dict_lower[player_name]
+            pot.append((player_name, i, player_impact["gained"], player_impact["lost"], player_impact["delta"]))
+        res = pd.DataFrame(pot, columns=columns)
+        res = res.sort_values("Gained", ascending=False)
         return res
 
-    def get_map_impact(self) -> dict:
+    def __get_map_impact(self) -> dict:
         pi = copy.deepcopy(self.player_impact)
         impact_list = []
         for i in range(1, self.round_amount + 1):
             self.choose_round(i)
-            round_impact = self.get_round_impact()
+            round_impact = self.__get_round_impact()
             impact_list.append(round_impact)
 
         for round_impact in impact_list:
@@ -363,12 +277,12 @@ class RoundReplay:
 
         return dict(sorted(pi.items(), key=lambda item: item[1]["delta"], reverse=True))
 
-    def get_map_impact_dataframe(self, **kwargs) -> pd.DataFrame:
+    def get_map_impact_dataframe(self) -> pd.DataFrame:
         igns = []
         gains = []
         losses = []
         deltas = []
-        map_impact = self.get_map_impact()
+        map_impact = self.__get_map_impact()
         for key, value in map_impact.items():
             igns.append(key)
             gains.append(value["gained"])
@@ -378,44 +292,9 @@ class RoundReplay:
 
         impact_table = {"Name": igns, "Gain": gains, "Lost": losses, "Delta": deltas, "MatchID": match_id}
         aux_impact = pd.DataFrame(impact_table)
-        if "agents" in kwargs:
-            agent_dict = self.exporter.export_player_agent_picks()
-            aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
+        agent_dict = self.exporter.export_player_agent_picks()
+        aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
         return aux_impact
-
-    @staticmethod
-    def letterify(number: int, **kwargs):
-        if "displace" in kwargs and kwargs["displace"]:
-            return chr(ord("B") + number - 1)
-        else:
-            return chr(ord("A") + number - 1)
-
-
-def generate_prediction_model(input_dataset: pd.DataFrame) -> lightgbm.LGBMClassifier:
-    params = pd.read_csv('model_params.csv', index_col=False)
-    params = params.to_dict('records')[0]
-    df = input_dataset[["ATK_wealth", "DEF_wealth", "ATK_alive", "DEF_alive",
-                        "ATK_Shields", "DEF_Shields",
-                        "DEF_has_OP", "Def_has_Odin",
-                        "RegularTime", "SpikeTime", "MapName", "FinalWinner"]]
-    df = pd.get_dummies(df, columns=['MapName'])
-    X = df.drop(['FinalWinner'], axis='columns')
-    Y = df.FinalWinner
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, train_size=0.8, test_size=0.2, random_state=15)
-
-    model = lightgbm.LGBMClassifier(bagging_freq=params["bagging_freq"], min_data_in_leaf=params["min_data_in_leaf"],
-                                    max_depth=params["max_depth"],
-                                    learning_rate=params["learning_rate"], num_leaves=params["num_leaves"],
-                                    num_threads=params["num_threads"],
-                                    min_sum_hessian_in_leaf=params["min_sum_hessian_in_leaf"])
-    model.fit(X_train, Y_train)
-    return model
-
-
-def train_model() -> lightgbm.LGBMClassifier:
-    vm = ValorantLGBM("500.csv")
-    vm.train_model()
-    return vm.model
 
 
 def test_single_round(match_id: int, round_number: int):
@@ -429,7 +308,8 @@ if __name__ == "__main__":
     rr_instance = RoundReplay()
     rr_instance.set_match(69549)
     rr_instance.choose_round(3)
-    print(rr_instance.get_clutchy_rounds(chosen_side="atk"))
+    q = rr_instance.get_player_most_impactful_rounds("nAtss")
+    print(q)
     # impact = rr_instance.get_map_impact_dataframe()
     # rounded_columns = ["Gain", "Lost", "Delta"]
     # # Change rounded_columns to % format

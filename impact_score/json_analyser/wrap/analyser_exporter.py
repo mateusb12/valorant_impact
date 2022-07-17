@@ -75,10 +75,11 @@ def __main():
     a = analyser_pool.acquire()
     a.set_match(65588)
     ae = AnalyserExporter(a)
-    a = ae.export_round_events()
-    b = ae.export_player_agent_picks()
-    c = ae.export_player_details()
-    print(a, b, c)
+    print(ae.round_details)
+    # a = ae.export_round_events()
+    # b = ae.export_player_agent_picks()
+    # c = ae.export_player_details()
+    # print(a, b, c)
 
 
 if __name__ == "__main__":

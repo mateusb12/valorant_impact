@@ -36,6 +36,7 @@ class RoundReplay:
         self.exporter: AnalyserExporter = AnalyserExporter(self.analyser)
         self.tools: AnalyserTools = AnalyserTools(self.analyser)
         self.wrapper: AnalyserWrapper = AnalyserWrapper(self.analyser)
+        self.exporter.a.choose_round(1)
         self.player_impact = self.exporter.export_player_names()
         self.round_amount = self.analyser.get_last_round()
         self.df = self.wrapper.export_df()
@@ -124,7 +125,7 @@ class RoundReplay:
 
             if situation_type == "after_defuse":
                 defuse_index = events.index("defuse")
-                input_table.loc[defuse_index, 'Probability_after_event'] = new_proba
+                input_table.loc[query_indexes[0], 'Probability_after_event'] = new_proba
 
     def get_clutchy_rounds(self, chosen_side: str) -> dict:
         dtb = self.tools.generate_round_info()
@@ -218,7 +219,10 @@ class RoundReplay:
             player_names = {key: value["player_name"] for key, value in player_data.items()}
             player_agents = {key: value["agent_name"] for key, value in player_data.items()}
             player_names[0], player_agents[0], weapon_name_data[0] = 0, 0, 0
-            table["Killer"] = event_df["playerId"].map(player_names).values
+            killers = event_df["playerId"].tolist()
+            killer_names = [player_names[x] for x in killers]
+            # table["Killer"] = event_df["playerId"].map(player_names).values
+            table["Killer"] = [player_names[x] for x in killers]
             table["KillerAgent"] = event_df["playerId"].map(player_agents).values
             table["Weapon"] = event_df["weaponId"].map(weapon_name_data).values
             table["Ability"] = event_df["ability"].values
@@ -306,9 +310,9 @@ def test_single_round(match_id: int, round_number: int):
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(69549)
+    rr_instance.set_match(74031)
     rr_instance.choose_round(3)
-    q = rr_instance.get_player_most_impactful_rounds("nAtss")
+    q = rr_instance.get_clutchy_rounds("atk")
     print(q)
     # impact = rr_instance.get_map_impact_dataframe()
     # rounded_columns = ["Gain", "Lost", "Delta"]

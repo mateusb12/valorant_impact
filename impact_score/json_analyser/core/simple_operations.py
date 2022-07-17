@@ -32,7 +32,15 @@ def get_round_events(input_data: dict, chosen_round: int):
     ]
 
 
-def create_player_table(input_data: dict, map_data: dict) -> dict:
+def get_economy_data(economy_data: dict, round_amount: int) -> dict:
+    economy_dict = {key: [] for key in range(1, round_amount + 1)}
+    # economy_data = economy_data["economies"]
+    for economy in economy_data:
+        economy_dict[economy["roundNumber"]].append(economy)
+    return economy_dict
+
+
+def create_player_table(economy_data: dict, map_data: dict) -> dict:
     ign_table = {
         b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
         for b in map_data["players"]
@@ -42,19 +50,19 @@ def create_player_table(input_data: dict, map_data: dict) -> dict:
 
     player_dict = {}
 
-    for i in input_data["matches"]["matchDetails"]["economies"]:
-        if i["roundNumber"] == 1:
-            player_id = i["playerId"]
-            aux = {"name": ign_table[player_id],
-                   "agentId": i["agentId"],
-                   "combatScore": i["score"],
-                   "weaponId": i["weaponId"],
-                   "shieldId": i["armorId"],
-                   "loadoutValue": i["loadoutValue"],
-                   "spentCreds": i["spentCreds"],
-                   "remainingCreds": i["remainingCreds"],
-                   "attacking_side": ign_table[player_id]["team_number"] == attacking_first_team,
-                   "team_number": ign_table[player_id]["team_number"],
-                   "alive": True}
-            player_dict[player_id] = aux
+    for item in economy_data:
+        player_id = item["playerId"]
+        aux = {"name": ign_table[player_id],
+               "agentId": item["agentId"],
+               "combatScore": item["score"],
+               "weaponId": item["weaponId"],
+               "shieldId": item["armorId"],
+               "loadoutValue": item["loadoutValue"],
+               "spentCreds": item["spentCreds"],
+               "remainingCreds": item["remainingCreds"],
+               "attacking_side": ign_table[player_id]["team_number"] == attacking_first_team,
+               "team_number": ign_table[player_id]["team_number"],
+               "alive": True}
+        player_dict[player_id] = aux
+        # if item["roundNumber"] == 1:
     return player_dict

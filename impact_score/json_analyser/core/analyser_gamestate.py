@@ -40,30 +40,33 @@ class AnalyserGamestate:
                 "operators": 1 if player_dict["weaponId"] == "15" else 0,
                 "shields": shield_value, agent_role: 1}
 
+    def get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
+        regular_time, spike_time = self.tools.generate_spike_timings(timestamp, plant)
+        return {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.a.map_name,
+                "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
+                "MatchID": self.a.match_id, "RoundNumber": self.a.chosen_round, "RoundTime": timestamp}
+
     def generate_single_event_values(self, **kwargs):
-        player_table: dict = self.a.current_status
         team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         features = team_variables + roles
         atk_dict = {item: 0 for item in features}
         def_dict = {item: 0 for item in features}
 
+        player_table: dict = self.a.current_status
+
         for value in player_table.values():
             if self.is_alive(value):
                 team_side = self.get_team_side(value["name"]["team_number"])
-                cont_dict = self.get_player_gamestate_dict(value)
-                for feature, feature_value in cont_dict.items():
+                player_state = self.get_player_gamestate_dict(value)
+                for feature, feature_value in player_state.items():
                     if team_side == "attacking":
                         atk_dict[feature] += feature_value
                     else:
                         def_dict[feature] += feature_value
 
-        round_time = kwargs["timestamp"]
-        regular_time, spike_time = self.tools.generate_spike_timings(kwargs["timestamp"], kwargs["plant"])
         round_winner = kwargs["winner"] if "winner" in kwargs else None
-        final_dict = {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.a.map_name,
-                      "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
-                      "MatchID": self.a.match_id, "RoundNumber": self.a.chosen_round, "RoundTime": round_time}
+        final_dict = self.get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():

@@ -3,12 +3,15 @@ import time
 from matplotlib import ticker
 from matplotlib.lines import Line2D
 
+from impact_score.impact_consumer.probability_consumer import export_probabilities
 from impact_score.json_analyser.wrap.analyser_exporter import AnalyserExporter
 from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser
 from impact_score.json_analyser.core.api_consumer import get_impact_details
 import matplotlib.pyplot as plt
 
 import pandas as pd
+
+from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 
 def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_df: pd.DataFrame) -> dict:
@@ -31,9 +34,9 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
                 "probability_after": "0.2709"
                 "timing": "26185",
     """
-    analyser = core_analyser
+    a = core_analyser
     details = exporter.export_player_details()
-    max_round = analyser.round_amount
+    max_round = a.round_amount
     # random_ids = [int(round(3500 + (7000 - 3500) * random())) for _ in range(2000)]
     # prob_df = pd.DataFrame(export_probabilities(match_id))
     # prob_before = pd.Series(prob_df["Probability_before_event"].values, index=prob_df["EventID"]).to_dict()
@@ -42,13 +45,12 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
     impact = prob_df["Impact"].to_list()
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
     for item in range(1, max_round + 1):
-        analyser.choose_round(item)
-        for index, event in enumerate(analyser.round_events):
+        a.choose_round(item)
+        for index, event in enumerate(a.round_events):
             id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
             event_id = next(filter(None, id_pool), None)
             # if event_id is None:
             # event_id = random_ids.pop()
-            print(index)
             event["event_id"] = event_id
             event["probability_before"] = prob_before[index]
             event["probability_after"] = prob_after[index]
@@ -63,7 +65,7 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
                 event["victim"] = details[victim_id]["player_name"]
                 event["victim_agent"] = details[victim_id]["agent_name"]
             if weapon_id is not None:
-                event["weapon_name"] = analyser.weapon_data[f"{weapon_id}"]["name"]
+                event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
             match_impact_dict[f"Round_{item}"].append(event)
     return match_impact_dict
 
@@ -233,10 +235,19 @@ def generate_probability_graph(match_id: int, round_number: int) -> None:
     plt.show()
 
 
-if __name__ == "__main__":
-    # test = export_impact(match_id=60206, input_analyser=Analyser())
+def __main():
+    match_id = 60206
+    analyser = get_analyser(match_id)
+    ae = AnalyserExporter(analyser)
+    prob_df = pd.DataFrame(export_probabilities(match_id))
+    details_dict = export_impact(analyser, ae, prob_df)
+
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     # test3 = export_probability_points(match_id=65588)
     aux = 5 + 1
     # test4 = export_impact(match_id=65588, input_analyser=a)
     print("hey")
+
+
+if __name__ == "__main__":
+    __main()

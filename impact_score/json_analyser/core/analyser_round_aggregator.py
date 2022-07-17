@@ -92,9 +92,9 @@ class AnalyserRound:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(68821)
+    a.set_match(74031)
     ar = AnalyserRound(a)
-    ar.pick_round(4)
+    ar.pick_round(2)
     aux = ar.generate_full_round()
     print(aux)
 

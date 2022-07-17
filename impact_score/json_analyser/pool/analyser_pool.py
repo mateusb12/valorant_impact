@@ -1,5 +1,6 @@
 # Create a Custom exception for the analyser pool
-from impact_score.json_analyser.core.simple_operations import get_map_dict, create_player_table, get_round_events
+from impact_score.json_analyser.core.simple_operations import get_map_dict, create_player_table, get_round_events, \
+    get_economy_data
 from impact_score.json_analyser.core.analyser_file_loader import load_agent_data, load_weapon_data, load_ability_data
 from impact_score.json_analyser.core.api_consumer import get_match_info
 
@@ -15,6 +16,7 @@ class CoreAnalyser:
         self.map_dict, self.attacking_first_team, self.defending_first_team, self.round_events = None, None, None, None
         self.data, self.current_status, self.match_id, self.round_amount, self.map_name = None, None, None, None, None
         self.defuse_happened, self.round_number, self.event_type, self.team_details = None, None, None, None
+        self.economy_data = None
         self.agent_data = input_agent_data
         self.weapon_data = input_weapon_data
         self.ability_data = input_ability_data
@@ -25,13 +27,19 @@ class CoreAnalyser:
         self.map_dict = get_map_dict(self.data, match_id)
         self.attacking_first_team: int = self.map_dict["attackingFirstTeamNumber"]
         self.defending_first_team: int = 1 if self.attacking_first_team == 2 else 2
-        self.current_status = create_player_table(self.data, self.map_dict)
+        # self.current_status = create_player_table(self.data, self.map_dict)
         self.round_amount = self.map_dict["team1Score"] + self.map_dict["team2Score"]
         self.map_name = self.map_dict["map"]["name"]
+        self.economy_data = get_economy_data(self.data["matches"]["matchDetails"]["economies"], self.round_amount)
 
     def choose_round(self, desired_round: int):
         self.chosen_round = desired_round
         self.round_events = get_round_events(self.data, self.chosen_round)
+        self.set_player_status()
+
+    def set_player_status(self):
+        current_economy = self.economy_data[self.chosen_round]
+        self.current_status = create_player_table(current_economy, self.map_dict)
 
     def get_last_round(self) -> int:
         return self.round_amount

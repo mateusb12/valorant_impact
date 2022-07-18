@@ -51,7 +51,7 @@ def __main():
     a.set_match(74033)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
-    query = aux[aux["RoundNumber"] == 14]
+    query = aux[aux["RoundNumber"] == 5]
     print(aux)
 
 

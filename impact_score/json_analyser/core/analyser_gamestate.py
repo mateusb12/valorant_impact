@@ -9,7 +9,6 @@ class AnalyserGamestate:
         self.tools = AnalyserTools(input_core_analyser)
         self.current_round_sides = self.tools.get_current_sides()
         self.round_info: dict = self.tools.generate_round_info()
-        self.current_round_info = self.round_info[self.a.chosen_round]
         self.round_table = self.tools.get_round_table()
         self.shield_table = {0: 0, 1: 25, 2: 50}
 
@@ -56,7 +55,7 @@ class AnalyserGamestate:
         def_dict = {item: 0 for item in features}
 
         player_table: dict = self.a.current_status
-        round_info: dict = self.current_round_info
+        round_info: dict = self.round_info[self.a.chosen_round]
         attacking_team = round_info["attacking"]["id"]
 
         for value in player_table.values():

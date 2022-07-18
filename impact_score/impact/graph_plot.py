@@ -81,8 +81,7 @@ class GraphPlotter:
         kills_data_df["tag"] = tag_pot
         return kills_data_df
 
-    @staticmethod
-    def get_probability_points(input_data_df: pd.DataFrame) -> dict:
+    def get_probability_points(self, input_data_df: pd.DataFrame) -> dict:
         single_stamps = input_data_df["timing"].tolist()
         duplicated_stamps = [int(ele) for index, ele in enumerate(single_stamps) for i in range(2)]
         color_list = input_data_df["color"].tolist()
@@ -95,16 +94,12 @@ class GraphPlotter:
         full_tag = [f"{stamp} → {tag}" for stamp, tag in zip(stamp_list, tag_list)]
         la = input_data_df["probability_before"].tolist()
         lb = input_data_df["probability_after"].tolist()
+        if self.chosen_side == "def":
+            la = [1-item for item in la]
+            lb = [1-item for item in lb]
         interpolated_probs = []
         for index in range(len(la)):
             interpolated_probs.extend((float(la[index]), float(lb[index])))
-        # interpolated_probs_fix = []
-        # if self.chosen_side == "atk":
-        #     for ele in interpolated_probs:
-        #         if ele != 0:
-        #             interpolated_probs_fix.append(1/ele)
-        #         else:
-        #             interpolated_probs_fix.append(1)
         return {"Round time": duplicated_stamps,
                 "Win_probability": [100 * round(elem, 2) for elem in interpolated_probs],
                 "Colors": color_list,
@@ -117,7 +112,7 @@ class GraphPlotter:
 
     @staticmethod
     def get_color_pattern(chosen_side: str) -> tuple[str, str]:
-        line_color_dict = {"atk": "red", "def": "blue"}
+        line_color_dict = {"atk": "red", "def": "midnightblue"}
         title_dict = {"atk": "Attack", "def": "Defense"}
         return line_color_dict[chosen_side], title_dict[chosen_side]
 
@@ -188,4 +183,4 @@ if __name__ == "__main__":
     match_id = 74033
     gp = GraphPlotter()
     gp.set_match(match_id)
-    gp.plot_round(round_number=5)
+    gp.plot_round(round_number=16, side="def")

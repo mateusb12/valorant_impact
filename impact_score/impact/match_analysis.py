@@ -310,7 +310,7 @@ def test_single_round(match_id: int, round_number: int):
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(74031)
+    rr_instance.set_match(74033)
     rr_instance.choose_round(3)
     q = rr_instance.get_clutchy_rounds("atk")
     print(q)

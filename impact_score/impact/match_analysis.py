@@ -49,7 +49,8 @@ class RoundReplay:
         for item in self.analyser.data["matches"]["matchDetails"]["events"]:
             aux_dict[item["roundNumber"]].append(item)
         self.events_data = aux_dict
-        self.side_dict = dict(zip(self.df.RoundNumber, self.df.FinalWinner))
+        # self.side_dict = dict(zip(self.df.RoundNumber, self.df.FinalWinner))
+        self.side_dict = self.tools.generate_side_dict()
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
@@ -117,7 +118,7 @@ class RoundReplay:
                 beginning_position = 0 if situation_type == "timeout" else 1
                 new_proba = 1 if self.side == "def" else 0
             elif situation_type == "after_explosion":
-                beginning_position = 1 if len(query_indexes) > 1 else 0
+                beginning_position = 1 if len(query_indexes) > 2 else 0
                 new_proba = 1 if self.side == "atk" else 0
             last_element = query_indexes[-1]
             first_element = query_indexes[beginning_position]
@@ -311,8 +312,8 @@ def test_single_round(match_id: int, round_number: int):
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(74033)
-    rr_instance.choose_round(5)
+    rr_instance.set_match(74099)
+    rr_instance.choose_round(21)
     q = rr_instance.get_round_probability(side="atk")
     print(q)
     # impact = rr_instance.get_map_impact_dataframe()

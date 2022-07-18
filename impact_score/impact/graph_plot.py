@@ -15,7 +15,7 @@ from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 class GraphPlotter:
     def __init__(self):
-        self.match_id, self.analyser, self.prob_df, self.ae, self.details_dict = None, None, None, None, None
+        self.match_id, self.analyser, self.prob_df, self.ae, self.details_df = None, None, None, None, None
         self.plot_data, self.kills_data_df, self.ability_data, self.round_number, self.ax = None, None, None, None, None
         self.chosen_side = None
 
@@ -24,7 +24,7 @@ class GraphPlotter:
         self.analyser: CoreAnalyser = get_analyser(self.match_id)
         self.prob_df = pd.DataFrame(export_probabilities(self.match_id))
         self.ae = AnalyserExporter(self.analyser)
-        self.details_dict = export_impact(self.analyser, self.ae, self.prob_df)
+        self.details_df = export_impact(self.analyser, self.ae, self.prob_df)
         self.plot_data: dict = {}
         self.kills_data_df: pd.DataFrame = pd.DataFrame()
         self.ability_data: dict = self.analyser.ability_data
@@ -39,24 +39,7 @@ class GraphPlotter:
         self.chosen_side = input_side
 
     def get_kill_dataframe(self) -> pd.DataFrame:
-        content = self.details_dict[f"Round_{self.round_number}"]
-        kills_data_df = pd.DataFrame(content)
-        kills_data_df["ability"] = kills_data_df["ability"].fillna(-1)
-        kills_data_df["ability"] = kills_data_df["ability"].astype(str)
-        kills_data_df = kills_data_df.fillna(0)
-        integer_columns = ["weapon_id", "kill_id", "bomb_id", "event_id", "res_id", "RoundTime"]
-        kills_data_df["RoundTime"] = round(kills_data_df["timing"] / 1000)
-        for column in integer_columns:
-            kills_data_df[column] = kills_data_df[column].astype(int)
-        # kills_data_df["abilityName"] = kills_data_df["ability"].map(self.ability_data)
-        zip_means = zip(kills_data_df["weapon_name"], kills_data_df["ability"])
-        means_pot = []
-        for weapon, ability in zip_means:
-            if weapon == 0:
-                means_pot.append(ability)
-            else:
-                means_pot.append(weapon)
-        kills_data_df["means"] = means_pot
+        kills_data_df = self.details_df[self.details_df["round_number"] == self.round_number].copy()
         tag_pot = []
         zip_tag = zip(kills_data_df["author"], kills_data_df["means"], kills_data_df["victim"], kills_data_df["event"])
         for author, means, victim, event in zip_tag:
@@ -92,8 +75,8 @@ class GraphPlotter:
             tag_list.insert(index * 2, None)
             stamp_list.insert(index * 2, None)
         full_tag = [f"{stamp} → {tag}" for stamp, tag in zip(stamp_list, tag_list)]
-        la = input_data_df["probability_before"].tolist()
-        lb = input_data_df["probability_after"].tolist()
+        la = input_data_df["Probability_before_event"].tolist()
+        lb = input_data_df["Probability_after_event"].tolist()
         if self.chosen_side == "def":
             la = [1-item for item in la]
             lb = [1-item for item in lb]
@@ -157,7 +140,7 @@ class GraphPlotter:
         y_data = self.plot_data["Win_probability"]
         color_data = self.plot_data["Colors"]
         stamp_data = self.plot_data["Stamps"]
-        y_offset = .82
+        y_offset = 1.5
         x_offset = -.3
         for round_time, win_probability, color, stamp in zip(x_data, y_data, color_data, stamp_data):
             if color is not None:
@@ -176,11 +159,11 @@ class GraphPlotter:
             if color is not None:
                 self.ax.scatter(x=round_time, y=win_probability,
                                 color=color, edgecolor="w", marker="o", s=70, label=label, zorder=2)
-        plt.legend(framealpha=1, frameon=True)
+        plt.legend(framealpha=1, frameon=True, facecolor="#c9c9c9", bbox_to_anchor=(1.31, 0.82))
 
 
 if __name__ == "__main__":
-    match_id = 74033
+    match_id = 74099
     gp = GraphPlotter()
     gp.set_match(match_id)
-    gp.plot_round(round_number=16, side="def")
+    gp.plot_round(round_number=21, side="def")

@@ -103,12 +103,16 @@ class AnalyserTools:
             item["finalWinner"] = final_winner_dict[current_sides[item["winningTeamNumber"]]]
         return {item["number"]: item for item in self.round_details}
 
+    def generate_side_dict(self) -> dict:
+        aux = self.generate_round_info()
+        return {value["number"]: value["finalWinner"] for value in aux.values()}
+
 
 def __main():
     a = analyser_pool.acquire()
     a.set_match(68821)
     aw = AnalyserTools(a)
-    aw.generate_round_info()
+    qq = aw.generate_round_info()
     q = aw.round_details
     print(q)
 

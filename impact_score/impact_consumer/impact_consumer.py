@@ -36,34 +36,86 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
     """
     a = core_analyser
     details = exporter.export_player_details()
+    details[0] = {"agent_name": 0, "player_name": 0}
     max_round = a.round_amount
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
+    match_event_df_pot = []
+
     for item in range(1, max_round + 1):
         a.choose_round(item)
-        query_df = prob_df[prob_df["Round"] == item]
-        for event in a.round_events:
-            id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
-            event_id = next(filter(None, id_pool), None)
-            if event_id is None:
-                event_id = 0
-            row = query_df[query_df["EventID"] == event_id]
-            event["event_id"] = event_id
-            event["probability_before"] = row["Probability_before_event"].values[0]
-            event["probability_after"] = row["Probability_after_event"].values[0]
-            event["impact"] = row["Impact"].values[0]
-            author_id = event["author"]
-            victim_id = event["victim"]
-            weapon_id = event["weapon_id"]
-            if author_id is not None:
-                event["author"] = details[author_id]["player_name"]
-                event["author_agent"] = details[author_id]["agent_name"]
-            if victim_id is not None:
-                event["victim"] = details[victim_id]["player_name"]
-                event["victim_agent"] = details[victim_id]["agent_name"]
-            if weapon_id is not None:
-                event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
-            match_impact_dict[f"Round_{item}"].append(event)
-    return match_impact_dict
+        current_round_events = a.round_events
+        match_event_df_pot.extend(iter(current_round_events))
+
+    match_event_df = pd.DataFrame(match_event_df_pot)
+    match_event_df = match_event_df.fillna(0)
+    columns_drop = ["probability_before", "probability_after", "impact"]
+    match_event_df = match_event_df.drop(columns_drop, axis=1)
+    integer_columns = ["author", "victim", "weapon_id", "kill_id", "bomb_id", "res_id"]
+    for column in integer_columns:
+        match_event_df[column] = match_event_df[column].astype(int)
+
+    # Append two dataframes
+    final_df = pd.concat([match_event_df, prob_df], axis=1)
+    player_names = {key: value["player_name"] for key, value in details.items()}
+    player_agents = {key: value["agent_name"] for key, value in details.items()}
+    weapon_names = {int(key): value["name"] for key, value in a.weapon_data.items()}
+    weapon_names[0] = 0
+
+    final_df["author_agent"] = final_df["author"].map(player_agents)
+    final_df["author"] = final_df["author"].map(player_names)
+    final_df["victim_agent"] = final_df["victim"].map(player_agents)
+    final_df["victim"] = final_df["victim"].map(player_names)
+    final_df["weapon_name"] = final_df["weapon_id"].map(weapon_names)
+
+    # Create a means column that takes the same value of weapon_name or ability, which one is non zero
+    weapon_ids = final_df["weapon_name"].tolist()
+    abilities = final_df["ability"].tolist()
+    mean_pot = []
+    for weapon_id, ability in zip(weapon_ids, abilities):
+        if weapon_id != 0:
+            mean_pot.append(weapon_id)
+        else:
+            mean_pot.append(ability)
+    final_df["means"] = mean_pot
+
+    # final_df["weapon_name"] = final_df["weapon_id"].map(a.weapon_data[f"{weapon_id}"]["name"])
+    # if author_id is not None:
+    #     event["author"] = details[author_id]["player_name"]
+    #     event["author_agent"] = details[author_id]["agent_name"]
+    # if victim_id is not None:
+    #     event["victim"] = details[victim_id]["player_name"]
+    #     event["victim_agent"] = details[victim_id]["agent_name"]
+    # if weapon_id is not None:
+    #     event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
+    # match_impact_dict[f"Round_{item}"].append(event)
+
+    # query_df = prob_df[prob_df["Round"] == item]
+    # round_events_df = pd.DataFrame(a.round_events)
+    # round_events_df = round_events_df.fillna(0)
+
+    # for event in a.round_events:
+    #     id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
+    #     event_id = next(filter(None, id_pool), None)
+    #     if event_id is None:
+    #         event_id = 0
+    #     row = query_df[query_df["EventID"] == event_id]
+    #     event["event_id"] = event_id
+    #     event["probability_before"] = row["Probability_before_event"].values[0]
+    #     event["probability_after"] = row["Probability_after_event"].values[0]
+    #     event["impact"] = row["Impact"].values[0]
+    #     author_id = event["author"]
+    #     victim_id = event["victim"]
+    #     weapon_id = event["weapon_id"]
+    #     if author_id is not None:
+    #         event["author"] = details[author_id]["player_name"]
+    #         event["author_agent"] = details[author_id]["agent_name"]
+    #     if victim_id is not None:
+    #         event["victim"] = details[victim_id]["player_name"]
+    #         event["victim_agent"] = details[victim_id]["agent_name"]
+    #     if weapon_id is not None:
+    #         event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
+    #     match_impact_dict[f"Round_{item}"].append(event)
+    return final_df
 
 
 # def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> Union[int, dict[Any, int]]:

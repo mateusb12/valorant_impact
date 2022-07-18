@@ -6,7 +6,7 @@ from sklearn.metrics import log_loss, brier_score_loss, confusion_matrix, classi
 from sklearn.model_selection import cross_val_score
 from termcolor import colored
 
-from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model, get_pkl_model
+from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model_from_csv, get_pkl_model
 
 
 class ModelMetrics:
@@ -126,7 +126,7 @@ class ModelMetrics:
 
 
 def __main():
-    vm = get_trained_model()
+    vm = get_trained_model_from_csv()
     mm = ModelMetrics(vm)
     mm.show_all()
 

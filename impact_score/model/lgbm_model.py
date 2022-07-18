@@ -195,11 +195,17 @@ def get_dataset() -> pd.DataFrame:
     return pd.read_csv(f"{get_dataset_reference()}{sl}5000.csv")
 
 
-def get_trained_model() -> ValorantLGBM:
+def get_trained_model_from_csv() -> ValorantLGBM:
     model_obj = ValorantLGBM()
     model_obj.setup_dataframe("4000.csv")
     model_obj.setup_features_and_target()
     model_obj.train_model(optuna_study=False)
+    return model_obj
+
+
+def get_trained_model_from_pkl() -> ValorantLGBM:
+    model_obj = ValorantLGBM()
+    model_obj.import_model_from_file()
     return model_obj
 
 
@@ -216,7 +222,8 @@ def existing_pkl() -> bool:
 
 
 if __name__ == "__main__":
-    vm = get_trained_model()
+    vm = get_trained_model_from_pkl()
+    # vm.export_model_to_pkl()
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()
     # vm.setup_dataframe("4000.csv")

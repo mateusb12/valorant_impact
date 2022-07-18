@@ -37,24 +37,20 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
     a = core_analyser
     details = exporter.export_player_details()
     max_round = a.round_amount
-    # random_ids = [int(round(3500 + (7000 - 3500) * random())) for _ in range(2000)]
-    # prob_df = pd.DataFrame(export_probabilities(match_id))
-    # prob_before = pd.Series(prob_df["Probability_before_event"].values, index=prob_df["EventID"]).to_dict()
-    prob_before = prob_df["Probability_before_event"].to_list()
-    prob_after = prob_df["Probability_after_event"].to_list()
-    impact = prob_df["Impact"].to_list()
     match_impact_dict = {f"Round_{i}": [] for i in range(1, max_round + 1)}
     for item in range(1, max_round + 1):
         a.choose_round(item)
-        for index, event in enumerate(a.round_events):
+        query_df = prob_df[prob_df["Round"] == item]
+        for event in a.round_events:
             id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
             event_id = next(filter(None, id_pool), None)
-            # if event_id is None:
-            # event_id = random_ids.pop()
+            if event_id is None:
+                event_id = 0
+            row = query_df[query_df["EventID"] == event_id]
             event["event_id"] = event_id
-            event["probability_before"] = prob_before[index]
-            event["probability_after"] = prob_after[index]
-            event["impact"] = impact[index]
+            event["probability_before"] = row["Probability_before_event"].values[0]
+            event["probability_after"] = row["Probability_after_event"].values[0]
+            event["impact"] = row["Impact"].values[0]
             author_id = event["author"]
             victim_id = event["victim"]
             weapon_id = event["weapon_id"]

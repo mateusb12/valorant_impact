@@ -13,7 +13,7 @@ from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 from impact_score.model.lgbm_loader import load_lgbm
-from impact_score.model.lgbm_model import ValorantLGBM
+from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model_from_pkl
 
 
 class PlayerNotFoundException(Exception):
@@ -24,7 +24,8 @@ class RoundReplay:
     def __init__(self):
         self.match_id = 0
 
-        self.vm: ValorantLGBM = load_lgbm()
+        # self.vm: ValorantLGBM = load_lgbm()
+        self.vm: ValorantLGBM = get_trained_model_from_pkl()
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
@@ -311,8 +312,8 @@ def test_single_round(match_id: int, round_number: int):
 if __name__ == "__main__":
     rr_instance = RoundReplay()
     rr_instance.set_match(74033)
-    rr_instance.choose_round(3)
-    q = rr_instance.get_clutchy_rounds("atk")
+    rr_instance.choose_round(5)
+    q = rr_instance.get_round_probability(side="atk")
     print(q)
     # impact = rr_instance.get_map_impact_dataframe()
     # rounded_columns = ["Gain", "Lost", "Delta"]

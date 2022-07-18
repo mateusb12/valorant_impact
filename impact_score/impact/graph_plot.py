@@ -81,7 +81,8 @@ class GraphPlotter:
         kills_data_df["tag"] = tag_pot
         return kills_data_df
 
-    def get_probability_points(self, input_data_df: pd.DataFrame) -> dict:
+    @staticmethod
+    def get_probability_points(input_data_df: pd.DataFrame) -> dict:
         single_stamps = input_data_df["timing"].tolist()
         duplicated_stamps = [int(ele) for index, ele in enumerate(single_stamps) for i in range(2)]
         color_list = input_data_df["color"].tolist()
@@ -187,4 +188,4 @@ if __name__ == "__main__":
     match_id = 74033
     gp = GraphPlotter()
     gp.set_match(match_id)
-    gp.plot_round(round_number=14)
+    gp.plot_round(round_number=5)

@@ -8,7 +8,7 @@ from scipy.spatial.distance import pdist
 
 class AnalyserRound:
     def __init__(self, input_core_analyser: CoreAnalyser):
-        self.a = input_core_analyser
+        self.a: CoreAnalyser = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
         self.ag = AnalyserGamestate(input_core_analyser)
         self.sides = {}
@@ -92,9 +92,9 @@ class AnalyserRound:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(74031)
+    a.set_match(74033)
     ar = AnalyserRound(a)
-    ar.pick_round(2)
+    ar.pick_round(14)
     aux = ar.generate_full_round()
     print(aux)
 

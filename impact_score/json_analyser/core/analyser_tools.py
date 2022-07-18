@@ -21,7 +21,7 @@ class AnalyserTools:
                 return 1 if r["winningTeamNumber"] == self.a.attacking_first_team else 0
 
     def are_sides_swapped(self) -> bool:
-        if 1 <= self.a.chosen_round >= 12:
+        if 1 <= self.a.chosen_round <= 12:
             return False
         elif 13 <= self.a.chosen_round <= 24:
             return True

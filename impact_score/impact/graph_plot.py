@@ -14,7 +14,12 @@ from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 
 class GraphPlotter:
-    def __init__(self, input_match_id: int):
+    def __init__(self):
+        self.match_id, self.analyser, self.prob_df, self.ae, self.details_dict = None, None, None, None, None
+        self.plot_data, self.kills_data_df, self.ability_data, self.round_number, self.ax = None, None, None, None, None
+        self.chosen_side = None
+
+    def set_match(self, input_match_id: int):
         self.match_id: int = input_match_id
         self.analyser: CoreAnalyser = get_analyser(self.match_id)
         self.prob_df = pd.DataFrame(export_probabilities(self.match_id))
@@ -27,8 +32,11 @@ class GraphPlotter:
         self.round_number = None
         self.ax = None
 
-    def chose_round(self, round_number: int):
+    def choose_round(self, round_number: int):
         self.round_number = round_number
+
+    def choose_side(self, input_side: str):
+        self.chosen_side = input_side
 
     def get_kill_dataframe(self) -> pd.DataFrame:
         content = self.details_dict[f"Round_{self.round_number}"]
@@ -40,8 +48,8 @@ class GraphPlotter:
         kills_data_df["RoundTime"] = round(kills_data_df["timing"] / 1000)
         for column in integer_columns:
             kills_data_df[column] = kills_data_df[column].astype(int)
-        kills_data_df["abilityName"] = kills_data_df["ability"].map(self.ability_data)
-        zip_means = zip(kills_data_df["weapon_name"], kills_data_df["abilityName"])
+        # kills_data_df["abilityName"] = kills_data_df["ability"].map(self.ability_data)
+        zip_means = zip(kills_data_df["weapon_name"], kills_data_df["ability"])
         means_pot = []
         for weapon, ability in zip_means:
             if weapon == 0:
@@ -73,8 +81,7 @@ class GraphPlotter:
         kills_data_df["tag"] = tag_pot
         return kills_data_df
 
-    @staticmethod
-    def get_probability_points(input_data_df: pd.DataFrame) -> dict:
+    def get_probability_points(self, input_data_df: pd.DataFrame) -> dict:
         single_stamps = input_data_df["timing"].tolist()
         duplicated_stamps = [int(ele) for index, ele in enumerate(single_stamps) for i in range(2)]
         color_list = input_data_df["color"].tolist()
@@ -90,6 +97,13 @@ class GraphPlotter:
         interpolated_probs = []
         for index in range(len(la)):
             interpolated_probs.extend((float(la[index]), float(lb[index])))
+        # interpolated_probs_fix = []
+        # if self.chosen_side == "atk":
+        #     for ele in interpolated_probs:
+        #         if ele != 0:
+        #             interpolated_probs_fix.append(1/ele)
+        #         else:
+        #             interpolated_probs_fix.append(1)
         return {"Round time": duplicated_stamps,
                 "Win_probability": [100 * round(elem, 2) for elem in interpolated_probs],
                 "Colors": color_list,
@@ -108,15 +122,15 @@ class GraphPlotter:
 
     def plot_round(self, **kwargs):
         desired_round_number = kwargs.get("round_number", None)
-        self.chose_round(desired_round_number)
+        self.chosen_side = kwargs.get("side", "atk")
+        self.choose_round(desired_round_number)
         self.setup_graph_data()
-        chosen_side = "atk"
 
-        fig = plt.figure(figsize=(14, 7))
+        fig = plt.figure(figsize=(16, 7))
         fig.tight_layout()
         plt.rcParams.update({'font.size': 13})
 
-        line_color, title = self.get_color_pattern(chosen_side)
+        line_color, title = self.get_color_pattern(self.chosen_side)
         grid_color = "black"
 
         plt.plot(self.plot_data["Round time"], self.plot_data["Win_probability"],
@@ -170,6 +184,7 @@ class GraphPlotter:
 
 
 if __name__ == "__main__":
-    match_id = 60206
-    gp = GraphPlotter(match_id)
-    gp.plot_round(round_number=3)
+    match_id = 74033
+    gp = GraphPlotter()
+    gp.set_match(match_id)
+    gp.plot_round(round_number=14)

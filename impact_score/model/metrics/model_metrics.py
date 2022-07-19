@@ -1,9 +1,10 @@
+import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.metrics import log_loss, brier_score_loss, confusion_matrix, classification_report, roc_curve, \
     roc_auc_score
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from termcolor import colored
 
 from impact_score.model.lgbm_model import ValorantLGBM, get_trained_model_from_csv, get_pkl_model
@@ -22,19 +23,25 @@ class ModelMetrics:
         self.y_score = self.get_y_score()
 
     def get_brier_score(self) -> float:
-        y_true = self.Y_test
         if self.pred_proba is None:
             self.pred_proba = self.model.predict_proba(self.X_train)
         if self.pred_proba_test is None:
             self.pred_proba_test = self.model.predict_proba(self.X_test)
         y_prob_df = pd.DataFrame(self.pred_proba_test)
         y_prob = y_prob_df[1]
-        brier = brier_score_loss(y_true, y_prob)
+        brier = brier_score_loss(self.Y_test, y_prob)
         print(f"Brier score → {brier}")
         return brier
 
-    def get_brier_score_cross_validation(self):
-        return cross_val_score(self.model, self.X_test, self.Y_test, scoring='neg_brier_score', cv=10)
+    def __get_parameterized_brier_score(self, x_test: pd.DataFrame, y_test: pd.DataFrame) -> float:
+        y_true = y_test
+        predictions = self.model.predict_proba(x_test)
+        y_prob = pd.DataFrame(predictions)[1]
+        return brier_score_loss(y_true, y_prob)
+
+    def get_brier_score_cross_validation(self) -> list[float]:
+        scores = cross_val_score(self.model, self.X_test, self.Y_test, scoring='neg_brier_score', cv=10)
+        return [float(-item) for item in scores]
 
     def get_feature_importance(self):
         feature_imp = pd.DataFrame(sorted(zip(self.model.feature_importances_, self.X.columns)),
@@ -115,6 +122,24 @@ class ModelMetrics:
         plt.xlabel('False Positive Rate')
         plt.show()
 
+    def test_stratify(self) -> list[float]:
+        k_fold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+        scores = []
+        X_train = self.model_obj.X_train
+        y_train = self.model_obj.Y_train
+        split = k_fold.split(X_train, y_train)
+        for k, (train, test) in enumerate(split, start=1):
+            current_x_train = X_train.iloc[train]
+            current_x_test = X_train.iloc[test]
+            current_y_train = y_train.iloc[train]
+            current_y_test = y_train.iloc[test]
+            self.model.fit(current_x_train, current_y_train)
+            score = self.__get_parameterized_brier_score(current_x_test, current_y_test)
+            scores.append(score)
+
+            print(f"{k}-fold: {score}")
+        return scores
+
     def show_all(self):
         self.get_feature_importance()
         self.get_model_precision()
@@ -128,7 +153,9 @@ class ModelMetrics:
 def __main():
     vm = get_trained_model_from_csv()
     mm = ModelMetrics(vm)
-    mm.show_all()
+    print(mm.test_stratify())
+    # mm.get_brier_score()
+    # mm.show_all()
 
 
 if __name__ == "__main__":

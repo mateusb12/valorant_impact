@@ -222,8 +222,7 @@ def existing_pkl() -> bool:
 
 
 if __name__ == "__main__":
-    vm = get_trained_model_from_pkl()
-    # vm.export_model_to_pkl()
+    vm = get_trained_model_from_csv()
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()
     # vm.setup_dataframe("4000.csv")

@@ -40,7 +40,8 @@ class AnalyserTools:
         return {player: team_sides[value["team_number"]] for player, value in self.a.current_status.items()}
 
     def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple:
-        if round_millis >= 100000 or self.a.defuse_happened:
+        maximum_time = plant_millis + 45000 if plant_millis is not None else 100000
+        if round_millis >= maximum_time or self.a.defuse_happened:
             regular_time = 0
             spike_time = 0
         elif round_millis == plant_millis:

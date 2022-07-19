@@ -12,36 +12,33 @@ class AnalyserGamestate:
         self.round_table = self.tools.get_round_table()
         self.shield_table = {0: 0, 1: 25, 2: 50}
 
-    def get_weapon_price(self, weapon_id: int):
+    def __get_weapon_price(self, weapon_id: int):
         new_id = str(weapon_id)
         return int(self.a.weapon_data[new_id]["price"]) if new_id != "None" else 0
 
-    def get_agent_role(self, agent_id: int):
+    def __get_agent_role(self, agent_id: int):
         new_id = str(agent_id)
         return self.a.agent_data[new_id]["role"]
 
-    def get_shield_value(self, shield_id: int):
+    def __get_shield_value(self, shield_id: int):
         new_id = str(shield_id)
         return self.shield_table[int(new_id)] if new_id != "None" else 0
 
-    def get_team_side(self, team_number: int):
-        return self.current_round_sides[team_number]
-
     @staticmethod
-    def is_alive(player_dict: dict):
+    def __is_alive(player_dict: dict):
         return player_dict["alive"]
 
-    def get_player_gamestate_dict(self, player_dict: dict):
-        weapon_price = self.get_weapon_price(player_dict["weaponId"])
-        agent_role = self.get_agent_role(player_dict["agentId"])
-        shield_value = self.get_shield_value(player_dict["shieldId"])
+    def __get_player_gamestate_dict(self, player_dict: dict):
+        weapon_price = self.__get_weapon_price(player_dict["weaponId"])
+        agent_role = self.__get_agent_role(player_dict["agentId"])
+        shield_value = self.__get_shield_value(player_dict["shieldId"])
         return {"loadoutValue": player_dict["loadoutValue"],
                 "weaponValue": weapon_price,
                 "remainingCreds": player_dict["remainingCreds"],
                 "operators": 1 if player_dict["weaponId"] == "15" else 0,
                 "shields": shield_value, agent_role: 1}
 
-    def get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
+    def __get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
         regular_time, spike_time = self.tools.generate_spike_timings(timestamp, plant)
         return {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.a.map_name,
                 "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
@@ -59,10 +56,10 @@ class AnalyserGamestate:
         attacking_team = round_info["attacking"]["id"]
 
         for value in player_table.values():
-            if self.is_alive(value):
+            if self.__is_alive(value):
                 team_number = value["name"]["team_number"]
                 team_side = "attacking" if team_number == attacking_team else "defending"
-                player_state = self.get_player_gamestate_dict(value)
+                player_state = self.__get_player_gamestate_dict(value)
                 for feature, feature_value in player_state.items():
                     if team_side == "attacking":
                         atk_dict[feature] += feature_value
@@ -70,7 +67,7 @@ class AnalyserGamestate:
                         def_dict[feature] += feature_value
 
         round_winner = kwargs["winner"] if "winner" in kwargs else None
-        final_dict = self.get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)
+        final_dict = self.__get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():

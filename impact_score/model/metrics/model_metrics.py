@@ -153,7 +153,7 @@ class ModelMetrics:
 def __main():
     vm = get_trained_model_from_csv()
     mm = ModelMetrics(vm)
-    print(mm.test_stratify())
+    mm.show_all()
     # mm.get_brier_score()
     # mm.show_all()
 

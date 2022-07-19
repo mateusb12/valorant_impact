@@ -12,23 +12,23 @@ class AnalyserGamestate:
         self.round_table = self.tools.get_round_table()
         self.shield_table = {0: 0, 1: 25, 2: 50}
 
-    def __get_weapon_price(self, weapon_id: int):
+    def __get_weapon_price(self, weapon_id: int) -> int:
         new_id = str(weapon_id)
         return int(self.a.weapon_data[new_id]["price"]) if new_id != "None" else 0
 
-    def __get_agent_role(self, agent_id: int):
+    def __get_agent_role(self, agent_id: int) -> str:
         new_id = str(agent_id)
         return self.a.agent_data[new_id]["role"]
 
-    def __get_shield_value(self, shield_id: int):
+    def __get_shield_value(self, shield_id: int) -> int:
         new_id = str(shield_id)
         return self.shield_table[int(new_id)] if new_id != "None" else 0
 
     @staticmethod
-    def __is_alive(player_dict: dict):
+    def __is_alive(player_dict: dict) -> bool:
         return player_dict["alive"]
 
-    def __get_player_gamestate_dict(self, player_dict: dict):
+    def __get_player_gamestate_dict(self, player_dict: dict) -> dict:
         weapon_price = self.__get_weapon_price(player_dict["weaponId"])
         agent_role = self.__get_agent_role(player_dict["agentId"])
         shield_value = self.__get_shield_value(player_dict["shieldId"])
@@ -44,7 +44,7 @@ class AnalyserGamestate:
                 "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
                 "MatchID": self.a.match_id, "RoundNumber": self.a.chosen_round, "RoundTime": timestamp}
 
-    def generate_single_event_values(self, **kwargs):
+    def generate_single_event_values(self, **kwargs) -> dict:
         team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
         features = team_variables + roles

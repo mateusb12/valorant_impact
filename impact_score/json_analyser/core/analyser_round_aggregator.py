@@ -24,7 +24,7 @@ class AnalyserRound:
         self.plant = self.tools.get_plant_timestamp()
         self.sides = self.tools.get_player_sides()
 
-    def generate_single_gamestate(self, value: dict) -> dict:
+    def __generate_single_gamestate(self, value: dict) -> dict:
         event_type: str = value["event"]
         timing: int = value["timing"]
         if event_type == "defuse":
@@ -47,7 +47,7 @@ class AnalyserRound:
     def generate_full_round(self) -> list:
         round_array = []
         for value in self.a.round_events:
-            gamestate = self.generate_single_gamestate(value)
+            gamestate = self.__generate_single_gamestate(value)
             round_array.append(gamestate)
         self.atk_kills, self.def_kills = 0, 0
         return round_array

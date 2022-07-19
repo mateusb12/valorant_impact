@@ -21,7 +21,7 @@ class AnalyserWrapper:
             map_events += self.ar.generate_full_round()
         return map_events
 
-    def add_teams_to_df(self, input_df: pd.DataFrame) -> pd.DataFrame:
+    def __add_teams_to_df(self, input_df: pd.DataFrame) -> pd.DataFrame:
         new = input_df.copy()
         dataframe_height = len(new["RoundID"])
         team_a = self.tools.get_team_a()
@@ -39,7 +39,7 @@ class AnalyserWrapper:
     def export_df(self) -> pd.DataFrame:
         report = self.generate_map_metrics()
         raw = pd.DataFrame(report)
-        raw = self.add_teams_to_df(raw)
+        raw = self.__add_teams_to_df(raw)
         raw["Loadout_diff"] = raw["ATK_loadoutValue"] - raw["DEF_loadoutValue"]
         team_positions = self.ar.generate_average_distance()
         raw = raw.join(team_positions)

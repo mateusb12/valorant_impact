@@ -20,7 +20,7 @@ class AnalyserTools:
             if r["number"] == self.a.chosen_round:
                 return 1 if r["winningTeamNumber"] == self.a.attacking_first_team else 0
 
-    def are_sides_swapped(self) -> bool:
+    def __are_sides_swapped(self) -> bool:
         if 1 <= self.a.chosen_round <= 12:
             return False
         elif 13 <= self.a.chosen_round <= 24:
@@ -29,8 +29,8 @@ class AnalyserTools:
             remaining = self.a.chosen_round - 24
             return remaining % 2 == 0
 
-    def get_current_sides(self):
-        if swap := self.are_sides_swapped():
+    def get_current_sides(self) -> dict:
+        if swap := self.__are_sides_swapped():
             return {self.a.attacking_first_team: "defending", self.a.defending_first_team: "attacking"}
         else:
             return {self.a.attacking_first_team: "attacking", self.a.defending_first_team: "defending"}
@@ -39,7 +39,7 @@ class AnalyserTools:
         team_sides = self.get_current_sides()
         return {player: team_sides[value["team_number"]] for player, value in self.a.current_status.items()}
 
-    def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple:
+    def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple[int, int]:
         maximum_time = plant_millis + 45000 if plant_millis is not None else 100000
         if round_millis >= maximum_time or self.a.defuse_happened:
             regular_time = 0

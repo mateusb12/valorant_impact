@@ -36,7 +36,8 @@ class AnalyserGamestate:
                 "weaponValue": weapon_price,
                 "remainingCreds": player_dict["remainingCreds"],
                 "operators": 1 if player_dict["weaponId"] == "15" else 0,
-                "shields": shield_value, agent_role: 1}
+                "shields": shield_value,
+                agent_role: player_dict["loadoutValue"]}
 
     def __get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
         regular_time, spike_time = self.tools.generate_spike_timings(timestamp, plant)

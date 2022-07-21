@@ -1,3 +1,6 @@
+from impact_score.json_analyser.core.api_consumer import get_match_info
+
+
 def get_map_dict(input_data: dict, input_match_id: int) -> dict:
     for match in input_data["series"]["seriesById"]["matches"]:
         if match["id"] == input_match_id:
@@ -34,35 +37,21 @@ def get_round_events(input_data: dict, chosen_round: int):
 
 def get_economy_data(economy_data: dict, round_amount: int) -> dict:
     economy_dict = {key: [] for key in range(1, round_amount + 1)}
-    # economy_data = economy_data["economies"]
     for economy in economy_data:
         economy_dict[economy["roundNumber"]].append(economy)
     return economy_dict
 
 
-def create_player_table(economy_data: dict, map_data: dict) -> dict:
-    ign_table = {
-        b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
-        for b in map_data["players"]
-    }
+def get_location_data(location_data: dict, round_amount: int) -> dict:
+    location_dict = {key: [] for key in range(1, round_amount + 1)}
+    for location in location_data:
+        location_dict[location["roundNumber"]].append(location)
+    return location_dict
 
-    attacking_first_team = map_data["attackingFirstTeamNumber"]
 
-    player_dict = {}
+def __main():
+    pass
 
-    for item in economy_data:
-        player_id = item["playerId"]
-        aux = {"name": ign_table[player_id],
-               "agentId": item["agentId"],
-               "combatScore": item["score"],
-               "weaponId": item["weaponId"],
-               "shieldId": item["armorId"],
-               "loadoutValue": item["loadoutValue"],
-               "spentCreds": item["spentCreds"],
-               "remainingCreds": item["remainingCreds"],
-               "attacking_side": ign_table[player_id]["team_number"] == attacking_first_team,
-               "team_number": ign_table[player_id]["team_number"],
-               "alive": True}
-        player_dict[player_id] = aux
-        # if item["roundNumber"] == 1:
-    return player_dict
+
+if __name__ == "__main__":
+    __main()

@@ -20,7 +20,7 @@ class ModelMetrics:
         self.Y_train = input_lgbm.Y_train
         self.Y_test = input_lgbm.Y_test
         self.pred_proba, self.pred_proba_test = [None] * 2
-        self.y_score = self.get_y_score()
+        self.y_score = self.__get_y_score()
 
     def get_brier_score(self) -> float:
         if self.pred_proba is None:
@@ -95,10 +95,10 @@ class ModelMetrics:
         f1 = classification_report(self.Y_test, Y_pred, output_dict=True)["weighted avg"]["f1-score"]
         print(f"F1 score → {f1}")
 
-    def get_y_score(self):
+    def __get_y_score(self):
         return self.model_obj.model.predict_proba(self.model_obj.X_test)[:, 1]
 
-    def get_tp_fp_rates(self) -> dict:
+    def __get_tp_fp_rates(self) -> dict:
         false_positive_rate, true_positive_rate, threshold = roc_curve(self.model_obj.Y_test, self.y_score)
         return {"false_positive_rate": false_positive_rate, "true_positive_rate": true_positive_rate,
                 "threshold": threshold}
@@ -110,7 +110,7 @@ class ModelMetrics:
         return score
 
     def plot_roc_curve(self):
-        auc_dict = self.get_tp_fp_rates()
+        auc_dict = self.__get_tp_fp_rates()
         plt.subplots(1, figsize=(10, 7))
         plt.title('Receiver Operating Characteristic - LightGBM')
         false_positive_rate = auc_dict["false_positive_rate"]
@@ -122,7 +122,7 @@ class ModelMetrics:
         plt.xlabel('False Positive Rate')
         plt.show()
 
-    def test_stratify(self) -> list[float]:
+    def statified_brier_score(self) -> list[float]:
         k_fold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
         scores = []
         X_train = self.model_obj.X_train

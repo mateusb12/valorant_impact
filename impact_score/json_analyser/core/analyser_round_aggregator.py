@@ -14,7 +14,7 @@ class AnalyserRound:
         self.sides = {}
         self.atk_kills = 0
         self.def_kills = 0
-        self.round_winner, self.plant = None, None
+        self.round_winner, self.plant, self.current_round_locations = None, None, None
 
     def pick_round(self, round_number: int):
         self.a.choose_round(round_number)
@@ -23,31 +23,34 @@ class AnalyserRound:
         self.round_winner = self.tools.get_round_winner()
         self.plant = self.tools.get_plant_timestamp()
         self.sides = self.tools.get_player_sides()
+        self.current_round_locations = [item for item in self.a.location_data if item["roundNumber"] == round_number]
+        self.ag.set_round_locations(self.current_round_locations)
 
-    def __generate_single_gamestate(self, value: dict) -> dict:
-        event_type: str = value["event"]
-        timing: int = value["timing"]
+    def __generate_single_gamestate(self, event: dict) -> dict:
+        event_type: str = event["event"]
+        timing: int = event["timing"]
+        self.ag.current_event = event
         if event_type == "defuse":
             self.a.defuse_happened = True
         elif event_type == "kill":
-            self.a.current_status[value["victim"]]["alive"] = False
-            player_side = self.sides[value["author"]]
+            self.a.current_status[event["victim"]]["alive"] = False
+            player_side = self.sides[event["author"]]
             if player_side == "attacking":
                 self.atk_kills += 1
             elif player_side == "defending":
                 self.def_kills += 1
         elif event_type == "revival":
-            self.a.current_status[value["victim"]]["shieldId"] = None
-            self.a.current_status[value["victim"]]["alive"] = True
-        event = self.ag.generate_single_event_values(timestamp=timing, winner=self.round_winner, plant=self.plant)
-        event["ATK_kills"] = self.atk_kills
-        event["DEF_kills"] = self.def_kills
-        return event
+            self.a.current_status[event["victim"]]["shieldId"] = None
+            self.a.current_status[event["victim"]]["alive"] = True
+        gamestate = self.ag.generate_single_event_values(timestamp=timing, winner=self.round_winner, plant=self.plant)
+        gamestate["ATK_kills"] = self.atk_kills
+        gamestate["DEF_kills"] = self.def_kills
+        return gamestate
 
     def generate_full_round(self) -> list:
         round_array = []
-        for value in self.a.round_events:
-            gamestate = self.__generate_single_gamestate(value)
+        for event in self.a.round_events:
+            gamestate = self.__generate_single_gamestate(event)
             round_array.append(gamestate)
         self.atk_kills, self.def_kills = 0, 0
         return round_array

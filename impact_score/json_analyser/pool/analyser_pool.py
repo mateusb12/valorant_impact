@@ -26,9 +26,9 @@ class CoreAnalyser:
         self.data = get_match_info(match_id)
         self.map_dict = [item for item in self.data["series"]["seriesById"]["matches"] if item["id"] == match_id][0]
         self.economy_data = self.data["matches"]["matchDetails"]["economies"]
-        location_data = self.data["matches"]["matchDetails"]["locations"]
+        self.location_data = self.data["matches"]["matchDetails"]["locations"]
         self.player_table_creator = PlayerTableCreator(map=self.map_dict, economies=self.economy_data,
-                                                       locations=location_data)
+                                                       locations=self.location_data)
         self.attacking_first_team: int = self.map_dict["attackingFirstTeamNumber"]
         self.defending_first_team: int = 1 if self.attacking_first_team == 2 else 2
         self.round_amount = self.map_dict["team1Score"] + self.map_dict["team2Score"]
@@ -40,8 +40,8 @@ class CoreAnalyser:
         self.__set_player_status()
 
     def __set_player_status(self):
-        current_economy = self.economy_data[self.chosen_round]
         # self.current_status = create_player_table(current_economy, self.map_dict)
+        self.player_table_creator.pick_round(self.chosen_round)
         self.current_status: dict = self.player_table_creator.create_player_table()
 
     def __get_last_round(self) -> int:

@@ -8,6 +8,10 @@ class PlayerTableCreator:
     map: dict
     economies: dict
     locations: dict
+    round_number: int = 1
+
+    def pick_round(self, input_round_number: int):
+        self.round_number = input_round_number
 
     def create_player_table(self) -> dict:
         ign_table = {
@@ -15,25 +19,33 @@ class PlayerTableCreator:
             for b in self.map["players"]
         }
 
-        attacking_first_team = self.map["attackingFirstTeamNumber"]
-
         player_dict = {}
+        current_round_economies = [item for item in self.economies if item["roundNumber"] == self.round_number]
+        current_round_locations = [item for item in self.locations if item["roundNumber"] == self.round_number]
+        first_timing = current_round_locations[0]["roundTimeMillis"]
+        initial_locations = [item for item in current_round_locations if item["roundTimeMillis"] == first_timing]
+        current_round_economies.sort(key=lambda x: x["playerId"])
+        initial_locations.sort(key=lambda x: x["playerId"])
 
-        for item in self.economies:
-            player_id = item["playerId"]
+        for economy, location in zip(current_round_economies, initial_locations):
+            player_id = economy["playerId"]
             aux = {"name": ign_table[player_id],
-                   "agentId": item["agentId"],
-                   "combatScore": item["score"],
-                   "weaponId": item["weaponId"],
-                   "shieldId": item["armorId"],
-                   "loadoutValue": item["loadoutValue"],
-                   "spentCreds": item["spentCreds"],
-                   "remainingCreds": item["remainingCreds"],
-                   "attacking_side": ign_table[player_id]["team_number"] == attacking_first_team,
+                   "agentId": economy["agentId"],
+                   "combatScore": economy["score"],
+                   "weaponId": economy["weaponId"],
+                   "shieldId": economy["armorId"],
+                   "loadoutValue": economy["loadoutValue"],
+                   "spentCreds": economy["spentCreds"],
+                   "remainingCreds": economy["remainingCreds"],
+                   "attacking_side": True,
                    "team_number": ign_table[player_id]["team_number"],
+                   "timing": location["roundTimeMillis"],
+                   "locationX": location["locationX"],
+                   "locationY": location["locationY"],
+                   "viewRadians": location["viewRadians"],
+                   "playerId": player_id,
                    "alive": True}
             player_dict[player_id] = aux
-            # if item["roundNumber"] == 1:
         return player_dict
 
 

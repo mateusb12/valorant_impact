@@ -41,8 +41,8 @@ class AnalyserWrapper:
         raw = pd.DataFrame(report)
         raw = self.__add_teams_to_df(raw)
         raw["Loadout_diff"] = raw["ATK_loadoutValue"] - raw["DEF_loadoutValue"]
-        team_positions = self.ar.generate_average_distance()
-        raw = raw.join(team_positions)
+        # team_positions = self.ar.generate_average_distance()
+        # raw = raw.join(team_positions)
         return raw
 
 

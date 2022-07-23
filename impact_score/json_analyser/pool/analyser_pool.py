@@ -40,9 +40,8 @@ class CoreAnalyser:
         self.__set_player_status()
 
     def __set_player_status(self):
-        # self.current_status = create_player_table(current_economy, self.map_dict)
         self.player_table_creator.pick_round(self.chosen_round)
-        self.current_status: dict = self.player_table_creator.create_player_table()
+        self.current_status: dict or bool = self.player_table_creator.create_player_table()
 
     def __get_last_round(self) -> int:
         return self.round_amount

@@ -48,10 +48,10 @@ class AnalyserWrapper:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(54082)
+    a.set_match(67171)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
-    query = aux[aux["RoundNumber"] == 21]
+    # query = aux[aux["RoundNumber"] == 21]
     print(aux)
 
 

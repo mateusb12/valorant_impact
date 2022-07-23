@@ -13,7 +13,7 @@ class PlayerTableCreator:
     def pick_round(self, input_round_number: int):
         self.round_number = input_round_number
 
-    def create_player_table(self) -> dict:
+    def create_player_table(self) -> dict or bool:
         ign_table = {
             b["playerId"]: {"ign": b["player"]["ign"], "team_number": b["teamNumber"]}
             for b in self.map["players"]
@@ -22,6 +22,8 @@ class PlayerTableCreator:
         player_dict = {}
         current_round_economies = [item for item in self.economies if item["roundNumber"] == self.round_number]
         current_round_locations = [item for item in self.locations if item["roundNumber"] == self.round_number]
+        if not current_round_locations or not current_round_economies:
+            raise KeyError(f"Some data is missing for match {self.map['id']}")
         first_timing = current_round_locations[0]["roundTimeMillis"]
         initial_locations = [item for item in current_round_locations if item["roundTimeMillis"] == first_timing]
         current_round_economies.sort(key=lambda x: x["playerId"])

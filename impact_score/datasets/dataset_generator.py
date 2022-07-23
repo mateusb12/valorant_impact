@@ -13,7 +13,7 @@ from impact_score.path_reference.folder_ref import datasets_reference
 
 
 def get_match_list() -> List[int]:
-    dataset_reference = Path(datasets_reference(), "dataset_matches.csv")
+    dataset_reference = Path(datasets_reference(), "matches", "all_matches.csv")
     matches_csv = pd.read_csv(dataset_reference)
     return matches_csv["Match Id"].tolist()
 
@@ -21,6 +21,7 @@ def get_match_list() -> List[int]:
 class ValorantDatasetGenerator:
     def __init__(self):
         self.a: CoreAnalyser = analyser_pool.acquire()
+        self.a.set_match(74099)
         self.wrapper: AnalyserWrapper = AnalyserWrapper(self.a)
         self.match_list = get_match_list()
         self.dataset_index = []
@@ -66,5 +67,5 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=101, name="100")
+    vm.export_dataset(size=8000, name="8000")
     print(vm.broken_matches)

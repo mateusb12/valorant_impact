@@ -55,12 +55,19 @@ class AnalyserGamestate:
     def set_round_locations(self, new_round_locations: list):
         self.round_locations = new_round_locations
 
-    def __get_exact_locations(self) -> list:
+    def __get_location_pot(self) -> list:
         timing = self.current_event["timing"]
         if timing != 0:
             return [item for item in self.round_locations if item["roundTimeMillis"] == timing]
         first_timing = self.round_locations[0]["roundTimeMillis"]
         return [item for item in self.round_locations if item["roundTimeMillis"] == first_timing]
+
+    @staticmethod
+    def __get_player_exact_location(location_pot: list[dict], player_id: int) -> dict:
+        potential_locations: list[dict] = [item for item in location_pot if item["playerId"] == player_id]
+        if not potential_locations:
+            return {"locationX": 165, "locationY": 165}
+        return potential_locations[0]
 
     @staticmethod
     def evaluate_team_compaction(input_locations: list[Tuple[any, any]]) -> float:
@@ -78,7 +85,7 @@ class AnalyserGamestate:
         player_table: dict = self.a.current_status
         round_info: dict = self.round_info[self.a.chosen_round]
         attacking_team = round_info["attacking"]["id"]
-        locations = self.__get_exact_locations()
+        locations = self.__get_location_pot()
         atk_locations = []
         def_locations = []
 
@@ -86,9 +93,10 @@ class AnalyserGamestate:
             if self.__is_alive(value):
                 team_number = value["name"]["team_number"]
                 team_side = "attacking" if team_number == attacking_team else "defending"
+                player_id = value["playerId"]
                 player_state = self.__get_player_gamestate_dict(value)
-                player_location = [item for item in locations if item["playerId"] == value["playerId"]][0]
-                x, y = player_location["locationX"], player_location["locationY"]
+                player_locations: dict = self.__get_player_exact_location(locations, player_id)
+                x, y = player_locations["locationX"], player_locations["locationY"]
                 if team_side == "attacking":
                     atk_locations.append((x, y))
                 elif team_side == "defending":
@@ -101,8 +109,6 @@ class AnalyserGamestate:
                         def_dict[feature] += feature_value
 
         round_winner = kwargs["winner"] if "winner" in kwargs else None
-        # print(f"Round number → {round_info['number']}")
-        print(f"Timing → {kwargs['timestamp']}")
         atk_dict["compaction"] = self.evaluate_team_compaction(atk_locations)
         def_dict["compaction"] = self.evaluate_team_compaction(def_locations)
         final_dict = self.__get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)

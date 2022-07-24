@@ -48,9 +48,10 @@ class AnalyserWrapper:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(67171)
+    a.set_match(52145)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
+    winner_dict = dict(zip(aux["RoundNumber"], aux["FinalWinner"]))
     # query = aux[aux["RoundNumber"] == 21]
     print(aux)
 

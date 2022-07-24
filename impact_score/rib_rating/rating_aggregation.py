@@ -1,6 +1,6 @@
 import pandas as pd
 
-from impact_score.model.time_analyser import time_metrics
+from impact_score.model.progress_printer import time_metrics
 from impact_score.rib_rating.rating_single_match import RatingAnalyser
 from timeit import default_timer as timer
 

@@ -108,14 +108,54 @@ class AnalyserTools:
         aux = self.generate_round_info()
         return {value["number"]: value["finalWinner"] for value in aux.values()}
 
+    def get_side_dict(self) -> dict:
+        round_amount = 32
+
+        pattern = ["normal"] * 12
+        if 12 < round_amount < 24:
+            remaining = round_amount - 12
+            pattern += ["swap"] * remaining
+        else:
+            pattern += ["swap"] * 12
+            remaining = round_amount - 24
+            pattern += ["normal", "swap"] * remaining
+        rounds = list(range(1, round_amount + 1))
+        pattern_dict = {r: pattern[r - 1] for r in rounds}
+
+        base = self.a.data["series"]["seriesById"]
+        team_details = {1: {"name": base["team1"]["name"], "id": base["team1"]["id"], "team_id": 1},
+                        2: {"name": base["team2"]["name"], "id": base["team2"]["id"], "team_id": 2}}
+
+        attacking_first = self.a.map_dict["attackingFirstTeamNumber"]
+        defending_first_dict = {1: 2, 2: 1}
+        defending_first = defending_first_dict[attacking_first]
+        normal = {"attack": team_details[attacking_first], "defense": team_details[defending_first]}
+        swap = {"attack": team_details[defending_first], "defense": team_details[attacking_first]}
+
+        for key in pattern_dict:
+            pattern_dict[key] = normal if pattern_dict[key] == "normal" else swap
+
+        tag_dict = {1: "attack", 2: "defense"}
+        reverse_tag_dict = {"attack": 1, "defense": 0}
+        round_winners = {item["number"]: item["winningTeamNumber"] for item in self.a.map_dict["rounds"]}
+        final_dict = {}
+        for key, value in pattern_dict.items():
+            winner = round_winners[key]
+            winner_tag = tag_dict[winner]
+            final_winner = reverse_tag_dict[winner_tag]
+            winner_details = pattern_dict[key][winner_tag]
+            winner_details["side"] = winner_tag
+            winner_details["finalWinner"] = final_winner
+            final_dict[key] = winner_details
+        return final_dict
+
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(68821)
+    a.set_match(74099)
     aw = AnalyserTools(a)
-    qq = aw.generate_round_info()
-    q = aw.round_details
-    print(q)
+    test1 = aw.generate_side_dict()
+    print(aw)
 
 
 if __name__ == "__main__":

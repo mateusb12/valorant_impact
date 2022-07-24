@@ -13,7 +13,7 @@ from pathlib import Path
 from termcolor import colored
 
 from impact_score.imports.os_slash import get_slash_type
-from impact_score.model.dataset_preparation.dataset_prep import prepare_dataset
+from impact_score.model.features.model_features import prepare_dataset
 from impact_score.path_reference.folder_ref import model_reference
 
 sl = get_slash_type()
@@ -197,7 +197,7 @@ def get_dataset() -> pd.DataFrame:
 
 def get_trained_model_from_csv() -> ValorantLGBM:
     model_obj = ValorantLGBM()
-    model_obj.setup_dataframe("4000.csv")
+    model_obj.setup_dataframe("5000.csv")
     model_obj.setup_features_and_target()
     model_obj.train_model(optuna_study=False)
     return model_obj
@@ -223,6 +223,8 @@ def existing_pkl() -> bool:
 
 if __name__ == "__main__":
     vm = get_trained_model_from_csv()
+    vm.setup_features_and_target()
+    vm.train_model(optuna_study=True)
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()
     # vm.setup_dataframe("4000.csv")

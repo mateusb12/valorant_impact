@@ -3,7 +3,9 @@ from random import sample
 from timeit import default_timer as timer
 from typing import List
 
+import numpy as np
 import pandas as pd
+import os
 from termcolor import colored
 
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
@@ -12,8 +14,8 @@ from impact_score.model.time_analyser import time_metrics
 from impact_score.path_reference.folder_ref import datasets_reference
 
 
-def get_match_list() -> List[int]:
-    dataset_reference = Path(datasets_reference(), "matches", "all_matches.csv")
+def get_match_list(filename: str) -> List[int]:
+    dataset_reference = Path(datasets_reference(), "split", filename)
     matches_csv = pd.read_csv(dataset_reference)
     return matches_csv["Match Id"].tolist()
 
@@ -23,15 +25,41 @@ class ValorantDatasetGenerator:
         self.a: CoreAnalyser = analyser_pool.acquire()
         self.a.set_match(74099)
         self.wrapper: AnalyserWrapper = AnalyserWrapper(self.a)
-        self.match_list = get_match_list()
+        self.current_file = ""
+        self.match_list = []
+        self.match_pot = self.__get_all_files()
         self.dataset_index = []
         self.broken_matches = []
 
-    def create_dataset(self, size: int):
+    @staticmethod
+    def __split_dataset(amount: int) -> None:
+        dataset_ref = Path(datasets_reference(), "matches", "all_matches.csv")
+        raw_dataset = pd.read_csv(dataset_ref)
+        dataset = pd.DataFrame(raw_dataset["Match Id"].unique(), columns=["Match Id"])
+        output_ref = Path(datasets_reference(), "split")
+        splits = np.array_split(dataset, amount)
+        stamps = [chr(i) for i in range(65, 65 + amount)]
+        for split, stamp in zip(splits, stamps):
+            ref = Path(output_ref, f"{stamp}.csv")
+            split.to_csv(Path(output_ref, ref), index=False)
+
+    def __set_file(self, filename: str):
+        self.current_file = filename
+        dataset_reference = Path(datasets_reference(), "split", filename)
+        matches_csv = pd.read_csv(dataset_reference)
+        self.match_list = matches_csv["Match Id"].tolist()
+
+    @staticmethod
+    def __get_all_files():
+        return [f.name for f in Path(datasets_reference(), "split").iterdir() if f.name != "__init__.py"]
+
+    def __consume_dataset(self) -> pd.DataFrame:
+        df_ref = Path(datasets_reference(), "split", self.current_file)
+        df = pd.read_csv(df_ref)
+        size = len(df)
         dataset_list = []
-        self.set_random_sample(size)
         start = timer()
-        for index, match_index in enumerate(self.dataset_index):
+        for index, match_index in enumerate(self.match_list):
             loop = timer()
             time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_index)
             self.a.set_match(match_index)
@@ -42,30 +70,27 @@ class ValorantDatasetGenerator:
                 self.broken_matches.append(match_index)
                 continue
             dataset_list.append(match_df)
+        print(colored(f"Slice {self.current_file}.csv exported", "green"))
+        os.remove(df_ref)
         return pd.concat(dataset_list)
 
-    def export_dataset(self, **kwargs):
-        dataset_size = (kwargs["size"]) - 1
-        dataset_name = kwargs["name"]
-        datasets = datasets_reference()
-        huge_df = self.create_dataset(size=dataset_size)
+    def __export_dataset(self):
+        huge_df = self.__consume_dataset()
         map_name_dummy = pd.get_dummies(huge_df["MapName"], prefix="MapName")
         huge_df = pd.concat([huge_df, map_name_dummy], axis=1)
-        huge_df.to_csv(Path(datasets, f"{dataset_name}.csv"), index=False)
-        print(colored(f"Dataset {dataset_name}.csv exported", "green"))
+        output_ref = Path(datasets_reference(), f"Split_{self.current_file}.csv")
+        huge_df.to_csv(output_ref, index=False)
+        print(colored(f"Dataset {self.current_file}.csv exported", "green"))
 
-    def get_random_sample(self, amount: int):
-        dataset_size = len(self.match_list)
-        if amount > dataset_size:
-            raise ValueError(f"Dataset size [{dataset_size}] is smaller than the requested sample size [{amount}]")
-        else:
-            return sample(self.match_list, amount)
-
-    def set_random_sample(self, amount):
-        self.dataset_index = self.get_random_sample(amount)
+    def run_pipeline(self, amount: int):
+        self.__split_dataset(amount=amount)
+        for file in self.__get_all_files():
+            self.__set_file(file)
+            self.__export_dataset()
 
 
 if __name__ == "__main__":
-    vm = ValorantDatasetGenerator()
-    vm.export_dataset(size=8000, name="8000")
-    print(vm.broken_matches)
+    vdg = ValorantDatasetGenerator()
+    vdg.run_pipeline(amount=5)
+    # vdg.export_dataset()
+    # print(vm.broken_matches)

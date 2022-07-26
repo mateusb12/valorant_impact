@@ -38,3 +38,7 @@ def valorant_model_reference() -> Path:
 
 def model_reference() -> Path:
     return Path(ref, 'model')
+
+
+def wrapper_reference() -> Path:
+    return Path(ref, 'json_analyser', 'wrap')

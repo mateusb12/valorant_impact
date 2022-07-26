@@ -14,9 +14,10 @@ def prepare_dataset(filename: str = "4000.csv") -> pd.DataFrame:
     red_f = get_redundant_side_features()
     weak_f = get_weak_features()
     features_to_remove = index_f + map_f + red_f + weak_f
-    final_features = [feature for feature in features_to_remove if feature in dataset_columns]
-    df = df.drop(final_features, axis=1)
+    all_features = [feature for feature in features_to_remove if feature in dataset_columns]
+    df = df.drop(all_features, axis=1)
     df = df.fillna(0)
+    final_features = list(df.columns)
     return df
 
 

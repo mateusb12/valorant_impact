@@ -89,24 +89,25 @@ class AnalyserGamestate:
         atk_locations = []
         def_locations = []
 
-        for value in player_table.values():
-            if self.__is_alive(value):
-                team_number = value["name"]["team_number"]
-                team_side = "attacking" if team_number == attacking_team else "defending"
-                player_id = value["playerId"]
-                player_state = self.__get_player_gamestate_dict(value)
-                player_locations: dict = self.__get_player_exact_location(locations, player_id)
-                x, y = player_locations["locationX"], player_locations["locationY"]
-                if team_side == "attacking":
-                    atk_locations.append((x, y))
-                elif team_side == "defending":
-                    def_locations.append((x, y))
+        alive_players = [item for item in player_table.values() if self.__is_alive(item)]
 
-                for feature, feature_value in player_state.items():
-                    if team_side == "attacking":
-                        atk_dict[feature] += feature_value
-                    else:
-                        def_dict[feature] += feature_value
+        for value in alive_players:
+            team_number = value["name"]["team_number"]
+            team_side = "attacking" if team_number == attacking_team else "defending"
+            player_id = value["playerId"]
+            player_state = self.__get_player_gamestate_dict(value)
+            player_locations: dict = self.__get_player_exact_location(locations, player_id)
+            x, y = player_locations["locationX"], player_locations["locationY"]
+            if team_side == "attacking":
+                atk_locations.append((x, y))
+            elif team_side == "defending":
+                def_locations.append((x, y))
+
+            for feature, feature_value in player_state.items():
+                if team_side == "attacking":
+                    atk_dict[feature] += feature_value
+                else:
+                    def_dict[feature] += feature_value
 
         round_winner = kwargs["winner"] if "winner" in kwargs else None
         atk_dict["compaction"] = self.evaluate_team_compaction(atk_locations)

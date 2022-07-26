@@ -62,19 +62,16 @@ class ValorantLGBM:
 
     def setup_features_and_target(self):
         self.old_df = self.df.copy()
-        self.set_target("FinalWinner")
+        self.target = "FinalWinner"
         self.features = [col for col in self.df.columns if col != self.target]
-
-    def set_target(self, target: str):
-        self.target = target
 
     def train_model(self, **kwargs):
         self.do_optuna = kwargs.get("optuna_study", False)
-        self.prepare_df()
-        self.fit_model()
+        self.__prepare_df()
+        self.__fit_model()
         # self.export_model()
 
-    def prepare_df(self):
+    def __prepare_df(self):
         if not self.df_prepared:
             if self.df is None:
                 self.df = prepare_dataset(self.filename)
@@ -85,10 +82,10 @@ class ValorantLGBM:
                                                                                     random_state=15)
             self.df_prepared = True
 
-    def fit_model(self):
+    def __fit_model(self):
         if self.do_optuna:
-            self.optuna_study(trials=20)
-        optuna_dict = self.get_optuna_parameters()
+            self.__optuna_study(trials=20)
+        optuna_dict = self.__get_optuna_parameters()
         self.model = lightgbm.LGBMClassifier(bagging_freq=optuna_dict["bagging_freq"],
                                              min_data_in_leaf=optuna_dict["min_data_in_leaf"],
                                              max_depth=optuna_dict["max_depth"],
@@ -109,23 +106,23 @@ class ValorantLGBM:
         joblib.dump(self.model, 'model.pkl')
 
     @staticmethod
-    def get_optuna_parameters():
+    def __get_optuna_parameters():
         ref = model_reference()
         optuna_df: pd.DataFrame = pd.read_csv(f"{ref}{sl}model_params.csv")
         optuna_dict = optuna_df.to_dict(orient="list")
         return {key: value[0] for key, value in optuna_dict.items()}
 
-    def optuna_study(self, **kwargs):
+    def __optuna_study(self, **kwargs):
         study = optuna.create_study()
         study_trials = kwargs["trials"] if "trials" in kwargs else 10
-        study.optimize(self.objective, n_trials=study_trials)
+        study.optimize(self.__objective, n_trials=study_trials)
         trial = study.best_trial
         print(colored(f"Best trial: Value: {trial.value}", "green"))
         print(colored(f"Params: {trial.params}", "green"))
         pd_param = pd.DataFrame([trial.params])
         pd_param.to_csv('model_params.csv', index=False)
 
-    def objective(self, trial):
+    def __objective(self, trial):
         bagging_freq = trial.suggest_int('bagging_freq', 1, 10),
         min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 2, 100),
         max_depth = trial.suggest_int('max_depth', 1, 20),
@@ -145,50 +142,11 @@ class ValorantLGBM:
         pred_proba_test = model.predict_proba(self.X_test)
         return brier_score_loss(self.Y_test, pd.DataFrame(pred_proba_test)[1])
 
-    @staticmethod
-    def get_optuna_reference() -> Path:
-        current_folder = Path(os.getcwd())
-        current_folder_name = current_folder.name
-        if current_folder_name in ("impact", "api"):
-            webscrapping = current_folder.parent
-            return Path(webscrapping, "model")
-        elif current_folder_name == "model":
-            return current_folder
-        elif current_folder_name == "model_improvement":
-            return current_folder.parent
-
     def get_importance_dict(self) -> dict:
         return dict(zip(self.model.feature_name_, self.model.feature_importances_))
 
     def get_model_features(self) -> List[str]:
         return self.model.feature_name_
-
-    def test_probability(self, example: dict = None) -> float:
-        if example is None:
-            aux_df = pd.DataFrame([self.get_probability_input_example()])
-        else:
-            aux_df = pd.DataFrame([example])
-        return self.model.predict_proba(aux_df)[0][1]
-
-    @staticmethod
-    def get_probability_input_example() -> dict:
-        return {"RegularTime": 0, "SpikeTime": 0, "ATK_loadoutValue": 20750, "ATK_Initiator": 2,
-                "ATK_Duelist": 1, "ATK_Sentinel": 1, "ATK_Controller": 1, "ATK_kills": 1,
-                "DEF_loadoutValue": 23700, "DEF_operators": 0, "DEF_kills": 1,
-                "DEF_Initiator": 2, "DEF_Duelist": 1, "DEF_Sentinel": 1, "DEF_Controller": 1}
-
-    # def query_example(self, **kwargs) -> dict:
-    #     match = kwargs["match"]
-    #     round_ = kwargs["round_"]
-    #     timing = kwargs["timing"]
-    #     a = Analyser()
-    #     a.set_match(match)
-    #     df = a.export_df()
-    #     match_query = df[df["MatchID"] == match]
-    #     round_query = match_query[match_query["RoundNumber"] == round_]
-    #     timing_query = round_query[round_query["RegularTime"] == timing]
-    #     trim = timing_query[self.get_model_features()]
-    #     return trim.to_dict(orient="records")[0]
 
 
 def get_dataset() -> pd.DataFrame:
@@ -197,7 +155,7 @@ def get_dataset() -> pd.DataFrame:
 
 def get_trained_model_from_csv() -> ValorantLGBM:
     model_obj = ValorantLGBM()
-    model_obj.setup_dataframe("5000.csv")
+    model_obj.setup_dataframe("4000.csv")
     model_obj.setup_features_and_target()
     model_obj.train_model(optuna_study=False)
     return model_obj
@@ -223,7 +181,6 @@ def existing_pkl() -> bool:
 
 if __name__ == "__main__":
     vm = get_trained_model_from_csv()
-    vm.setup_features_and_target()
     vm.train_model(optuna_study=True)
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()

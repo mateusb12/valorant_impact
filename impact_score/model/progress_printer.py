@@ -34,6 +34,7 @@ def print_progress_bar(iteration: int, total: int, prefix='', suffix='', decimal
 
 
 def time_metrics(**kwargs):
+    a = "->"
     start = kwargs["start"]
     end = kwargs["end"]
     current_index = kwargs["index"]
@@ -50,13 +51,13 @@ def time_metrics(**kwargs):
     progress = f"{current_index}/{size}"
     ratio = f"{round((current_index / size) * 100, 2)}%"
     progress_str = f"Analysing {element_name} #{current_element}, {progress} so far." \
-                   f" Ratio → [{ratio}]"
+                   f" Ratio {a} [{ratio}]"
     current_time = datetime.datetime.now()
     seconds_added = datetime.timedelta(seconds=remaining_seconds)
     future_date_and_time = current_time + seconds_added
     future_date_and_time_str = future_date_and_time.strftime("%H:%M:%S")
-    details_str = f"Elapsed → {round_elapsed} | Time per match → {round(time_per_element, 2)}s" \
-                  f" | Remaining time → {remaining_minutes} | ETA → {future_date_and_time_str}"
+    details_str = f"Elapsed {a} {round_elapsed} | Time per match {a} {round(time_per_element, 2)}s" \
+                  f" | Remaining time {a} {remaining_minutes} | ETA {a} {future_date_and_time_str}"
     print(colored(progress_str, "green"))
     print(colored(details_str, "magenta"))
     print(print_progress_bar(current_index, size, prefix='Progress:', suffix='Complete', length=100))

@@ -31,8 +31,7 @@ def get_map_features() -> list[str]:
 
 
 def get_redundant_side_features() -> list[str]:
-    redundant_features = ["weaponValue", "shields", "remainingCreds",
-                          "Duelist", "Sentinel", "Initiator", "Controller"]
+    redundant_features = ["weaponValue", "shields", "remainingCreds", "loadoutValue"]
     redundant_features_atk = [f"ATK_{item}" for item in redundant_features]
     redundant_features_def = [f"DEF_{item}" for item in redundant_features]
     return redundant_features_atk + redundant_features_def

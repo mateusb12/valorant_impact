@@ -16,9 +16,19 @@ class AnalyserTools:
         return next((h["timing"] for h in self.a.round_events if h["event"] == "plant"), None)
 
     def get_round_winner(self) -> int:
-        for r in self.a.map_dict["rounds"]:
-            if r["number"] == self.a.chosen_round:
-                return 1 if r["winningTeamNumber"] == self.a.attacking_first_team else 0
+        round_dict = {key["number"]: key for key in self.a.map_dict["rounds"]}
+        attacking_first = self.a.attacking_first_team
+        current_sides = self.get_current_sides()
+        current_round = round_dict[self.a.chosen_round]
+        winning_team_number = current_round["winningTeamNumber"]
+        final_winner_tag = current_sides[winning_team_number]
+        final_winner_dict = {"attacking": 1, "defending": 0}
+        return final_winner_dict[final_winner_tag]
+        # for r in self.a.map_dict["rounds"]:
+        #     if r["number"] == self.a.chosen_round:
+        #         official_winner = r["finalWinner"]
+        #
+        # return 1 if r["winningTeamNumber"] == self.a.attacking_first_team else 0
 
     def __are_sides_swapped(self) -> bool:
         if 1 <= self.a.chosen_round <= 12:
@@ -96,7 +106,7 @@ class AnalyserTools:
         for item in self.round_details:
             self.a.choose_round(item["number"])
             current_sides = self.get_current_sides()
-            current_sides_inverse = {v: k for k, v in current_sides.items()}
+            current_sides_inverse = {value: key for key, value in current_sides.items()}
             item["attacking"] = {"name": self.team_details[current_sides_inverse["attacking"]]["name"],
                                  "id": self.team_details[current_sides_inverse["attacking"]]["number"]}
             item["defending"] = {"name": self.team_details[current_sides_inverse["defending"]]["name"],

@@ -36,13 +36,14 @@ class AnalyserGamestate:
         return player_dict["alive"]
 
     def __get_player_gamestate_dict(self, player_dict: dict) -> dict:
-        weapon_price = self.__get_weapon_price(player_dict["weaponId"])
+        weapon_id = player_dict["weaponId"]
+        weapon_price = self.__get_weapon_price(weapon_id)
         agent_role = self.__get_agent_role(player_dict["agentId"])
         shield_value = self.__get_shield_value(player_dict["shieldId"])
         return {"loadoutValue": player_dict["loadoutValue"],
                 "weaponValue": weapon_price,
                 "remainingCreds": player_dict["remainingCreds"],
-                "operators": 1 if player_dict["weaponId"] == "15" else 0,
+                "operators": 1 if player_dict["weaponId"] == 15 else 0,
                 "shields": shield_value,
                 agent_role: player_dict["loadoutValue"]}
 
@@ -65,9 +66,7 @@ class AnalyserGamestate:
     @staticmethod
     def __get_player_exact_location(location_pot: list[dict], player_id: int) -> dict:
         potential_locations: list[dict] = [item for item in location_pot if item["playerId"] == player_id]
-        if not potential_locations:
-            return {"locationX": 165, "locationY": 165}
-        return potential_locations[0]
+        return potential_locations[0] if potential_locations else {"locationX": 165, "locationY": 165}
 
     @staticmethod
     def evaluate_team_compaction(input_locations: list[Tuple[any, any]]) -> float:
@@ -81,14 +80,12 @@ class AnalyserGamestate:
         features = team_variables + roles
         atk_dict = {item: 0 for item in features}
         def_dict = {item: 0 for item in features}
-
         player_table: dict = self.a.current_status
         round_info: dict = self.round_info[self.a.chosen_round]
         attacking_team = round_info["attacking"]["id"]
         locations = self.__get_location_pot()
         atk_locations = []
         def_locations = []
-
         alive_players = [item for item in player_table.values() if self.__is_alive(item)]
 
         for value in alive_players:
@@ -102,7 +99,6 @@ class AnalyserGamestate:
                 atk_locations.append((x, y))
             elif team_side == "defending":
                 def_locations.append((x, y))
-
             for feature, feature_value in player_state.items():
                 if team_side == "attacking":
                     atk_dict[feature] += feature_value

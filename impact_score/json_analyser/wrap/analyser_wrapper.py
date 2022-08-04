@@ -45,13 +45,23 @@ class AnalyserWrapper:
         # raw = raw.join(team_positions)
         return raw
 
+    def set_match(self, input_match_id: int):
+        self.a.set_match(input_match_id)
+
+
+def get_match_df(input_match_id: int) -> pd.DataFrame:
+    a = analyser_pool.acquire()
+    a.set_match(input_match_id)
+    aw = AnalyserWrapper(a)
+    return aw.export_df()
+
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(74679)
+    a.set_match(50214)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
-    query = aux[aux["RoundNumber"] == 3]
+    query = aux[aux["RoundNumber"] == 1]
     master_query = query[["RegularTime", "SpikeTime", "RoundNumber", "RoundTime",
                           "ATK_loadoutValue", "ATK_kills", "ATK_Initiator", "ATK_Duelist", "ATK_Sentinel",
                           "ATK_Controller", "DEF_loadoutValue", "DEF_kills", "DEF_Initiator", "DEF_Duelist",

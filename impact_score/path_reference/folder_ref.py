@@ -42,3 +42,15 @@ def model_reference() -> Path:
 
 def wrapper_reference() -> Path:
     return Path(ref, 'json_analyser', 'wrap')
+
+
+def geckodriver_reference() -> Path:
+    return Path(Path(__file__).parent.parent.parent, 'webscrapping', 'geckodriver.exe')
+
+
+def __main():
+    print(geckodriver_reference())
+
+
+if __name__ == "__main__":
+    __main()

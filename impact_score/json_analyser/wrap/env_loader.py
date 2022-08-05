@@ -1,9 +1,11 @@
+import json
 import os
 from pathlib import Path
 from typing import Optional
 
 from dotenv import dotenv_values
 
+from impact_score.json_analyser.wrap import env_status
 from impact_score.path_reference.folder_ref import wrapper_reference
 
 
@@ -16,19 +18,22 @@ def __get_token_reference() -> Path:
     return Path(wrapper_reference(), ".env")
 
 
-def __load_env_file() -> dict[str, Optional[str]]:
+def __load_env_file() -> dict[str, Optional[str]] or bool:
     file = __get_token_reference()
     file_content = dotenv_values(file)
     if len(file_content) != 0:
         return file_content
-    else:
-        raise TokenLoadErrorException(f"Error: could not find .env file in {__get_token_reference()}")
+    print(f"Error: could not find .env file in {__get_token_reference()}")
+    env_status.missing_env_file = True
+    return False
+    # raise TokenLoadErrorException(f"Error: could not find .env file in {__get_token_reference()}")
 
 
 def load_environment_tokens() -> None:
     env_config = __load_env_file()
-    for tag, token in env_config.items():
-        os.environ[tag] = token
+    if isinstance(env_config, dict):
+        for tag, token in env_config.items():
+            os.environ[tag] = token
 
 
 def __main():

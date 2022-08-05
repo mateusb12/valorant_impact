@@ -39,7 +39,7 @@ class RoundReplay:
         self.wrapper: AnalyserWrapper = AnalyserWrapper(self.analyser)
         self.exporter.a.choose_round(1)
         self.player_impact = self.exporter.export_player_names()
-        self.round_amount = self.analyser.__get_last_round()
+        self.round_amount = self.analyser.get_last_round()
         self.df = self.wrapper.export_df()
         self.query = self.df.query(f"MatchID == {match_id}")
         self.round_table = self.tools.get_round_table()

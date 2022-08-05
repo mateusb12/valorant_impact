@@ -3,6 +3,7 @@ import pandas as pd
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
 from impact_score.json_analyser.core.analyser_round_aggregator import AnalyserRound
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
+from impact_score.model.features.model_features import generate_role_diff
 
 
 class AnalyserWrapper:
@@ -34,6 +35,7 @@ class AnalyserWrapper:
         new["Team_A_Name"] = team_a_name
         new["Team_B_ID"] = team_b_id
         new["Team_B_Name"] = team_b_name
+        generate_role_diff(new)
         return new
 
     def export_df(self) -> pd.DataFrame:

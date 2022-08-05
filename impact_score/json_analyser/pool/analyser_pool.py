@@ -43,7 +43,7 @@ class CoreAnalyser:
         self.player_table_creator.pick_round(self.chosen_round)
         self.current_status: dict or bool = self.player_table_creator.create_player_table()
 
-    def __get_last_round(self) -> int:
+    def get_last_round(self) -> int:
         return self.round_amount
 
     def check_id(self):

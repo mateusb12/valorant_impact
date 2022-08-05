@@ -114,7 +114,7 @@ class ValorantLGBM:
 
     def __optuna_study(self, **kwargs):
         study = optuna.create_study()
-        study_trials = kwargs["trials"] if "trials" in kwargs else 10
+        study_trials = kwargs.get("trials", 10)
         study.optimize(self.__objective, n_trials=study_trials)
         trial = study.best_trial
         print(colored(f"Best trial: Value: {trial.value}", "green"))
@@ -157,7 +157,7 @@ def get_trained_model_from_csv() -> ValorantLGBM:
     model_obj = ValorantLGBM()
     model_obj.setup_dataframe("merged.csv")
     model_obj.setup_features_and_target()
-    model_obj.train_model(optuna_study=True)
+    model_obj.train_model(optuna_study=False)
     return model_obj
 
 
@@ -181,7 +181,8 @@ def existing_pkl() -> bool:
 
 if __name__ == "__main__":
     vm = get_trained_model_from_csv()
-    vm.train_model(optuna_study=True)
+    vm.train_model(optuna_study=False)
+    vm.export_model_to_pkl()
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()
     # vm.setup_dataframe("4000.csv")

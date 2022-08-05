@@ -84,7 +84,7 @@ class ValorantLGBM:
 
     def __fit_model(self):
         if self.do_optuna:
-            self.__optuna_study(trials=20)
+            self.__optuna_study(trials=100)
         optuna_dict = self.__get_optuna_parameters()
         self.model = lightgbm.LGBMClassifier(bagging_freq=optuna_dict["bagging_freq"],
                                              min_data_in_leaf=optuna_dict["min_data_in_leaf"],
@@ -157,7 +157,7 @@ def get_trained_model_from_csv() -> ValorantLGBM:
     model_obj = ValorantLGBM()
     model_obj.setup_dataframe("merged.csv")
     model_obj.setup_features_and_target()
-    model_obj.train_model(optuna_study=False)
+    model_obj.train_model(optuna_study=True)
     return model_obj
 
 

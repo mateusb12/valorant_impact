@@ -1,0 +1,2 @@
+bagging_freq,min_data_in_leaf,max_depth,learning_rate,num_leaves,num_threads,min_sum_hessian_in_leaf
+4,91,15,0.0998533444472331,61,9,3

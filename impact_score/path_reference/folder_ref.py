@@ -48,6 +48,10 @@ def geckodriver_reference() -> Path:
     return Path(Path(__file__).parent.parent.parent, 'webscrapping', 'geckodriver.exe')
 
 
+def json_folder_reference() -> Path:
+    return Path(Path(__file__).parent.parent.parent, 'webscrapping', 'json_matches')
+
+
 def __main():
     print(geckodriver_reference())
 

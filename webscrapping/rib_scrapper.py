@@ -79,9 +79,7 @@ def get_json(match_id: int, series_id: int):
 
 
 def __main():
-    rbs = RIBScrapper()
-    rbs.set_config(match_id=67207, series_id=30140)
-    rbs.json_pipeline()
+    get_json(match_id=74680, series_id=33394)
 
 
 if __name__ == "__main__":

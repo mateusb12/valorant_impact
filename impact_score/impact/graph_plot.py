@@ -163,7 +163,7 @@ class GraphPlotter:
 
 
 if __name__ == "__main__":
-    match_id = 74099
+    match_id = 74680
     gp = GraphPlotter()
     gp.set_match(match_id)
     gp.plot_round(round_number=21, side="def")

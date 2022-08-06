@@ -1,6 +1,8 @@
 # Get impact_score folder reference using Path
 from pathlib import Path
 
+from impact_score.json_analyser.wrap.env_status import missing_env_file
+
 ref = Path(__file__).parent.parent
 
 
@@ -52,8 +54,12 @@ def json_folder_reference() -> Path:
     return Path(Path(__file__).parent.parent.parent, 'webscrapping', 'json_matches')
 
 
+def existing_env_file():
+    return missing_env_file
+
+
 def __main():
-    print(geckodriver_reference())
+    print(existing_env_file())
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from termcolor import colored
@@ -14,8 +15,16 @@ def check_existing_json(match_id: int):
     output_ref = Path(json_folder_reference(), filename)
     if existing := output_ref.exists():
         return True
-    print(colored('Error: match file not found. Please download it using get_json() function, from rib_scrapper.py', "yellow"))
+    print(colored('Error: match file not found. Please download it using get_json() function, from rib_scrapper.py',
+                  "yellow"))
     raise MatchNotFoundException(f"Error: could not find json file at [{output_ref}]")
+
+
+def load_match_json(match_id: int) -> dict:
+    filename = f"{match_id}.json"
+    output_ref = Path(json_folder_reference(), filename)
+    with open(output_ref, "r") as f:
+        return json.load(f)
 
 
 def __main():

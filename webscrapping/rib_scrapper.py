@@ -71,6 +71,8 @@ class RIBScrapper:
 
 
 def get_json(match_id: int, series_id: int):
+    """Webscrapping pipeline.
+    Set match_id and series_id in order to download the match"""
     rbs = RIBScrapper()
     rbs.set_config(match_id=match_id, series_id=series_id)
     rbs.json_pipeline()

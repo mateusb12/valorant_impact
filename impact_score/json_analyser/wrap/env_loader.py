@@ -5,7 +5,6 @@ from typing import Optional
 
 from dotenv import dotenv_values
 
-from impact_score.json_analyser.wrap import env_status
 from impact_score.path_reference.folder_ref import wrapper_reference
 
 
@@ -24,7 +23,6 @@ def __load_env_file() -> dict[str, Optional[str]] or bool:
     if len(file_content) != 0:
         return file_content
     print(f"Error: could not find .env file in {__get_token_reference()}")
-    env_status.missing_env_file = True
     return False
     # raise TokenLoadErrorException(f"Error: could not find .env file in {__get_token_reference()}")
 

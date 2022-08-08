@@ -1,8 +1,6 @@
 # Get impact_score folder reference using Path
 from pathlib import Path
 
-from impact_score.json_analyser.wrap.env_status import missing_env_file
-
 ref = Path(__file__).parent.parent
 
 
@@ -55,7 +53,7 @@ def json_folder_reference() -> Path:
 
 
 def existing_env_file():
-    return missing_env_file
+    return Path(ref, 'json_analyser', 'wrap', '.env').exists()
 
 
 def __main():

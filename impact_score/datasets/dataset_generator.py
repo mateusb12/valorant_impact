@@ -118,6 +118,6 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vdg = ValorantDatasetGenerator()
-    vdg.run_pipeline(amount=5, filename="merged.csv")
+    vdg.run_pipeline(amount=5, filename="100.csv")
     # vdg.export_dataset()
     # print(vm.broken_matches)

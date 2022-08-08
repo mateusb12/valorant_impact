@@ -9,7 +9,7 @@ def prepare_dataset(filename: str = "4000.csv") -> pd.DataFrame:
     dataset_folder = Path(datasets_reference(), filename)
     df = pd.read_csv(dataset_folder)
     dataset_columns = list(df.columns)
-    __generate_role_diff(df)
+    generate_role_diff(df)
     index_f = __get_index_features()
     map_f = __get_map_features()
     red_f = __get_redundant_side_features()

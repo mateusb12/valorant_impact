@@ -153,9 +153,9 @@ def get_dataset() -> pd.DataFrame:
     return pd.read_csv(f"{get_dataset_reference()}{sl}5000.csv")
 
 
-def get_trained_model_from_csv() -> ValorantLGBM:
+def get_trained_model_from_csv(filename: str = "merged.csv") -> ValorantLGBM:
     model_obj = ValorantLGBM()
-    model_obj.setup_dataframe("merged.csv")
+    model_obj.setup_dataframe(filename)
     model_obj.setup_features_and_target()
     model_obj.train_model(optuna_study=False)
     return model_obj

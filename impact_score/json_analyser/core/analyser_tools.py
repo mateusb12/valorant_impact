@@ -164,8 +164,9 @@ def __main():
     a = analyser_pool.acquire()
     a.set_match(74099)
     aw = AnalyserTools(a)
-    test1 = aw.generate_side_dict()
-    print(aw)
+    aw.a.choose_round(5)
+    test1 = aw.get_side_dict()
+    print(test1)
 
 
 if __name__ == "__main__":

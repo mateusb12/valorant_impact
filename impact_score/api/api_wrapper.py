@@ -68,7 +68,8 @@ def get_match_impact(input_match_id):
     analyser = get_analyser(match_id)
     ae = AnalyserExporter(analyser)
     prob_df = pd.DataFrame(export_probabilities(match_id))
-    details_dict = export_impact(analyser, ae, prob_df)
+    details_df = export_impact(analyser, ae, prob_df)
+    details_dict = details_df.to_dict(orient='records')
     return jsonify(details_dict)
 
 

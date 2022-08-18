@@ -14,7 +14,7 @@ import pandas as pd
 from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 
-def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_df: pd.DataFrame) -> dict:
+def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_df: pd.DataFrame) -> pd.DataFrame:
     """
     Export the impact of each player in a match.
     :param prob_df:

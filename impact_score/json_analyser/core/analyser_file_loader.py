@@ -28,7 +28,7 @@ def load_ability_data() -> dict:
 
 
 def __main():
-    aux = load_map_data()
+    aux = load_ability_data()
     print(aux)
 
 

@@ -104,8 +104,7 @@ class AnalyserGamestate:
                     atk_dict[feature] += feature_value
                 else:
                     def_dict[feature] += feature_value
-
-        round_winner = kwargs["winner"] if "winner" in kwargs else None
+        round_winner = kwargs.get("winner")
         atk_dict["compaction"] = self.evaluate_team_compaction(atk_locations)
         def_dict["compaction"] = self.evaluate_team_compaction(def_locations)
         final_dict = self.__get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)
@@ -119,7 +118,7 @@ class AnalyserGamestate:
 def __main():
     a = get_analyser(74033)
     ag = AnalyserGamestate(a)
-    aux = ag.generate_single_event_values(timestamp=0, winner=1, plant=91990)
+    aux = ag.generate_single_event_values(timestamp=0, winner=0, plant=52502)
     print(aux)
 
 

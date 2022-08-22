@@ -15,7 +15,6 @@ def __generate_api_link(match_id: int):
 
 def request_http_match_data(match_id: int):
     match_link = __generate_api_link(match_id)
-    print(f"Request link: {match_link}")
     response = requests.get(match_link)
     return response.json()
 

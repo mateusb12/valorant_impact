@@ -1,10 +1,8 @@
 # Create a Custom exception for the analyser pool
 from impact_score.json_analyser.core.player_table_creation import PlayerTableCreator
-from impact_score.json_analyser.core.simple_operations import get_map_dict, get_round_events
+from impact_score.json_analyser.core.simple_operations import get_round_events
 from impact_score.json_analyser.core.analyser_file_loader import load_agent_data, load_weapon_data, load_ability_data
-from impact_score.json_analyser.core.api_consumer import get_match_info
-from impact_score.path_reference.folder_ref import existing_env_file
-from webscrapping.json_checker import load_match_json
+from impact_score.json_analyser.wrap.match_load_pipeline import load_match_info
 
 
 class NoMoreAnalysersException(Exception):
@@ -25,10 +23,7 @@ class CoreAnalyser:
 
     def set_match(self, match_id: int):
         self.match_id = match_id
-        if existing_env := existing_env_file():
-            self.data = get_match_info(match_id)
-        else:
-            self.data = load_match_json(match_id)
+        self.data = load_match_info(match_id)
         self.map_dict = [item for item in self.data["series"]["seriesById"]["matches"] if item["id"] == match_id][0]
         self.economy_data = self.data["matches"]["matchDetails"]["economies"]
         self.location_data = self.data["matches"]["matchDetails"]["locations"]

@@ -1,4 +1,5 @@
 # Get impact_score folder reference using Path
+import os
 from pathlib import Path
 
 ref = Path(__file__).parent.parent
@@ -50,6 +51,10 @@ def geckodriver_reference() -> Path:
 
 def json_folder_reference() -> Path:
     return Path(Path(__file__).parent.parent.parent, 'webscrapping', 'json_matches')
+
+
+def existing_env_keys() -> bool:
+    return all(item in os.environ for item in ['API_TOKEN_A', 'API_TOKEN_B', 'IMPACT_TOKEN'])
 
 
 def existing_env_file():

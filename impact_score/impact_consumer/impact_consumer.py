@@ -77,78 +77,7 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
         else:
             mean_pot.append(ability)
     final_df["means"] = mean_pot
-
-    # final_df["weapon_name"] = final_df["weapon_id"].map(a.weapon_data[f"{weapon_id}"]["name"])
-    # if author_id is not None:
-    #     event["author"] = details[author_id]["player_name"]
-    #     event["author_agent"] = details[author_id]["agent_name"]
-    # if victim_id is not None:
-    #     event["victim"] = details[victim_id]["player_name"]
-    #     event["victim_agent"] = details[victim_id]["agent_name"]
-    # if weapon_id is not None:
-    #     event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
-    # match_impact_dict[f"Round_{item}"].append(event)
-
-    # query_df = prob_df[prob_df["Round"] == item]
-    # round_events_df = pd.DataFrame(a.round_events)
-    # round_events_df = round_events_df.fillna(0)
-
-    # for event in a.round_events:
-    #     id_pool = [event['kill_id'], event['bomb_id'], event['res_id']]
-    #     event_id = next(filter(None, id_pool), None)
-    #     if event_id is None:
-    #         event_id = 0
-    #     row = query_df[query_df["EventID"] == event_id]
-    #     event["event_id"] = event_id
-    #     event["probability_before"] = row["Probability_before_event"].values[0]
-    #     event["probability_after"] = row["Probability_after_event"].values[0]
-    #     event["impact"] = row["Impact"].values[0]
-    #     author_id = event["author"]
-    #     victim_id = event["victim"]
-    #     weapon_id = event["weapon_id"]
-    #     if author_id is not None:
-    #         event["author"] = details[author_id]["player_name"]
-    #         event["author_agent"] = details[author_id]["agent_name"]
-    #     if victim_id is not None:
-    #         event["victim"] = details[victim_id]["player_name"]
-    #         event["victim_agent"] = details[victim_id]["agent_name"]
-    #     if weapon_id is not None:
-    #         event["weapon_name"] = a.weapon_data[f"{weapon_id}"]["name"]
-    #     match_impact_dict[f"Round_{item}"].append(event)
     return final_df
-
-
-# def export_players_impact(match_id: int, input_analyser: Analyser, **kwargs) -> Union[int, dict[Any, int]]:
-#     """
-#     Export the impact of each player in a match.
-#     :param match_id: The match id. (60206)
-#     :param input_analyser: Analyser object instance.
-#     :param kwargs: player_name="crashies"
-#     :return: Dictionary with impact for each player, unless kwargs player_name is set. Example:
-#     {
-#         "keznit": 0.9838,
-#         "Nivera": 1.141,
-#         "Jamppi": 3.176,
-#         "Mazino": 1.852,
-#         "ScreaM": 0.988
-#     }
-#     """
-#     match_data = export_impact(match_id, input_analyser)
-#     player_impact_dict = {}
-#
-#     for round_n in match_data.values():
-#         for event in round_n:
-#             author = event['author']
-#             if author not in player_impact_dict and author is not None:
-#                 player_impact_dict[author] = 0
-#             if author is not None:
-#                 impact = float(event['impact'])
-#                 player_impact_dict[author] += impact
-#
-#     if "player_name" in kwargs:
-#         return player_impact_dict[kwargs["player_name"]]
-#     else:
-#         return player_impact_dict
 
 
 def export_probability_points(match_id: int) -> dict:
@@ -218,11 +147,9 @@ def generate_probability_dataframe(data: dict) -> pd.DataFrame:
             labels: [A, B, C, D, E, F, G]
     """
 
-    # data = export_probability_points(match_id)[f"Round_{round_number}"]
-
     def intersperse(lst, item):
         result = [item] * (len(lst) * 2 - 1)
-        result[0::2] = lst
+        result[::2] = lst
         return result
 
     labels = [chr(i) for i in range(65, 74)]
@@ -289,6 +216,7 @@ def __main():
     ae = AnalyserExporter(analyser)
     prob_df = pd.DataFrame(export_probabilities(match_id))
     details_dict = export_impact(analyser, ae, prob_df)
+    generate_probability_graph(match_id, 1)
 
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     # test3 = export_probability_points(match_id=65588)

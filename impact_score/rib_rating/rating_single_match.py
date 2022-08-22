@@ -1,4 +1,4 @@
-from impact_score.json_analyser.core.api_consumer import get_match_info
+from impact_score.json_analyser.core.api_consumer import request_http_match_data
 import pandas as pd
 
 
@@ -12,7 +12,7 @@ class RatingAnalyser:
 
     def set_match(self, match_id: int):
         self.match_id = match_id
-        self.data = get_match_info(match_id)
+        self.data = request_http_match_data(match_id)
         self.current_map = self.get_current_map()
         self.player_data = self.get_player_dict()
         self.player_names = {player["player"]["id"]: player["player"]["ign"] for player in self.current_map["players"]}

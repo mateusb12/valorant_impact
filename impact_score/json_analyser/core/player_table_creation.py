@@ -1,6 +1,6 @@
 import dataclasses
 
-from impact_score.json_analyser.core.api_consumer import get_match_info
+from impact_score.json_analyser.core.api_consumer import request_http_match_data
 
 
 @dataclasses.dataclass
@@ -53,7 +53,7 @@ class PlayerTableCreator:
 
 def __main():
     match_id = 74099
-    data = get_match_info(74099)
+    data = request_http_match_data(74099)
     map_data = [item for item in data["series"]["seriesById"]["matches"] if item["id"] == match_id][0]
     location_data = data["matches"]["matchDetails"]["locations"]
     economy_data = data["matches"]["matchDetails"]["economies"]

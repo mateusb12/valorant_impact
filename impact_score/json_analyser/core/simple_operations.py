@@ -1,4 +1,4 @@
-from impact_score.json_analyser.core.api_consumer import get_match_info
+from impact_score.json_analyser.core.api_consumer import request_http_match_data
 
 
 def get_map_dict(input_data: dict, input_match_id: int) -> dict:

@@ -13,8 +13,9 @@ def __generate_api_link(match_id: int):
     return f"{prefix}{match_id}{suffix}"
 
 
-def get_match_info(match_id: int):
+def request_http_match_data(match_id: int):
     match_link = __generate_api_link(match_id)
+    print(f"Request link: {match_link}")
     response = requests.get(match_link)
     return response.json()
 
@@ -27,5 +28,5 @@ def get_impact_details(match_id: int):
 
 
 if __name__ == "__main__":
-    print(get_match_info(45117))
+    print(request_http_match_data(45117))
     # print(os.environ)

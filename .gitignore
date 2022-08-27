@@ -4,3 +4,4 @@
 /webscrapping/geckodriver.exe
 /webscrapping/delete.txt
 /webscrapping/geckodriver.log
+*.pyc

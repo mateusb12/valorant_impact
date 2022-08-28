@@ -88,8 +88,10 @@ def merge_impacts(match_id: int) -> pd.DataFrame:
     prob_df = pd.DataFrame(export_probabilities(match_id))
     half_df = export_impact(core_analyser=a, exporter=ae, prob_df=prob_df)
     match_data = w.export_df()
-    return pd.merge(half_df, match_data, how='left', left_on=['round_number', 'timing'],
-                    right_on=['RoundNumber', 'RoundTime'])
+    merged = pd.merge(half_df, match_data, how='left', left_on=['round_number', 'timing'],
+                      right_on=['RoundNumber', 'RoundTime'])
+    to_delete = ["Round", "EventType", "RoundNumber", "RoundTime"]
+    return merged.drop(to_delete, axis=1)
 
 
 def export_probability_points(match_id: int) -> dict:

@@ -49,6 +49,13 @@ class AnalyserTools:
         team_sides = self.get_current_sides()
         return {player: team_sides[value["team_number"]] for player, value in self.a.current_status.items()}
 
+    def get_player_name_sides(self, input_round: int) -> dict:
+        self.a.choose_round(input_round)
+        players = self.a.map_dict["players"]
+        id_dict = {player["player"]["id"]: player["player"]["ign"] for player in players}
+        side_dict = self.get_player_sides()
+        return {id_dict[key]: side_dict[key] for key in side_dict}
+
     def generate_spike_timings(self, round_millis: int, plant_millis: int) -> Tuple[int, int]:
         maximum_time = plant_millis + 45000 if plant_millis is not None else 100000
         if round_millis >= maximum_time or self.a.defuse_happened:
@@ -165,7 +172,7 @@ def __main():
     a.set_match(74099)
     aw = AnalyserTools(a)
     aw.a.choose_round(5)
-    test1 = aw.get_side_dict()
+    test1 = aw.get_player_name_sides()
     print(test1)
 
 

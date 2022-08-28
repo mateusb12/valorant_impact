@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from impact_score.json_analyser.wrap.analyser_loader import get_analyser
+from impact_score.json_analyser.wrap.analyser_wrapper import AnalyserWrapper
 
 
 def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_df: pd.DataFrame) -> pd.DataFrame:
@@ -20,8 +21,6 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
     :param prob_df:
     :param core_analyser:
     :param exporter:
-    :param match_id: The match id. (60206)
-    :param input_analyser: Analyser object instance.
     :return: Dictionary containing event details. For example:
     {
         "round_1": [
@@ -77,7 +76,20 @@ def export_impact(core_analyser: CoreAnalyser, exporter: AnalyserExporter, prob_
         else:
             mean_pot.append(ability)
     final_df["means"] = mean_pot
+    # Rename timing to RoundTime
+    # final_df = final_df.rename(columns={"timing": "RoundTime"})
     return final_df
+
+
+def merge_impacts(match_id: int) -> pd.DataFrame:
+    a = get_analyser(match_id)
+    ae = AnalyserExporter(a)
+    w = AnalyserWrapper(a)
+    prob_df = pd.DataFrame(export_probabilities(match_id))
+    half_df = export_impact(core_analyser=a, exporter=ae, prob_df=prob_df)
+    match_data = w.export_df()
+    return pd.merge(half_df, match_data, how='left', left_on=['round_number', 'timing'],
+                    right_on=['RoundNumber', 'RoundTime'])
 
 
 def export_probability_points(match_id: int) -> dict:
@@ -212,11 +224,10 @@ def generate_probability_graph(match_id: int, round_number: int) -> None:
 
 def __main():
     match_id = 60206
-    analyser = get_analyser(match_id)
-    ae = AnalyserExporter(analyser)
+    a = get_analyser(match_id)
+    ae = AnalyserExporter(a)
     prob_df = pd.DataFrame(export_probabilities(match_id))
-    details_dict = export_impact(analyser, ae, prob_df)
-    generate_probability_graph(match_id, 1)
+    half_df = export_impact(core_analyser=a, exporter=ae, prob_df=prob_df)
 
     # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
     # test3 = export_probability_points(match_id=65588)

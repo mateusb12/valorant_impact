@@ -1,10 +1,15 @@
 import copy
 
 import pandas as pd
+from termcolor import colored
 
 from impact_score.impact_consumer.impact_consumer import merge_impacts
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool
+
+from timeit import default_timer as timer
+
+from impact_score.model.progress_printer import time_metrics
 
 
 def handle_kill_or_revival(attacker_pool: list[str], defender_pool: list[str], player_sides: dict, row: pd.Series):
@@ -100,38 +105,59 @@ def generate_query_dataframe(match_id: int) -> pd.DataFrame:
     return df
 
 
-def aggregate_dataframe(match_id: int) -> pd.DataFrame:
+def aggregate_single_dataframe(match_id: int) -> pd.DataFrame:
+    print(colored(f"Processing match {match_id}", "green"))
     df = generate_query_dataframe(match_id)
     df["win"] = df["outcome"] == "won"
     df["loss"] = df["outcome"] == "lost"
     df["win"] = df["win"].astype(int)
     df["loss"] = df["loss"].astype(int)
+    df["probability"] = df["probability"] / 100
     agg_df = df.groupby(["duo"]).agg({"win": "sum", "loss": "sum", "probability": "sum"})
     agg_df = agg_df[agg_df.index.map(lambda x: len(x) > 1)]
-    agg_df["expected_outcome"] = agg_df["win"] / agg_df["probability"]
-    # Rename probability to agg_probability
     agg_df = agg_df.rename(columns={"probability": "agg_probability"})
-    agg_df = agg_df.sort_values(by=["expected_outcome"], ascending=False)
     return agg_df
 
-    # duo_performance = {}
-    # # Loop through the dataframe, aggregate the amount of wins for each duo, and average the probability of winning
-    # for index, row in df.iterrows():
-    #     duo = row["duo"]
-    #     if duo not in duo_performance:
-    #         duo_performance[duo] = {"wins": 0, "losses": 0, "sum_probability_on_wins": 0}
-    #     if row["outcome"] == "won":
-    #         duo_performance[duo]["wins"] += 1
-    #         duo_performance[duo]["avg_probability_on_wins"] += row["probability"]
-    #     if row["outcome"] == "lost":
-    #         duo_performance[duo]["losses"] += 1
-    # # Create an "avg_probability_on_wins" for each duo
-    # for duo in duo_performance:
-    #     duo_performance[duo]["avg_probability_on_wins"] /= duo_performance[duo]["wins"]
+
+def aggregate_multiple_dataframes() -> pd.DataFrame:
+    df_pot = generate_match_pot()
+    final_df = pd.concat(df_pot)
+    final_df = final_df.groupby(["duo"]).agg({"win": "sum", "loss": "sum", "agg_probability": "sum"})
+    final_df = final_df[final_df.index.map(lambda x: len(x) > 1)]
+    final_df["expected_outcome"] = final_df["win"] / final_df["agg_probability"]
+    final_df["expected_wins"] = final_df["agg_probability"].round(1)
+    performance_tag = "rounds_above_expected"
+    final_df[performance_tag] = final_df["win"] - final_df["expected_wins"]
+    final_df = final_df.rename(columns={"probability": "agg_probability"})
+    final_df = final_df.drop(columns=["agg_probability", "expected_outcome"])
+    for column in ["expected_wins", performance_tag]:
+        final_df[column] = final_df[column].apply(lambda x: float("{:.1f}".format(x)))
+    final_df = final_df.sort_values(by=[performance_tag], ascending=False)
+    final_df.to_csv("duo_performance.csv")
+    return final_df
+
+
+def generate_match_pot() -> list[pd.DataFrame]:
+    match_list = pd.read_csv("vct_matches.csv")["Match Id"].tolist()
+    start = timer()
+    size = len(match_list)
+    df_pot = []
+    for index, match_id in enumerate(match_list, 1):
+        loop = timer()
+        print(colored(f"Processing match #{index} of {len(match_list)}", "green"))
+        time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_id)
+        try:
+            df = aggregate_single_dataframe(match_id)
+        except KeyError:
+            continue
+        else:
+            df_pot.append(df)
+    return df_pot
 
 
 def __main():
-    aux = aggregate_dataframe(74098)
+    # aux = aggregate_multiple_dataframes([74097, 74098, 74099])
+    aux = aggregate_multiple_dataframes()
     print(aux)
 
 

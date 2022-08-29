@@ -80,19 +80,58 @@ def handle_mid_round_event(duo_dict: dict, event: dict, matching_pattern: list[d
     chances = 100 * (event["probability"] if disadvantage_side == "attack" else 1 - event["probability"])
     situation_type = "equal_ground" if alive_numbers[0] == alive_numbers[-1] else "disadvantageous"
     situation_dict = {"situation": situation_tag, "outcome": outcome, "probability": chances,
-                      "type": situation_type, "duo": duo_names, "opponents": opponents}
+                      "type": situation_type, "duo": tuple(duo_names), "opponents": tuple(opponents)}
     duo_dict[situation_tag].append(copy.deepcopy(situation_dict))
     if situation_type == "equal_ground":
         new_copy = copy.deepcopy(situation_dict)
-        new_copy["duo"] = opponents
-        new_copy["opponents"] = duo_names
+        new_copy["duo"] = tuple(opponents)
+        new_copy["opponents"] = tuple(duo_names)
         new_copy["outcome"] = "won" if final_winner != disadvantage_side else "lost"
         new_copy["probability"] = 100 - chances
         duo_dict[situation_tag].append(new_copy)
 
 
+def generate_query_dataframe(match_id: int) -> pd.DataFrame:
+    data = query_hardest_situations(match_id)
+    df = pd.DataFrame()
+    for situation in data:
+        df = df.append(data[situation])
+    df = df.sort_values(by=["outcome", "probability"], ascending=False)
+    return df
+
+
+def aggregate_dataframe(match_id: int) -> pd.DataFrame:
+    df = generate_query_dataframe(match_id)
+    df["win"] = df["outcome"] == "won"
+    df["loss"] = df["outcome"] == "lost"
+    df["win"] = df["win"].astype(int)
+    df["loss"] = df["loss"].astype(int)
+    agg_df = df.groupby(["duo"]).agg({"win": "sum", "loss": "sum", "probability": "sum"})
+    agg_df = agg_df[agg_df.index.map(lambda x: len(x) > 1)]
+    agg_df["expected_outcome"] = agg_df["win"] / agg_df["probability"]
+    # Rename probability to agg_probability
+    agg_df = agg_df.rename(columns={"probability": "agg_probability"})
+    agg_df = agg_df.sort_values(by=["expected_outcome"], ascending=False)
+    return agg_df
+
+    # duo_performance = {}
+    # # Loop through the dataframe, aggregate the amount of wins for each duo, and average the probability of winning
+    # for index, row in df.iterrows():
+    #     duo = row["duo"]
+    #     if duo not in duo_performance:
+    #         duo_performance[duo] = {"wins": 0, "losses": 0, "sum_probability_on_wins": 0}
+    #     if row["outcome"] == "won":
+    #         duo_performance[duo]["wins"] += 1
+    #         duo_performance[duo]["avg_probability_on_wins"] += row["probability"]
+    #     if row["outcome"] == "lost":
+    #         duo_performance[duo]["losses"] += 1
+    # # Create an "avg_probability_on_wins" for each duo
+    # for duo in duo_performance:
+    #     duo_performance[duo]["avg_probability_on_wins"] /= duo_performance[duo]["wins"]
+
+
 def __main():
-    aux = query_hardest_situations(74098)
+    aux = aggregate_dataframe(74098)
     print(aux)
 
 

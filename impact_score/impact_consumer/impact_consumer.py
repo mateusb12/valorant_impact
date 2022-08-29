@@ -90,10 +90,10 @@ def merge_impacts(match_id: int) -> pd.DataFrame:
     match_data = w.export_df()
     merged = pd.merge(half_df, match_data, how='left', left_on=['round_number', 'timing'],
                       right_on=['RoundNumber', 'RoundTime'])
+    merged = merged.drop_duplicates(subset=['round_number', 'timing', 'author', 'victim', 'event'], keep='first',
+                                    ignore_index=True)
     to_delete = ["Round", "EventType", "RoundNumber", "RoundTime"]
-    trimmed = merged.drop(to_delete, axis=1)
-    trimmed = trimmed.drop_duplicates()
-    return trimmed
+    return merged.drop(to_delete, axis=1)
 
 
 def export_probability_points(match_id: int) -> dict:

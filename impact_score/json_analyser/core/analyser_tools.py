@@ -126,7 +126,7 @@ class AnalyserTools:
         return {value["number"]: value["finalWinner"] for value in aux.values()}
 
     def get_side_dict(self) -> dict:
-        round_amount = 32
+        round_amount = self.a.map_dict["rounds"][-1]["number"]
 
         pattern = ["normal"] * 12
         if 12 < round_amount < 24:
@@ -154,7 +154,8 @@ class AnalyserTools:
 
         tag_dict = {1: "attack", 2: "defense"}
         reverse_tag_dict = {"attack": 1, "defense": 0}
-        round_winners = {item["number"]: item["winningTeamNumber"] for item in self.a.map_dict["rounds"]}
+        round_pool = self.a.map_dict["rounds"]
+        round_winners = {item["number"]: item["winningTeamNumber"] for item in round_pool}
         final_dict = {}
         for key, value in pattern_dict.items():
             winner = round_winners[key]
@@ -163,16 +164,24 @@ class AnalyserTools:
             winner_details = pattern_dict[key][winner_tag]
             winner_details["side"] = winner_tag
             winner_details["finalWinner"] = final_winner
-            final_dict[key] = winner_details
+            winner_details["outcome"] = "win"
+            loser_details = pattern_dict[key]["defense"] if winner_tag == "attack" else pattern_dict[key]["attack"]
+            loser_details["side"] = "defense" if winner_tag == "attack" else "attack"
+            loser_details["finalWinner"] = final_winner
+            loser_details["outcome"] = "lost"
+            winner_name = winner_details["name"]
+            loser_name = loser_details["name"]
+            final_outcome = {winner_name: winner_details, loser_name: loser_details}
+            final_dict[key] = final_outcome
         return final_dict
 
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(74099)
+    a.set_match(77103)
     aw = AnalyserTools(a)
     aw.a.choose_round(5)
-    test1 = aw.get_player_name_sides()
+    test1 = aw.get_side_dict()
     print(test1)
 
 

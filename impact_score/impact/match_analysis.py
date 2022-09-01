@@ -150,6 +150,25 @@ class RoundReplay:
         )
         return {key: f"{value}%" for key, value in sorted_d.items()}
 
+    def get_biggest_throws(self, team_name: str) -> dict:
+        original_round = self.chosen_round
+        team_sides = self.tools.get_side_dict()
+        dtb = self.tools.generate_round_info()
+        round_amount = max(dtb.keys())
+        maximum_probabilities_dict = {}
+        for i in range(1, round_amount + 1):
+            self.chosen_round = i
+            side_info = team_sides[i][team_name]
+            current_side = side_info["side"]
+            prob = self.get_round_probability(side=current_side, add_events=True)
+            winner = dtb[i]["finalWinner"]
+            if side_info["outcome"] == "lost":
+                round_id = dtb[i]["number"]
+                max_prob = max(list(prob["Probability_before_event"]))
+                maximum_probabilities_dict[round_id] = round(100 * max_prob, 2)
+        self.chosen_round = original_round
+        return dict(sorted(maximum_probabilities_dict.items(), key=lambda item: item[1], reverse=True))
+
     # @profile
     def get_round_probability(self, **kwargs):
         """
@@ -310,12 +329,23 @@ def test_single_round(match_id: int, round_number: int):
     return rr.get_round_probability(side="atk")
 
 
+def inverse_prob(x: str) -> str:
+    numerical = float(x[:-1]) / 100
+    inverse = (1 - numerical) * 100
+    return f"{inverse:.2f}%"
+
+
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(74099)
+    rr_instance.set_match(77103)
     rr_instance.choose_round(21)
-    q = rr_instance.get_round_probability(side="atk")
+    # q = rr_instance.get_clutchy_rounds("atk")
+    q = rr_instance.get_biggest_throws("Team Liquid")
     print(q)
+
+    # Convert '8.04%' to 0.0804 and store it on lambda
+    # inverse_q = {key: inverse_prob(value) for key, value in q.items()}
+    # print(inverse_q)
     # impact = rr_instance.get_map_impact_dataframe()
     # rounded_columns = ["Gain", "Lost", "Delta"]
     # # Change rounded_columns to % format

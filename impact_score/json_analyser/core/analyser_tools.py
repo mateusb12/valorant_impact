@@ -1,3 +1,4 @@
+import copy
 from typing import Tuple
 
 from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
@@ -127,6 +128,7 @@ class AnalyserTools:
 
     def get_side_dict(self) -> dict:
         round_amount = self.a.map_dict["rounds"][-1]["number"]
+        side_pattern = self.generate_side_dict()
 
         pattern = ["normal"] * 12
         if 12 < round_amount < 24:
@@ -152,27 +154,19 @@ class AnalyserTools:
         for key in pattern_dict:
             pattern_dict[key] = normal if pattern_dict[key] == "normal" else swap
 
-        tag_dict = {1: "attack", 2: "defense"}
-        reverse_tag_dict = {"attack": 1, "defense": 0}
-        round_pool = self.a.map_dict["rounds"]
-        round_winners = {item["number"]: item["winningTeamNumber"] for item in round_pool}
         final_dict = {}
         for key, value in pattern_dict.items():
-            winner = round_winners[key]
-            winner_tag = tag_dict[winner]
-            final_winner = reverse_tag_dict[winner_tag]
-            winner_details = pattern_dict[key][winner_tag]
-            winner_details["side"] = winner_tag
-            winner_details["finalWinner"] = final_winner
-            winner_details["outcome"] = "win"
-            loser_details = pattern_dict[key]["defense"] if winner_tag == "attack" else pattern_dict[key]["attack"]
-            loser_details["side"] = "defense" if winner_tag == "attack" else "attack"
-            loser_details["finalWinner"] = final_winner
-            loser_details["outcome"] = "lost"
-            winner_name = winner_details["name"]
-            loser_name = loser_details["name"]
-            final_outcome = {winner_name: winner_details, loser_name: loser_details}
-            final_dict[key] = final_outcome
+            winner = side_pattern[key]
+            new_value = copy.deepcopy(value)
+            winner_tag = "defense" if winner == 0 else "attack"
+            loser_tag = "defense" if winner_tag == "attack" else "attack"
+            new_value[winner_tag]["side"] = winner_tag
+            new_value[loser_tag]["side"] = loser_tag
+            new_value[winner_tag]["outcome"] = "win"
+            new_value[loser_tag]["outcome"] = "loss"
+            loser_name = new_value[loser_tag]["name"]
+            winner_name = new_value[winner_tag]["name"]
+            final_dict[key] = {winner_name: new_value[winner_tag], loser_name: new_value[loser_tag]}
         return final_dict
 
 

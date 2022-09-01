@@ -160,9 +160,9 @@ class RoundReplay:
             self.chosen_round = i
             side_info = team_sides[i][team_name]
             current_side = side_info["side"]
-            prob = self.get_round_probability(side=current_side, add_events=True)
-            winner = dtb[i]["finalWinner"]
-            if side_info["outcome"] == "lost":
+            formatted_side = {"defense": "def", "attack": "atk"}
+            prob = self.get_round_probability(side=formatted_side[current_side], add_events=True)
+            if side_info["outcome"] == "loss":
                 round_id = dtb[i]["number"]
                 max_prob = max(list(prob["Probability_before_event"]))
                 maximum_probabilities_dict[round_id] = round(100 * max_prob, 2)

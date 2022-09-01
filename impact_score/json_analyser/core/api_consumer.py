@@ -27,5 +27,5 @@ def get_impact_details(match_id: int):
 
 
 if __name__ == "__main__":
-    print(request_http_match_data(45117))
+    print(get_impact_details(77100))
     # print(os.environ)

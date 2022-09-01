@@ -148,17 +148,25 @@ def generate_match_pot() -> list[pd.DataFrame]:
         time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_id)
         try:
             df = aggregate_single_dataframe(match_id)
-        except KeyError:
+        except (KeyError, ValueError) as e:
             continue
         else:
             df_pot.append(df)
     return df_pot
 
 
+def cutoff_df():
+    df = pd.read_csv("duo_performance.csv")
+    # Remove all entries in which win + loss columns are less than 10
+    df = df[(df["win"] + df["loss"]) > 10]
+    df.to_csv("duo_performance.csv")
+
+
 def __main():
     # aux = aggregate_multiple_dataframes([74097, 74098, 74099])
-    aux = aggregate_multiple_dataframes()
-    print(aux)
+    # aux = aggregate_multiple_dataframes()
+    cutoff_df()
+    # print(aux)
 
 
 if __name__ == "__main__":

@@ -111,15 +111,19 @@ def export_probability_points(match_id: int) -> dict:
     }
     """
     data = get_impact_details(match_id)
-    round_amount = max(int(key[6:]) for key in data.keys())
+    round_amount = data[-1]["round_number"]
+    data_dict = {f"Round_{i}": [] for i in range(1, round_amount + 1)}
+    for item in data:
+        data_dict[f"Round_{item['round_number']}"].append(item)
     map_probability_points = {f"Round_{i}": None for i in range(1, round_amount + 1)}
 
     def get_single_round_plots(round_n: int) -> dict:
         probability_points = []
         kill_feed_points = []
         timestamp_points = []
-        for event in data[f"Round_{round_n}"]:
-            probability_points.extend((float(event["probability_before"]), float(event["probability_after"])))
+        for event in data_dict[f"Round_{round_n}"]:
+            prob_pair = float(event["Probability_before_event"]), float(event["Probability_after_event"])
+            probability_points.extend(prob_pair)
             # timing = event["timing"] / 1000
             timing = event["timing"]
             timestamp_points.extend((timing, timing))
@@ -166,17 +170,22 @@ def generate_probability_dataframe(data: dict) -> pd.DataFrame:
     def intersperse(lst, item):
         result = [item] * (len(lst) * 2 - 1)
         result[::2] = lst
+        result.append(None)
         return result
 
-    labels = [chr(i) for i in range(65, 74)]
-    labels = intersperse(labels, None)[:-1]
+    label_size = len(data["kill_feed_points"]) + 1
+    labels = [chr(i) for i in range(65, 65 + label_size)]
+    pre_label_test = dict(zip(labels, data["kill_feed_points"]))
+    labels = intersperse(labels, None)
 
     kill_feed = intersperse(data["kill_feed_points"], None)
     kill_feed.insert(0, "Round Start")
     kill_feed.insert(1, None)
-    kill_feed.insert(len(kill_feed), None)
 
-    return pd.DataFrame({"timestamp": data["timestamp_points"], "probability": data["probability_points"],
+    timestamp = data["timestamp_points"]
+    probability = data["probability_points"]
+
+    return pd.DataFrame({"timestamp": timestamp, "probability": probability,
                          "label": labels, "kill_feed": kill_feed})
 
 
@@ -184,6 +193,7 @@ def generate_probability_graph(match_id: int, round_number: int) -> None:
     data = export_probability_points(match_id)[f"Round_{round_number}"]
     y_values = data["probability_points"]
     x_values = data["timestamp_points"]
+    data["kill_feed_points"] = [x for x in data["kill_feed_points"] if x]
     df = generate_probability_dataframe(data)
     plt.figure(figsize=(12, 5))
     plt.title('Attackers probability over time')
@@ -227,14 +237,10 @@ def generate_probability_graph(match_id: int, round_number: int) -> None:
 
 
 def __main():
-    match_id = 60206
+    match_id = 77100
     a = get_analyser(match_id)
     ae = AnalyserExporter(a)
-    prob_df = pd.DataFrame(export_probabilities(match_id))
-    half_df = export_impact(core_analyser=a, exporter=ae, prob_df=prob_df)
-
-    # test2 = export_players_impact(match_id=60206, input_analyser=Analyser())
-    # test3 = export_probability_points(match_id=65588)
+    generate_probability_graph(match_id=77100, round_number=3)
     aux = 5 + 1
     # test4 = export_impact(match_id=65588, input_analyser=a)
     print("hey")

@@ -167,7 +167,15 @@ class RoundReplay:
                 max_prob = max(list(prob["Probability_before_event"]))
                 maximum_probabilities_dict[round_id] = round(100 * max_prob, 2)
         self.chosen_round = original_round
-        return dict(sorted(maximum_probabilities_dict.items(), key=lambda item: item[1], reverse=True))
+        sorted_dict = dict(sorted(maximum_probabilities_dict.items(), key=lambda item: item[1], reverse=True))
+        return {key: f"{value}%" for key, value in sorted_dict.items()}
+
+    def get_biggest_clutches(self, team_name: str) -> dict:
+        biggest_throws = self.get_biggest_throws(team_name)
+        without_percentage = {key: float(value[:-1]) for key, value in biggest_throws.items()}
+        inverse_prob_dict = {key: round(100 - value, 2) for key, value in without_percentage.items()}
+        sorted_dict = dict(sorted(inverse_prob_dict.items(), key=lambda item: item[1], reverse=False))
+        return {key: f"{value}%" for key, value in sorted_dict.items()}
 
     # @profile
     def get_round_probability(self, **kwargs):
@@ -337,10 +345,10 @@ def inverse_prob(x: str) -> str:
 
 if __name__ == "__main__":
     rr_instance = RoundReplay()
-    rr_instance.set_match(77103)
+    rr_instance.set_match(78745)
     rr_instance.choose_round(21)
-    # q = rr_instance.get_clutchy_rounds("atk")
-    q = rr_instance.get_biggest_throws("Team Liquid")
+    q = rr_instance.get_clutchy_rounds("atk")
+    # q = rr_instance.get_biggest_clutches("Team Liquid")
     print(q)
 
     # Convert '8.04%' to 0.0804 and store it on lambda

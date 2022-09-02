@@ -100,7 +100,7 @@ class GraphPlotter:
         return line_color_dict[chosen_side], title_dict[chosen_side]
 
     def plot_round(self, **kwargs):
-        desired_round_number = kwargs.get("round_number", None)
+        desired_round_number = kwargs.get("round_number")
         self.chosen_side = kwargs.get("side", "atk")
         self.choose_round(desired_round_number)
         self.setup_graph_data()

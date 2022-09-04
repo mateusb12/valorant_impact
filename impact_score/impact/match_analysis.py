@@ -150,7 +150,7 @@ class RoundReplay:
         )
         return {key: f"{value}%" for key, value in sorted_d.items()}
 
-    def get_biggest_throws(self, team_name: str) -> dict:
+    def get_biggest_throws(self, team_name: str = "Team Liquid") -> dict:
         original_round = self.chosen_round
         team_sides = self.tools.get_side_dict()
         dtb = self.tools.generate_round_info()
@@ -170,7 +170,7 @@ class RoundReplay:
         sorted_dict = dict(sorted(maximum_probabilities_dict.items(), key=lambda item: item[1], reverse=True))
         return {key: f"{value}%" for key, value in sorted_dict.items()}
 
-    def get_biggest_clutches(self, team_name: str) -> dict:
+    def get_biggest_clutches(self, team_name: str = "Team Liquid") -> dict:
         biggest_throws = self.get_biggest_throws(team_name)
         without_percentage = {key: float(value[:-1]) for key, value in biggest_throws.items()}
         inverse_prob_dict = {key: round(100 - value, 2) for key, value in without_percentage.items()}
@@ -329,12 +329,35 @@ class RoundReplay:
         aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
         return aux_impact
 
+    def most_difficult_rounds(self, match_id: int) -> list[dict]:
+        self.set_match(match_id)
+        round_outcomes = self.tools.generate_side_dict()
+        outcome_pot = []
+        for r in range(1, self.round_amount + 1):
+            self.chosen_round = r
+            final_winner = "def" if round_outcomes[r] == 0 else "atk"
+            prob = self.get_round_probability(side=final_winner, add_events=True)
+            prob_pot = prob["Probability_before_event"].to_list()[:-1] + prob["Probability_after_event"].to_list()[:-1]
+            lowest = min(prob_pot)
+            outcome_pot.append({"Match": match_id, "Round": r, "Lowest": lowest})
+        return sorted(outcome_pot, key=lambda k: k["Lowest"])
 
-def test_single_round(match_id: int, round_number: int):
-    rr = RoundReplay()
-    rr.set_match(match_id)
-    rr.choose_round(round_number)
-    return rr.get_round_probability(side="atk")
+    def most_difficult_rounds_multiple_matches(self, match_list: list[int]) -> pd.DataFrame:
+        round_pot = []
+        for match_id in match_list:
+            print(colored(f"Processing match {match_id}", "green"))
+            query = self.most_difficult_rounds(match_id)
+            round_pot.extend(query)
+        sorted_pot = sorted(round_pot, key=lambda k: k["Lowest"])
+        for item in sorted_pot:
+            item["Lowest"] = f"{100*item['Lowest']:.2f}%"
+        # Convert sorted_pot to a single dict
+        sorted_dict = {"Round": [], "Match": [], "Lowest": []}
+        for item in sorted_pot:
+            sorted_dict["Round"].append(item["Round"])
+            sorted_dict["Match"].append(item["Match"])
+            sorted_dict["Lowest"].append(item["Lowest"])
+        return pd.DataFrame(sorted_dict)
 
 
 def inverse_prob(x: str) -> str:
@@ -343,13 +366,13 @@ def inverse_prob(x: str) -> str:
     return f"{inverse:.2f}%"
 
 
-if __name__ == "__main__":
-    rr_instance = RoundReplay()
-    rr_instance.set_match(78745)
-    rr_instance.choose_round(21)
-    q = rr_instance.get_clutchy_rounds("atk")
-    # q = rr_instance.get_biggest_clutches("Team Liquid")
-    print(q)
+def __main():
+    rr = RoundReplay()
+    rr.set_match(77118)
+    rr.choose_round(21)
+    today_matches = [77118, 77119, 77121, 77122, 77123, 78782, 78783]
+    nice_rounds = rr.most_difficult_rounds_multiple_matches(today_matches)
+    print(nice_rounds)
 
     # Convert '8.04%' to 0.0804 and store it on lambda
     # inverse_q = {key: inverse_prob(value) for key, value in q.items()}
@@ -371,3 +394,7 @@ if __name__ == "__main__":
     #     rr_instance.choose_round(i)
     #     proba_plot.append(rr_instance.get_round_probability(side="atk"))
     # aux = rr_instance.get_round_probability(side="def")
+
+
+if __name__ == "__main__":
+    __main()

@@ -51,6 +51,13 @@ class AnalyserTools:
         return {player: team_sides[value["team_number"]] for player, value in self.a.current_status.items()}
 
     def get_player_name_sides(self, input_round: int) -> dict:
+        """
+        Returns a dictionary of player names and their sides
+        :param input_round: chosen round (int)
+        :return: {'dimasick': 'attacking', 'ScreaM': 'attacking', 'soulcas': 'attacking', 'Melser': 'defending',
+         'adverso': 'defending', 'Tacolilla': 'defending', 'kiNgg': 'defending', 'Jamppi': 'attacking',
+          'Nivera': 'attacking', 'Shyy': 'defending'}
+        """
         self.a.choose_round(input_round)
         players = self.a.map_dict["players"]
         id_dict = {player["player"]["id"]: player["player"]["ign"] for player in players}
@@ -102,7 +109,7 @@ class AnalyserTools:
     def get_round_table(self) -> dict:
         """
         Returns a dictionary of rounds raw order and their IDs
-        :return: round[6] = 509225
+        :return: {1: 1226197, 2: 1226198, 3: 1226199, 4: 1226200, 5: 1226201, 6: 1226202, 7: 1226203, 8: 1226204}
         """
         return {
             round_data["roundNumber"]: round_data["roundId"]
@@ -110,6 +117,17 @@ class AnalyserTools:
         }
 
     def generate_round_info(self) -> dict:
+        """
+        Generates a dictionary with detailed info for each round
+        :return:
+        {1:
+            {'id': 1226197, 'matchId': 77103, 'number': 1, 'winCondition': 'kills', 'winningTeamNumber': 1,
+            'ceremony': 'default', 'team1LoadoutTier': None, 'team2LoadoutTier': None, 'team1LoadoutValue': None,
+            'attacking': {'name': 'Team Liquid', 'id': 2},
+            'defending': {'name': 'Leviathan', 'id': 1},
+            'finalWinner': 0
+        }
+        """
         final_winner_dict = {"attacking": 1, "defending": 0}
         for item in self.round_details:
             self.a.choose_round(item["number"])
@@ -123,10 +141,23 @@ class AnalyserTools:
         return {item["number"]: item for item in self.round_details}
 
     def generate_side_dict(self) -> dict:
+        """
+        Generates a dictionary giving the outcomes of each round
+        :return:
+        {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 1, 7: 0, 8: 1, 9: 1, 10: 0, 11: 1, 12: 0, 13: 1, 14: 1,
+         15: 0, 16: 0, 17: 0, 18: 0, 19: 1, 20: 0, 21: 1, 22: 0, 23: 1}
+        """
         aux = self.generate_round_info()
         return {value["number"]: value["finalWinner"] for value in aux.values()}
 
     def get_side_dict(self) -> dict:
+        """Output format
+        {1:
+            {'Leviathan':
+                {'name': 'Leviatán', 'id': 738, 'team_id': 1, 'side': 'defense', 'outcome': 'win'},
+            'Team Liquid':
+                {'name': 'Team Liquid', 'id': 224, 'team_id': 2, 'side': 'attack', 'outcome': 'loss'}}
+        """
         round_amount = self.a.map_dict["rounds"][-1]["number"]
         side_pattern = self.generate_side_dict()
 
@@ -175,7 +206,7 @@ def __main():
     a.set_match(77103)
     aw = AnalyserTools(a)
     aw.a.choose_round(5)
-    test1 = aw.get_side_dict()
+    test1 = aw.get_player_name_sides(3)
     print(test1)
 
 

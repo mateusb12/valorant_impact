@@ -236,8 +236,8 @@ def inverse_prob(x: str) -> str:
 
 def __main():
     rr = RoundReplay()
-    rr.set_match(77104)
-    rr.choose_round(2)
+    rr.set_match(78746)
+    rr.choose_round(12)
     prob = rr.get_round_probability(side="def", add_events=True)
     print(prob)
 

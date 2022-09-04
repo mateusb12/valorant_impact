@@ -33,12 +33,14 @@ class AnalyserRound:
         if event_type == "defuse":
             self.a.defuse_happened = True
         elif event_type == "kill":
+            damage_type = event["damage_type"]
             self.a.current_status[event["victim"]]["alive"] = False
             player_side = self.sides[event["author"]]
-            if player_side == "attacking":
-                self.atk_kills += 1
-            elif player_side == "defending":
-                self.def_kills += 1
+            if damage_type != "bomb":
+                if player_side == "attacking":
+                    self.atk_kills += 1
+                elif player_side == "defending":
+                    self.def_kills += 1
         elif event_type == "revival":
             self.a.current_status[event["victim"]]["shieldId"] = None
             self.a.current_status[event["victim"]]["alive"] = True
@@ -96,7 +98,7 @@ class AnalyserRound:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(74099)
+    a.set_match(77104)
     ar = AnalyserRound(a)
     ar.pick_round(2)
     aux = ar.generate_full_round()

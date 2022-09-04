@@ -368,11 +368,10 @@ def inverse_prob(x: str) -> str:
 
 def __main():
     rr = RoundReplay()
-    rr.set_match(77118)
-    rr.choose_round(21)
-    today_matches = [77118, 77119, 77121, 77122, 77123, 78782, 78783]
-    nice_rounds = rr.most_difficult_rounds_multiple_matches(today_matches)
-    print(nice_rounds)
+    rr.set_match(77104)
+    rr.choose_round(2)
+    prob = rr.get_round_probability(side="def", add_events=True)
+    print(prob)
 
     # Convert '8.04%' to 0.0804 and store it on lambda
     # inverse_q = {key: inverse_prob(value) for key, value in q.items()}

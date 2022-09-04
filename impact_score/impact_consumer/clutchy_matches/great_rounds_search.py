@@ -8,7 +8,7 @@ def query_great_rounds() -> None:
     match_pool = tourney["Match Id"].to_list()
     rr = RoundReplay()
     great_rounds = rr.most_difficult_rounds_multiple_matches(match_pool)
-    great_rounds.to_csv("great_rounds.csv")
+    great_rounds.to_csv("great_rounds.csv", index=False)
 
 
 def __main():

@@ -116,7 +116,7 @@ class AnalyserGamestate:
 
 
 def __main():
-    a = get_analyser(74033)
+    a = get_analyser(77104)
     ag = AnalyserGamestate(a)
     aux = ag.generate_single_event_values(timestamp=0, winner=0, plant=52502)
     print(aux)

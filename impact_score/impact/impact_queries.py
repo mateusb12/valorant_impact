@@ -5,6 +5,7 @@ from termcolor import colored
 
 from impact_score.impact.match_analysis import RoundReplay
 
+
 class PlayerNotFoundException(Exception):
     pass
 
@@ -38,7 +39,6 @@ class ImpactQuery:
         sorted_pot = sorted(round_pot, key=lambda k: k["Lowest"])
         for item in sorted_pot:
             item["Lowest"] = f"{100 * item['Lowest']:.2f}%"
-        # Convert sorted_pot to a single dict
         sorted_dict = {"Round": [], "Match": [], "Lowest": []}
         for item in sorted_pot:
             sorted_dict["Round"].append(item["Round"])

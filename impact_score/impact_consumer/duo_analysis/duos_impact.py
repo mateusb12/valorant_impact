@@ -12,7 +12,7 @@ from timeit import default_timer as timer
 from impact_score.model.progress_printer import time_metrics
 
 
-def handle_kill_or_revival(attacker_pool: list[str], defender_pool: list[str], player_sides: dict, row: pd.Series):
+def __handle_kill_or_revival(attacker_pool: list[str], defender_pool: list[str], player_sides: dict, row: pd.Series):
     victim_name = row["victim"]
     victim_side = player_sides[victim_name]
     if victim_side == "attacking":
@@ -27,7 +27,7 @@ def handle_kill_or_revival(attacker_pool: list[str], defender_pool: list[str], p
             defender_pool.append(victim_name)
 
 
-def query_clutch_situations(match_id: int) -> dict:
+def __query_clutch_situations(match_id: int) -> dict:
     a = analyser_pool.acquire()
     a.set_match(match_id)
     aw = AnalyserTools(a)
@@ -43,7 +43,7 @@ def query_clutch_situations(match_id: int) -> dict:
         situation_pot = []
         for index, row in query.iterrows():
             if row["event"] in ["kill", "revival"]:
-                handle_kill_or_revival(attacker_pool, defender_pool, player_sides, row)
+                __handle_kill_or_revival(attacker_pool, defender_pool, player_sides, row)
                 situation = f"{len(attacker_pool)}vs{len(defender_pool)}"
                 winner_dict = {0: "defense", 1: "attack"}
                 situation_dict = {"situation": situation,
@@ -56,20 +56,20 @@ def query_clutch_situations(match_id: int) -> dict:
     return round_book
 
 
-def query_hardest_situations(match_id: int):
+def __query_hardest_situations(match_id: int):
     clutch_type = 2
     situations = [f"{i}vs{j}" for i in range(1, 6) for j in range(1, 6)]
     clutch_pattern = [item for item in situations if int(item[0]) == clutch_type or int(item[-1]) == clutch_type]
-    round_data = query_clutch_situations(match_id)
+    round_data = __query_clutch_situations(match_id)
     duo_dict = {}
     for round_events in round_data.values():
         if matching_pattern := [item for item in round_events if item["situation"] in clutch_pattern]:
             for event in matching_pattern:
-                handle_mid_round_event(duo_dict, event, matching_pattern)
+                __handle_mid_round_event(duo_dict, event, matching_pattern)
     return duo_dict
 
 
-def handle_mid_round_event(duo_dict: dict, event: dict, matching_pattern: list[dict]):
+def __handle_mid_round_event(duo_dict: dict, event: dict, matching_pattern: list[dict]):
     situation_tag = event["situation"]
     if situation_tag not in duo_dict:
         duo_dict[situation_tag] = []
@@ -96,8 +96,8 @@ def handle_mid_round_event(duo_dict: dict, event: dict, matching_pattern: list[d
         duo_dict[situation_tag].append(new_copy)
 
 
-def generate_query_dataframe(match_id: int) -> pd.DataFrame:
-    data = query_hardest_situations(match_id)
+def __generate_query_dataframe(match_id: int) -> pd.DataFrame:
+    data = __query_hardest_situations(match_id)
     df = pd.DataFrame()
     for situation in data:
         df = df.append(data[situation])
@@ -105,9 +105,9 @@ def generate_query_dataframe(match_id: int) -> pd.DataFrame:
     return df
 
 
-def aggregate_single_dataframe(match_id: int) -> pd.DataFrame:
+def __aggregate_single_dataframe(match_id: int) -> pd.DataFrame:
     print(colored(f"Processing match {match_id}", "green"))
-    df = generate_query_dataframe(match_id)
+    df = __generate_query_dataframe(match_id)
     df["win"] = df["outcome"] == "won"
     df["loss"] = df["outcome"] == "lost"
     df["win"] = df["win"].astype(int)
@@ -138,7 +138,7 @@ def aggregate_multiple_dataframes() -> pd.DataFrame:
 
 
 def generate_match_pot() -> list[pd.DataFrame]:
-    match_list = pd.read_csv("vct_matches.csv")["Match Id"].tolist()
+    match_list = pd.read_csv("../vct_matches.csv")["Match Id"].tolist()
     start = timer()
     size = len(match_list)
     df_pot = []
@@ -147,7 +147,7 @@ def generate_match_pot() -> list[pd.DataFrame]:
         print(colored(f"Processing match #{index} of {len(match_list)}", "green"))
         time_metrics(start=start, end=loop, index=index, size=size, tag="match", element=match_id)
         try:
-            df = aggregate_single_dataframe(match_id)
+            df = __aggregate_single_dataframe(match_id)
         except (KeyError, ValueError) as e:
             continue
         else:

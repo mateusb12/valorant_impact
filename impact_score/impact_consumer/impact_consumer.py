@@ -240,7 +240,8 @@ def __main():
     match_id = 77100
     a = get_analyser(match_id)
     ae = AnalyserExporter(a)
-    generate_probability_graph(match_id=77100, round_number=3)
+    prob_Df = pd.DataFrame(export_probabilities(match_id))
+    details_df = export_impact(a, ae, prob_Df)
     aux = 5 + 1
     # test4 = export_impact(match_id=65588, input_analyser=a)
     print("hey")

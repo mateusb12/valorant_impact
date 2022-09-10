@@ -55,7 +55,8 @@ class ValorantDatasetGenerator:
 
     @staticmethod
     def __get_all_split_files():
-        return [f.name for f in Path(datasets_reference(), "split").iterdir() if f.name != "__init__.py"]
+        file_list = Path(datasets_reference(), "split").iterdir()
+        return [f.name for f in file_list if f.name != "__init__.py"]
 
     @staticmethod
     def __get_all_dataset_files():
@@ -106,9 +107,10 @@ class ValorantDatasetGenerator:
         for ref in ref_pot:
             os.remove(ref)
 
-    def run_pipeline(self, amount: int, filename: str):
-        self.__split_dataset(amount=amount)
-        for file in self.__get_all_split_files():
+    def run_pipeline(self, split_amount: int, filename: str):
+        self.__split_dataset(amount=split_amount)
+        split_files = self.__get_all_split_files()
+        for file in split_files:
             self.__set_file(file)
             self.__export_dataset()
         dat = self.__get_all_dataset_files()
@@ -118,6 +120,6 @@ class ValorantDatasetGenerator:
 
 if __name__ == "__main__":
     vdg = ValorantDatasetGenerator()
-    vdg.run_pipeline(amount=5, filename="100.csv")
+    vdg.run_pipeline(split_amount=5, filename="100.csv")
     # vdg.export_dataset()
     # print(vm.broken_matches)

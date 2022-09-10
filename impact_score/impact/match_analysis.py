@@ -227,6 +227,26 @@ class RoundReplay:
         table = table.fillna(0)
         return table
 
+    def get_round_saving_impact(self, input_round: int = 1):
+        prob = self.get_round_probability(round_number=input_round, side="atk")
+        current_round_events = self.events_data[self.chosen_round]
+        dead_player_ids = [x["referencePlayerId"] for x in current_round_events
+                           if x["eventType"] == "kill" and x["eventType"] != "revival"]
+        alive_players = [value["player_name"] for key, value in self.exporter.export_player_details().items()
+                         if key not in dead_player_ids]
+        dead_players = [x["player_name"] for x in self.exporter.export_player_details().values() if
+                        x["player_id"] in dead_player_ids]
+        return 0
+
+    def get_overall_saving_impact(self):
+        round_outcomes = self.analyser.map_dict["rounds"]
+        possible_saving_rounds = [item for item in round_outcomes if item["winCondition"] != "kills"]
+        for v_round in possible_saving_rounds:
+            round_number = v_round["number"]
+            win_condition = v_round["winCondition"]
+            saving_impact = self.get_round_saving_impact(input_round=round_number)
+            return 0
+
 
 def inverse_prob(x: str) -> str:
     numerical = float(x[:-1]) / 100
@@ -238,8 +258,9 @@ def __main():
     rr = RoundReplay()
     rr.set_match(78746)
     rr.choose_round(12)
-    prob = rr.get_round_probability(side="def", add_events=True)
-    print(prob)
+    # prob = rr.get_round_probability(side="def", add_events=True)
+    rr.get_overall_saving_impact()
+    print(rr)
 
     # Convert '8.04%' to 0.0804 and store it on lambda
     # inverse_q = {key: inverse_prob(value) for key, value in q.items()}

@@ -29,7 +29,8 @@ class RoundReplay:
         self.model: lightgbm.LGBMClassifier = self.vm.model
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
-        self.analyser, self.exporter, self.wrapper, self.tools = [None] * 4
+        self.analyser, self.exporter, self.wrapper, self.tools, self.round_outcomes = [None] * 5
+        self.current_round_events = None
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -51,6 +52,7 @@ class RoundReplay:
         self.events_data = aux_dict
         # self.side_dict = dict(zip(self.df.RoundNumber, self.df.FinalWinner))
         self.side_dict = self.tools.generate_side_dict()
+        self.round_outcomes = self.analyser.map_dict["rounds"]
 
     def choose_round(self, round_number: int):
         self.chosen_round = round_number
@@ -109,6 +111,7 @@ class RoundReplay:
         return pd.concat([first_slice, new_row, second_slice]).reset_index(drop=True)
 
     def __handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
+        """ Set hardcoded probabilities for special situations """
         situation_type = kwargs["situation"]
         events = kwargs["events"]
         first_index = int(input_table.index[0])
@@ -155,20 +158,72 @@ class RoundReplay:
         old_table = self.__get_round_dataframe(round_number)
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
+        side = kwargs["side"]
+        self.side = side
         displaced_dict = self.__get_displaced_preds(table)
         displaced_pred = displaced_dict["displaced"]
         default_pred = displaced_dict["default"]
         table["Probability_before_event"] = displaced_pred
         table["Probability_after_event"] = default_pred
-        side = kwargs["side"]
-        self.side = side
         if side == "def":
             table['Probability_before_event'] = 1 - table['Probability_before_event']
             table['Probability_after_event'] = 1 - table['Probability_after_event']
         table["Round"] = round_number
-        current_round_events = self.events_data[self.chosen_round]
-        round_millis = [x["roundTimeMillis"] for x in current_round_events]
+        self.current_round_events = self.events_data[self.chosen_round]
+        self.__analyse_special_situation(table)
+
+        table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
+        table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
+                       "Impact"]]
+
+        if "add_events" in kwargs and kwargs["add_events"]:
+            self.__append_round_events_to_probability_dataframe(table)
+
+        saving_guys = self.__generate_saving_players()
+        table = table.fillna(0)
+        return table
+
+    def __generate_saving_players(self) -> list[str]:
+        dead_player_ids = [x["referencePlayerId"] for x in self.current_round_events
+                           if x["eventType"] == "kill" and x["eventType"] != "revival"]
+        player_details = self.exporter.export_player_details()
+        alive_players = [value["player_name"] for key, value in player_details.items()
+                         if key not in dead_player_ids]
+        player_sides = self.tools.get_player_name_sides(self.chosen_round)
+        round_outcome = [item for item in self.round_outcomes if item["number"] == self.chosen_round][0]
+        win_condition = round_outcome["winCondition"]
+        return [player for player in alive_players
+                if win_condition in ("defuse", "time")
+                and player_sides[player] == "attacking"
+                or win_condition not in ("defuse", "time")
+                and win_condition == "bomb" and player_sides[player] == "defending"]
+
+    def __analyse_special_situation(self, table: pd.DataFrame):
+        """ This method is used to analyse which special situation the current round belongs
+        (like defuse, clean kills, clean defuses, etc.) and then handle that situation accordingly. """
+        round_millis = [x["roundTimeMillis"] for x in self.current_round_events]
         max_millis = max(round_millis)
+        event_ids = self.generate_events_ids(self.current_round_events)
+        table["EventID"] = event_ids
+        event_types = [x["eventType"] for x in self.current_round_events]
+        after_explosion = False
+        if "plant" in event_types:
+            plant_millis = round_millis[event_types.index("plant")]
+            self.explosion_millis = plant_millis + 45000
+            if max_millis >= self.explosion_millis:
+                after_explosion = True
+        if "defuse" in event_types:
+            situation_type = "clean_defuse" if event_types[-1] == "defuse" else "after_defuse"
+        elif after_explosion:
+            situation_type = "after_explosion"
+        else:
+            situation_type = "timeout" if max_millis >= 100000 and "plant" not in event_types else "clean_kill"
+        table["EventType"] = event_types
+        self.__handle_special_situation(table, situation=situation_type, events=event_types)
+
+    @staticmethod
+    def generate_events_ids(current_round_events: list[dict]) -> list[int]:
+        """ Generate a list of event ids for each event in the round """
         event_ids = []
         for x in current_round_events:
             raw_ids = [x["killId"], x["bombId"], x["resId"]]
@@ -178,54 +233,28 @@ class RoundReplay:
                 Exception("Error in query")
             else:
                 event_ids.append(query_id[0])
-        table["EventID"] = event_ids
-        event_types = [x["eventType"] for x in current_round_events]
-        after_explosion = False
-        if "plant" in event_types:
-            plant_millis = round_millis[event_types.index("plant")]
-            self.explosion_millis = plant_millis + 45000
-            if max_millis >= self.explosion_millis:
-                after_explosion = True
+        return event_ids
 
-        if "defuse" in event_types:
-            situation_type = "clean_defuse" if event_types[-1] == "defuse" else "after_defuse"
-        elif after_explosion:
-            situation_type = "after_explosion"
-        else:
-            situation_type = "timeout" if max_millis >= 100000 and "plant" not in event_types else "clean_kill"
-
-        # event_types.insert(0, "start")
-        table["EventType"] = event_types
-
-        self.__handle_special_situation(table, situation=situation_type, events=event_types)
-
-        table["Impact"] = abs(table["Probability_after_event"] - table["Probability_before_event"])
-        table = table[["Round", "EventID", "EventType", "Probability_before_event", "Probability_after_event",
-                       "Impact"]]
-
-        if "add_events" in kwargs and kwargs["add_events"]:
-            event_df = pd.DataFrame(current_round_events)
-            event_df = event_df.fillna(0)
-            int_columns = ['killId', 'tradedByKillId', 'tradedForKillId', 'bombId', 'resId',
-                           'playerId', 'referencePlayerId', 'weaponId']
-            event_df[int_columns] = event_df[int_columns].astype(int)
-            weapon_name_data = {int(key): value["name"] for key, value in self.analyser.weapon_data.items()}
-            player_data = self.exporter.export_player_details()
-            player_names = {key: value["player_name"] for key, value in player_data.items()}
-            player_agents = {key: value["agent_name"] for key, value in player_data.items()}
-            player_names[0], player_agents[0], weapon_name_data[0] = 0, 0, 0
-            killers = event_df["playerId"].tolist()
-            killer_names = [player_names[x] for x in killers]
-            # table["Killer"] = event_df["playerId"].map(player_names).values
-            table["Killer"] = [player_names[x] for x in killers]
-            table["KillerAgent"] = event_df["playerId"].map(player_agents).values
-            table["Weapon"] = event_df["weaponId"].map(weapon_name_data).values
-            table["Ability"] = event_df["ability"].values
-            table["Victim"] = event_df["referencePlayerId"].map(player_names).values
-            table["VictimAgent"] = event_df["referencePlayerId"].map(player_agents).values
-
-        table = table.fillna(0)
-        return table
+    def __append_round_events_to_probability_dataframe(self, table: pd.DataFrame):
+        event_df = pd.DataFrame(self.current_round_events)
+        event_df = event_df.fillna(0)
+        int_columns = ['killId', 'tradedByKillId', 'tradedForKillId', 'bombId', 'resId',
+                       'playerId', 'referencePlayerId', 'weaponId']
+        event_df[int_columns] = event_df[int_columns].astype(int)
+        weapon_name_data = {int(key): value["name"] for key, value in self.analyser.weapon_data.items()}
+        player_data = self.exporter.export_player_details()
+        player_names = {key: value["player_name"] for key, value in player_data.items()}
+        player_agents = {key: value["agent_name"] for key, value in player_data.items()}
+        player_names[0], player_agents[0], weapon_name_data[0] = 0, 0, 0
+        killers = event_df["playerId"].tolist()
+        killer_names = [player_names[x] for x in killers]
+        # table["Killer"] = event_df["playerId"].map(player_names).values
+        table["Killer"] = [player_names[x] for x in killers]
+        table["KillerAgent"] = event_df["playerId"].map(player_agents).values
+        table["Weapon"] = event_df["weaponId"].map(weapon_name_data).values
+        table["Ability"] = event_df["ability"].values
+        table["Victim"] = event_df["referencePlayerId"].map(player_names).values
+        table["VictimAgent"] = event_df["referencePlayerId"].map(player_agents).values
 
     def get_round_saving_impact(self, input_round: int = 1):
         prob = self.get_round_probability(round_number=input_round, side="atk")
@@ -257,9 +286,9 @@ def inverse_prob(x: str) -> str:
 def __main():
     rr = RoundReplay()
     rr.set_match(78746)
-    rr.choose_round(12)
-    # prob = rr.get_round_probability(side="def", add_events=True)
-    rr.get_overall_saving_impact()
+    rr.choose_round(16)
+    prob = rr.get_round_probability(side="def", add_events=True)
+    # rr.get_overall_saving_impact()
     print(rr)
 
     # Convert '8.04%' to 0.0804 and store it on lambda

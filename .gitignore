@@ -5,3 +5,8 @@
 /webscrapping/delete.txt
 /webscrapping/geckodriver.log
 *.pyc
+/impact_score/impact_consumer/clutchy_matches/great_rounds.csv
+/impact_score/impact_consumer/clutchy_matches/tourney.csv
+/impact_score/impact_consumer/vct_matches.csv
+/webscrapping/json_matches/67207.json
+/webscrapping/json_matches/74680.json

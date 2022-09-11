@@ -186,28 +186,41 @@ class RoundReplay:
                         if self.chosen_round != self.round_amount else None]
         details = self.exporter.export_player_details()
         sides = self.player_sides
-        for index, economy_dict in enumerate(economy_pool):
-            for key, value in economy_dict.items():
-                value["player_name"] = details[key]["player_name"]
-                value["agent"] = details[key]["agent_name"]
-            economy_pool[index] = {v["player_name"]: v for k, v in economy_dict.items()}
         current_economy = economy_pool[0]
         next_economy = economy_pool[1]
+        gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
+                    2900: ("Phantom", "Vandal")}
+        saved_guns = []
         for key, value in current_economy.items():
             if key in saving_guys:
                 gun_contribution_value = int(value["weapon"]["price"])
+                saved_guns.append(value["weapon"])
                 operator_contribution = 1 if value["weapon"] == "operator" else 0
                 side_contribution = "ATK" if saving_guys_side == "attacking" else "DEF"
-                contribution = {f"{side_contribution}_loadoutValue": gun_contribution_value,
-                                f"{side_contribution}_operators": operator_contribution}
-                next_economy[key]["savingContribution"] = contribution
                 next_economy[key]["savedWeapon"] = value["weapon"]
-                next_creds = next_economy[key]["remainingCreds"]
-                gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
-                            2900: ("Phantom", "Vandal")}
+                loss_bonus_table = self.tools.get_round_loss_bonus_by_players(self.chosen_round)
+                current_loss_bonus = loss_bonus_table[key]
+                current_creds = value["remainingCreds"]
+                next_creds_with_saving = next_economy[key]["remainingCreds"]
+                next_creds_without_saving = current_creds + current_loss_bonus
+                most_expensive_available_weapon = max(k for k in gun_shop if k <= next_creds_without_saving)
+                loadout_diff = gun_contribution_value - most_expensive_available_weapon
+                contribution = {f"{side_contribution}_loadoutValue": loadout_diff,
+                                f"{side_contribution}_operators": operator_contribution,
+                                "side": side_contribution}
+                next_economy[key]["savingContribution"] = contribution
+                print("Oi")
         self.previous_round_saving_guys = next_economy
+        for key, value in next_economy.items():
+            player_side = self.player_sides[key]
+            value["side"] = player_side
+        saving_team = {k: v for k, v in next_economy.items() if v["side"] == saving_guys_side}
+        credits_per_player = [v["remainingCreds"] for k, v in saving_team.items()]
+        saved_guns_pool = saved_guns.copy()
+        affordable_saved_guns_per_player = [item//int(saved_guns_pool[0]["price"]) for item in credits_per_player]
 
         next_table = self.__get_round_dataframe(round_number + 1)[all_features].copy()[:2]
+        next_table.iloc[1] = next_table.iloc[0].copy()
         beginning = next_table.iloc[0]
         probs = self.model.predict_proba(next_table)
 

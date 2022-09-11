@@ -200,14 +200,35 @@ class AnalyserTools:
             final_dict[key] = {winner_name: new_value[winner_tag], loser_name: new_value[loser_tag]}
         return final_dict
 
+    def get_player_id_to_name_table(self) -> dict:
+        """Get a dictionary with player ids as keys and player names as values
+        :return:
+        {1: 'Jame', 2: 'Relyks', 3: 'FNS', 4: 'nitr0', 5: 'Stewie2K',
+         6: 'Twistzz', 7: 'EliGE', 8: 'Brehze', 9: 'NAF', 10: 'Sonic'}"""
+        map_dict = self.a.map_dict
+        player_data = [item["player"] for item in map_dict["players"]]
+        return {player["id"]: player["ign"] for player in player_data}
+
     def get_economy_dict(self, round_number: int) -> dict:
+        """ Get a dictionary with the economy of each player in a given round
+        :param round_number: The round number
+        :return:
+        {"adverso": {'roundId': 1226860, 'round_number': 4, 'armorId': 2, 'remainingCreds': 0, 'spentCreds': 4300,
+                    'loadoutValue': 4300, 'agent': {'name': 'Viper', 'role': Controller},
+                     'weapon': 'name': 'Vandal', 'price': 2900},
+        "Benkai": {'roundId': 1226860, 'round_number': 4, 'armorId': 2, 'remainingCreds': 150, 'spentCreds': 450,
+                    'loadoutValue': 4350, 'agent': {'name': 'Breach', 'role': Initiator},
+                        'weapon': 'name': 'Vandal', 'price': 2900}}
+        """
         economy_pool = self.a.data["matches"]["matchDetails"]["economies"]
         round_economies = [economy for economy in economy_pool if economy["roundNumber"] == round_number]
+        player_ids = self.get_player_id_to_name_table()
         player_economies = {}
         for economy in round_economies:
             economy["agent"] = self.a.agent_data[str(economy["agentId"])]
             economy["weapon"] = self.a.weapon_data[str(economy["weaponId"])]
-            player_economies[economy["playerId"]] = economy
+            player_name = player_ids[economy["playerId"]]
+            player_economies[player_name] = economy
         return player_economies
 
     def get_round_loss_bonus_by_players(self, round_number: int):
@@ -243,6 +264,19 @@ class AnalyserTools:
         current_loss_streak_bonus = loss_streak_bonus_table[loss_streak]
         return {player: current_loss_streak_bonus for player in losing_players}
 
+    def can_team_full_buy_this_round(self, round_number: int) -> bool:
+        """Checks if a team can perform a full buy in a given round"""
+        team_economy = self.get_economy_dict(round_number)
+        loss_bonus = self.get_round_loss_bonus_by_players(round_number)
+        losing_team_economy = {key: value for key, value in team_economy.items() if key in loss_bonus}
+        shield_table = {None: "no shields", 1: "light shields", 2: "full shields"}
+        losing_team_shields = [shield_table[item["armorId"]] for item in losing_team_economy.values()]
+
+        losing_team_weapons = [int(item["weapon"]["price"]) for item in losing_team_economy.values()]
+        full_shield_buy = all(item == "full shields" for item in losing_team_shields)
+        full_weapon_buy = all(item >= 2900 for item in losing_team_weapons)
+        return full_shield_buy and full_weapon_buy
+
 
 def __main():
     a = analyser_pool.acquire()
@@ -253,7 +287,7 @@ def __main():
     #     print(i)
     #     test1 = aw.get_round_loss_bonus_by_players(i)
     #     print(test1)
-    test1 = aw.get_round_loss_bonus_by_players(13)
+    test1 = aw.can_team_full_buy_this_round(4)
     print(test1)
 
 

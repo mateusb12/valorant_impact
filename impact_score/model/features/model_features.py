@@ -9,14 +9,14 @@ def prepare_dataset(filename: str = "4000.csv") -> pd.DataFrame:
     dataset_folder = Path(datasets_reference(), filename)
     df = pd.read_csv(dataset_folder)
     dataset_columns = list(df.columns)
-    generate_role_diff(df)
+    # generate_role_diff(df)
     index_f = __get_index_features()
     map_f = __get_map_features()
     red_f = __get_redundant_side_features()
     weak_f = __get_weak_features()
     features_to_remove = index_f + map_f + red_f + weak_f
-    all_features = [feature for feature in features_to_remove if feature in dataset_columns]
-    df = df.drop(all_features, axis=1)
+    all_useless_features = [feature for feature in features_to_remove if feature in dataset_columns]
+    df = df.drop(all_useless_features, axis=1)
     df = df.fillna(0)
     final_features = list(df.columns)
     return df
@@ -40,7 +40,8 @@ def __get_redundant_side_features() -> list[str]:
 
 
 def __get_weak_features() -> list[str]:
-    return ["Loadout_diff"]
+    return ['Sentinel_loadout_diff', 'Initiator_loadout_diff', 'Controller_loadout_diff',
+            'Duelist_loadout_diff']
 
 
 def generate_role_diff(input_df: pd.DataFrame) -> None:

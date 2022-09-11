@@ -30,7 +30,7 @@ class RoundReplay:
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
         self.analyser, self.exporter, self.wrapper, self.tools, self.round_outcomes = [None] * 5
-        self.current_round_events = None
+        self.current_round_events, self.player_sides = [None] * 2
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -111,7 +111,7 @@ class RoundReplay:
         return pd.concat([first_slice, new_row, second_slice]).reset_index(drop=True)
 
     def __handle_special_situation(self, input_table: pd.DataFrame, **kwargs):
-        """ Set hardcoded probabilities for special situations """
+        """ Set hardcoded probabilities for end of the round situations """
         situation_type = kwargs["situation"]
         events = kwargs["events"]
         first_index = int(input_table.index[0])
@@ -179,24 +179,51 @@ class RoundReplay:
         if "add_events" in kwargs and kwargs["add_events"]:
             self.__append_round_events_to_probability_dataframe(table)
 
-        saving_guys = self.__generate_saving_players()
+        saving_guys = self.__search_players_who_are_saving()
+        saving_guys_side = self.player_sides[saving_guys[0]]
+        economy_pool = [self.tools.get_economy_dict(self.chosen_round),
+                        self.tools.get_economy_dict(self.chosen_round + 1)
+                        if self.chosen_round != self.round_amount else None]
+        details = self.exporter.export_player_details()
+        for index, economy_dict in enumerate(economy_pool):
+            for key, value in economy_dict.items():
+                value["player_name"] = details[key]["player_name"]
+                value["agent"] = details[key]["agent_name"]
+            economy_pool[index] = {v["player_name"]: v for k, v in economy_dict.items()}
+        current_economy = economy_pool[0]
+        next_economy = economy_pool[1]
+        for key, value in current_economy.items():
+            if key in saving_guys:
+                gun_contribution = value["weapon"]["price"]
+                next_economy_values = next_economy[key]
+                next_economy_creds = next_economy_values["remainingCreds"]
+                operator_contribution = 1 if value["weapon"] == "operator" else 0
+                side_contribution = "ATK" if saving_guys_side == "attacking" else "DEF"
+                player_agent_role = self.analyser.agent_data[str(value["agentId"])]["role"]
+                contribution = {f"{side_contribution}_loadoutValue": gun_contribution,
+                                f"{side_contribution}_operators": operator_contribution,
+                                f"{side_contribution}_{player_agent_role}": gun_contribution}
+                value["contribution"] = contribution
+                print("Oi")
+        current_economy_saving_players = {k: v for k, v in current_economy.items() if k in saving_guys}
+
         table = table.fillna(0)
         return table
 
-    def __generate_saving_players(self) -> list[str]:
+    def __search_players_who_are_saving(self) -> list[str]:
         dead_player_ids = [x["referencePlayerId"] for x in self.current_round_events
                            if x["eventType"] == "kill" and x["eventType"] != "revival"]
         player_details = self.exporter.export_player_details()
         alive_players = [value["player_name"] for key, value in player_details.items()
                          if key not in dead_player_ids]
-        player_sides = self.tools.get_player_name_sides(self.chosen_round)
+        self.player_sides = self.tools.get_player_name_sides(self.chosen_round)
         round_outcome = [item for item in self.round_outcomes if item["number"] == self.chosen_round][0]
         win_condition = round_outcome["winCondition"]
         return [player for player in alive_players
                 if win_condition in ("defuse", "time")
-                and player_sides[player] == "attacking"
+                and self.player_sides[player] == "attacking"
                 or win_condition not in ("defuse", "time")
-                and win_condition == "bomb" and player_sides[player] == "defending"]
+                and win_condition == "bomb" and self.player_sides[player] == "defending"]
 
     def __analyse_special_situation(self, table: pd.DataFrame):
         """ This method is used to analyse which special situation the current round belongs
@@ -255,26 +282,6 @@ class RoundReplay:
         table["Ability"] = event_df["ability"].values
         table["Victim"] = event_df["referencePlayerId"].map(player_names).values
         table["VictimAgent"] = event_df["referencePlayerId"].map(player_agents).values
-
-    def get_round_saving_impact(self, input_round: int = 1):
-        prob = self.get_round_probability(round_number=input_round, side="atk")
-        current_round_events = self.events_data[self.chosen_round]
-        dead_player_ids = [x["referencePlayerId"] for x in current_round_events
-                           if x["eventType"] == "kill" and x["eventType"] != "revival"]
-        alive_players = [value["player_name"] for key, value in self.exporter.export_player_details().items()
-                         if key not in dead_player_ids]
-        dead_players = [x["player_name"] for x in self.exporter.export_player_details().values() if
-                        x["player_id"] in dead_player_ids]
-        return 0
-
-    def get_overall_saving_impact(self):
-        round_outcomes = self.analyser.map_dict["rounds"]
-        possible_saving_rounds = [item for item in round_outcomes if item["winCondition"] != "kills"]
-        for v_round in possible_saving_rounds:
-            round_number = v_round["number"]
-            win_condition = v_round["winCondition"]
-            saving_impact = self.get_round_saving_impact(input_round=round_number)
-            return 0
 
 
 def inverse_prob(x: str) -> str:

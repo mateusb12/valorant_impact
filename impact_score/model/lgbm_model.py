@@ -181,7 +181,7 @@ def existing_pkl() -> bool:
 
 if __name__ == "__main__":
     vm = get_trained_model_from_csv()
-    vm.train_model(optuna_study=False)
+    vm.train_model(optuna_study=True)
     vm.export_model_to_pkl()
     print(vm.model.feature_name_)
     # # vm.import_model_from_file()

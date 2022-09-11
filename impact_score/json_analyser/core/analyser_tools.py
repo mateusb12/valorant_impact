@@ -200,13 +200,23 @@ class AnalyserTools:
             final_dict[key] = {winner_name: new_value[winner_tag], loser_name: new_value[loser_tag]}
         return final_dict
 
+    def get_economy_dict(self, round_number: int) -> dict:
+        economy_pool = self.a.data["matches"]["matchDetails"]["economies"]
+        round_economies = [economy for economy in economy_pool if economy["roundNumber"] == round_number]
+        player_economies = {}
+        for economy in round_economies:
+            economy["agent"] = self.a.agent_data[str(economy["agentId"])]
+            economy["weapon"] = self.a.weapon_data[str(economy["weaponId"])]
+            player_economies[economy["playerId"]] = economy
+        return player_economies
+
 
 def __main():
     a = analyser_pool.acquire()
     a.set_match(77103)
     aw = AnalyserTools(a)
     aw.a.choose_round(5)
-    test1 = aw.get_player_name_sides(3)
+    test1 = aw.get_economy_dict(3)
     print(test1)
 
 

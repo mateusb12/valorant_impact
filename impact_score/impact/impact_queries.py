@@ -19,7 +19,7 @@ class ImpactQuery:
 
     def __most_difficult_rounds(self, match_id: int) -> list[dict]:
         self.rr.set_match(match_id)
-        round_outcomes = self.rr.tools.generate_side_dict()
+        round_outcomes = self.rr.tools.generate_side_outcomes_dict()
         outcome_pot = []
         for r in range(1, self.rr.round_amount + 1):
             self.rr.chosen_round = r

@@ -140,7 +140,7 @@ class AnalyserTools:
             item["finalWinner"] = final_winner_dict[current_sides[item["winningTeamNumber"]]]
         return {item["number"]: item for item in self.round_details}
 
-    def generate_side_dict(self) -> dict:
+    def generate_side_outcomes_dict(self) -> dict:
         """
         Generates a dictionary giving the outcomes of each round
         :return:
@@ -159,7 +159,7 @@ class AnalyserTools:
                 {'name': 'Team Liquid', 'id': 224, 'team_id': 2, 'side': 'attack', 'outcome': 'loss'}}
         """
         round_amount = self.a.map_dict["rounds"][-1]["number"]
-        side_pattern = self.generate_side_dict()
+        side_pattern = self.generate_side_outcomes_dict()
 
         pattern = ["normal"] * 12
         if 12 < round_amount < 24:
@@ -210,13 +210,50 @@ class AnalyserTools:
             player_economies[economy["playerId"]] = economy
         return player_economies
 
+    def get_round_loss_bonus_by_players(self, round_number: int):
+        """Gets the round loss bonus for each player in a given round.
+        A team earns 1900 credits per member for a single round loss
+        A team earns 2400 credits per member for a double round loss
+        A team earns 2900 credits per member for 3 round losses or more in a row"""
+        players = self.a.map_dict["players"]
+        team_1_players = [item["player"] for item in players if item["teamNumber"] == 1]
+        outcomes = self.generate_side_outcomes_dict()
+        side_format = {0: "defending", 1: "attacking"}
+        mirrored_side_format = {1: "defending", 0: "attacking"}
+        last_round_outcome = outcomes[round_number - 1] if round_number not in (1, 13) else None
+        if last_round_outcome is None:
+            return {player["ign"]: 0 for player in team_1_players}
+        last_round_winning_side = side_format[last_round_outcome]
+        last_round_defeated_side = mirrored_side_format[last_round_outcome]
+        side_table = self.get_player_name_sides(round_number)
+        losing_players = [player for player in side_table if side_table[player] != last_round_winning_side]
+        penultimate_round_outcome = outcomes[round_number - 2] if round_number not in (1, 13, 2, 14) else None
+        penultimate_round_losing_side = mirrored_side_format[penultimate_round_outcome] \
+            if penultimate_round_outcome is not None else None
+        antepenultimate_round_outcome = outcomes[round_number - 3] \
+            if round_number not in (1, 13, 2, 14, 3, 15) else None
+        antepenultimate_round_losing_side = mirrored_side_format[antepenultimate_round_outcome]\
+            if antepenultimate_round_outcome is not None else None
+        loss_streak = 1
+        if last_round_defeated_side == penultimate_round_losing_side:
+            loss_streak += 1
+        if last_round_defeated_side == antepenultimate_round_losing_side:
+            loss_streak += 1
+        loss_streak_bonus_table = {0: 0, 1: 1900, 2: 2400, 3: 2900}
+        current_loss_streak_bonus = loss_streak_bonus_table[loss_streak]
+        return {player: current_loss_streak_bonus for player in losing_players}
+
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(77103)
+    a.set_match(78746)
     aw = AnalyserTools(a)
-    aw.a.choose_round(5)
-    test1 = aw.get_economy_dict(3)
+    aw.a.choose_round(1)
+    # for i in range(1, 25):
+    #     print(i)
+    #     test1 = aw.get_round_loss_bonus_by_players(i)
+    #     print(test1)
+    test1 = aw.get_round_loss_bonus_by_players(13)
     print(test1)
 
 

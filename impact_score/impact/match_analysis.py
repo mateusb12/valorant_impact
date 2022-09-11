@@ -30,7 +30,7 @@ class RoundReplay:
         self.chosen_round, self.player_impact, self.round_amount, self.df, self.round_table, self.query = [None] * 6
         self.feature_df, self.events_data, self.side, self.side_dict, self.explosion_millis = [None] * 5
         self.analyser, self.exporter, self.wrapper, self.tools, self.round_outcomes = [None] * 5
-        self.current_round_events, self.player_sides = [None] * 2
+        self.current_round_events, self.player_sides, self.previous_round_saving_guys = [None] * 3
 
     def set_match(self, match_id: int):
         self.match_id = match_id
@@ -51,7 +51,7 @@ class RoundReplay:
             aux_dict[item["roundNumber"]].append(item)
         self.events_data = aux_dict
         # self.side_dict = dict(zip(self.df.RoundNumber, self.df.FinalWinner))
-        self.side_dict = self.tools.generate_side_dict()
+        self.side_dict = self.tools.generate_side_outcomes_dict()
         self.round_outcomes = self.analyser.map_dict["rounds"]
 
     def choose_round(self, round_number: int):
@@ -185,6 +185,7 @@ class RoundReplay:
                         self.tools.get_economy_dict(self.chosen_round + 1)
                         if self.chosen_round != self.round_amount else None]
         details = self.exporter.export_player_details()
+        sides = self.player_sides
         for index, economy_dict in enumerate(economy_pool):
             for key, value in economy_dict.items():
                 value["player_name"] = details[key]["player_name"]
@@ -194,18 +195,21 @@ class RoundReplay:
         next_economy = economy_pool[1]
         for key, value in current_economy.items():
             if key in saving_guys:
-                gun_contribution = value["weapon"]["price"]
-                next_economy_values = next_economy[key]
-                next_economy_creds = next_economy_values["remainingCreds"]
+                gun_contribution_value = int(value["weapon"]["price"])
                 operator_contribution = 1 if value["weapon"] == "operator" else 0
                 side_contribution = "ATK" if saving_guys_side == "attacking" else "DEF"
-                player_agent_role = self.analyser.agent_data[str(value["agentId"])]["role"]
-                contribution = {f"{side_contribution}_loadoutValue": gun_contribution,
-                                f"{side_contribution}_operators": operator_contribution,
-                                f"{side_contribution}_{player_agent_role}": gun_contribution}
-                value["contribution"] = contribution
-                print("Oi")
-        current_economy_saving_players = {k: v for k, v in current_economy.items() if k in saving_guys}
+                contribution = {f"{side_contribution}_loadoutValue": gun_contribution_value,
+                                f"{side_contribution}_operators": operator_contribution}
+                next_economy[key]["savingContribution"] = contribution
+                next_economy[key]["savedWeapon"] = value["weapon"]
+                next_creds = next_economy[key]["remainingCreds"]
+                gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
+                            2900: ("Phantom", "Vandal")}
+        self.previous_round_saving_guys = next_economy
+
+        next_table = self.__get_round_dataframe(round_number + 1)[all_features].copy()[:2]
+        beginning = next_table.iloc[0]
+        probs = self.model.predict_proba(next_table)
 
         table = table.fillna(0)
         return table

@@ -83,7 +83,7 @@ class ToolsTestCase(unittest.TestCase):
 
     def test_generate_side_dict(self):
         self.aw.a.choose_round(5)
-        actual = self.aw.generate_side_dict()
+        actual = self.aw.generate_side_outcomes_dict()
         expected = {1: 0, 2: 0, 3: 1, 4: 0, 5: 0, 6: 0, 7: 1, 8: 0, 9: 1, 10: 1, 11: 1, 12: 0, 13: 0, 14: 0,
                     15: 1, 16: 0, 17: 0, 18: 1, 19: 0, 20: 0, 21: 1, 22: 0, 23: 1, 24: 1, 25: 0, 26: 0, 27: 0,
                     28: 0, 29: 1, 30: 1, 31: 1, 32: 0}

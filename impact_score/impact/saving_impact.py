@@ -1,3 +1,5 @@
+import pandas as pd
+
 from impact_score.impact.match_analysis import RoundReplay
 
 
@@ -9,10 +11,22 @@ class SavingImpact:
         self.round_number = self.rr.chosen_round
 
     def evaluate_saving_impact(self):
+        next_table = self.get_probabilities_without_saving()
+        probs = self.rr.model.predict_proba(next_table)
+        new_probs = [item[0] for item in probs] if self.saving_guys_side == "defending" else [item[1] for item in probs]
+        return 0
+
+    def get_probabilities_without_saving(self) -> pd.DataFrame:
+        """ :return: append model probabilities to dataframe without the saving contributions"""
+        next_table = self.get_gamestate_without_saving()
+        probs = self.rr.model.predict_proba(next_table)
+        new_probs = [item[0] for item in probs] if self.saving_guys_side == "defending" else [item[1] for item in probs]
+        next_table["Probability"] = new_probs
+        return next_table
+
+    def get_gamestate_without_saving(self) -> pd.DataFrame:
+        """ :return: gamestate dataframe without the saving contributions"""
         next_economy = self.__get_next_economy()
-        for key, value in next_economy.items():
-            player_side = self.player_sides[key]
-            value["side"] = player_side
         saving_team = {k: v for k, v in next_economy.items() if v["side"] == self.saving_guys_side}
         next_table = self.rr.get_round_dataframe(self.round_number + 1)[self.all_features].copy()[:2]
         next_table.iloc[1] = next_table.iloc[0].copy()
@@ -27,12 +41,13 @@ class SavingImpact:
                         loadout_contribution += value
                     if "operators" in key:
                         operator_contribution += value
-        current_loadout_diff = beginning["Loadout_diff"]
+        current_loadout_diff = int(beginning["Loadout_diff"])
         saving_side = list(saving_team.values())[0]["side"]
-        ld_diff_without_saving = current_loadout_diff - loadout_contribution \
+        ld_diff_without_saving = int(current_loadout_diff - loadout_contribution) \
             if saving_side == "attacking" else +loadout_contribution
-        next_table.iloc[1]["Loadout_diff"] = ld_diff_without_saving
-        probs = self.rr.model.predict_proba(next_table)
+        ld_diff_column = [current_loadout_diff, ld_diff_without_saving]
+        next_table["Loadout_diff"] = ld_diff_column
+        return next_table
 
     def __get_next_economy(self) -> dict:
         """ :return: dictionary of the next round economy with the saving contribution for each player
@@ -43,20 +58,24 @@ class SavingImpact:
         current_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round)
         next_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round + 1) if \
             self.rr.chosen_round != self.rr.round_amount else None
-        gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
-                    2900: ("Phantom", "Vandal")}
-        self.__calculate_saving_contribution(current_economy, next_economy, gun_shop, saving_guys)
+        self.__calculate_saving_contribution_for_each_player(current_economy, next_economy, saving_guys)
+        for key, value in next_economy.items():
+            player_side = self.player_sides[key]
+            value["side"] = player_side
         return next_economy
 
-    def __calculate_saving_contribution(self, current_economy: dict, next_economy: dict, gun_shop: dict,
-                                        saving_guys: list[str]):
-        """ :param current_economy: economy of the current round
-            :param next_economy: economy of the next round
-            :param gun_shop: dictionary of the gun shop and their prices
+    def __calculate_saving_contribution_for_each_player(self, current_economy: dict, next_economy: dict,
+                                                        saving_guys: list[str]):
+        """ :param current_economy: economy dict of the current round
+            :param next_economy: economy dict of the next round
             :param saving_guys: list of players who are saving in that round
             :return: None
 
-            This function calculates the saving contribution for each gun of each player who is saving in that round."""
+            This function takes the gun price a given player is holding and calculates the saving contribution
+             for each player who is saving in that round."""
+
+        gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
+                    2900: ("Phantom", "Vandal")}
         for key, value in current_economy.items():
             if key in saving_guys:
                 gun_contribution_value = int(value["weapon"]["price"])

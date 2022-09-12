@@ -69,7 +69,7 @@ class RoundReplay:
     def __get_round_id(self, round_index: int) -> int:
         return self.round_table[round_index]
 
-    def __get_round_dataframe(self, round_index: int):
+    def get_round_dataframe(self, round_index: int):
         return self.df.query(f'RoundID == {self.__get_round_id(round_index)}')
 
     def get_round_winners(self) -> dict:
@@ -155,7 +155,7 @@ class RoundReplay:
         :return: pd.DataFrame table with the probabilities of each round
         """
         round_number = self.chosen_round
-        old_table = self.__get_round_dataframe(round_number)
+        old_table = self.get_round_dataframe(round_number)
         all_features = self.model.feature_name_
         table = old_table[all_features].copy()
         side = kwargs["side"]
@@ -179,68 +179,82 @@ class RoundReplay:
         if "add_events" in kwargs and kwargs["add_events"]:
             self.__append_round_events_to_probability_dataframe(table)
 
-        saving_guys = self.__search_players_who_are_saving()
-        saving_guys_side = self.player_sides[saving_guys[0]]
-        economy_pool = [self.tools.get_economy_dict(self.chosen_round),
-                        self.tools.get_economy_dict(self.chosen_round + 1)
-                        if self.chosen_round != self.round_amount else None]
-        details = self.exporter.export_player_details()
-        sides = self.player_sides
-        current_economy = economy_pool[0]
-        next_economy = economy_pool[1]
-        gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
-                    2900: ("Phantom", "Vandal")}
-        saved_guns = []
-        for key, value in current_economy.items():
-            if key in saving_guys:
-                gun_contribution_value = int(value["weapon"]["price"])
-                saved_guns.append(value["weapon"])
-                operator_contribution = 1 if value["weapon"] == "operator" else 0
-                side_contribution = "ATK" if saving_guys_side == "attacking" else "DEF"
-                next_economy[key]["savedWeapon"] = value["weapon"]
-                loss_bonus_table = self.tools.get_round_loss_bonus_by_players(self.chosen_round)
-                current_loss_bonus = loss_bonus_table[key]
-                current_creds = value["remainingCreds"]
-                next_creds_with_saving = next_economy[key]["remainingCreds"]
-                next_creds_without_saving = current_creds + current_loss_bonus
-                most_expensive_available_weapon = max(k for k in gun_shop if k <= next_creds_without_saving)
-                loadout_diff = gun_contribution_value - most_expensive_available_weapon
-                contribution = {f"{side_contribution}_loadoutValue": loadout_diff,
-                                f"{side_contribution}_operators": operator_contribution,
-                                "side": side_contribution}
-                next_economy[key]["savingContribution"] = contribution
-                print("Oi")
-        self.previous_round_saving_guys = next_economy
-        for key, value in next_economy.items():
-            player_side = self.player_sides[key]
-            value["side"] = player_side
-        saving_team = {k: v for k, v in next_economy.items() if v["side"] == saving_guys_side}
-        credits_per_player = [v["remainingCreds"] for k, v in saving_team.items()]
-        saved_guns_pool = saved_guns.copy()
-        affordable_saved_guns_per_player = [item//int(saved_guns_pool[0]["price"]) for item in credits_per_player]
-
-        next_table = self.__get_round_dataframe(round_number + 1)[all_features].copy()[:2]
-        next_table.iloc[1] = next_table.iloc[0].copy()
-        beginning = next_table.iloc[0]
-        probs = self.model.predict_proba(next_table)
+        # self.evaluate_saving_impact(all_features, round_number)
 
         table = table.fillna(0)
+
         return table
 
-    def __search_players_who_are_saving(self) -> list[str]:
-        dead_player_ids = [x["referencePlayerId"] for x in self.current_round_events
-                           if x["eventType"] == "kill" and x["eventType"] != "revival"]
-        player_details = self.exporter.export_player_details()
-        alive_players = [value["player_name"] for key, value in player_details.items()
-                         if key not in dead_player_ids]
-        self.player_sides = self.tools.get_player_name_sides(self.chosen_round)
-        round_outcome = [item for item in self.round_outcomes if item["number"] == self.chosen_round][0]
-        win_condition = round_outcome["winCondition"]
-        return [player for player in alive_players
-                if win_condition in ("defuse", "time")
-                and self.player_sides[player] == "attacking"
-                or win_condition not in ("defuse", "time")
-                and win_condition == "bomb" and self.player_sides[player] == "defending"]
+    # def evaluate_saving_impact(self, all_features, round_number):
+    #     saving_guys = self.__search_players_who_are_saving()
+    #     saving_guys_side = self.player_sides[saving_guys[0]]
+    #     economy_pool = [self.tools.get_economy_dict(self.chosen_round),
+    #                     self.tools.get_economy_dict(self.chosen_round + 1)
+    #                     if self.chosen_round != self.round_amount else None]
+    #     details = self.exporter.export_player_details()
+    #     sides = self.player_sides
+    #     current_economy = economy_pool[0]
+    #     next_economy = economy_pool[1]
+    #     gun_shop = {800: "Sheriff", 950: "Stinger", 1600: "Spectre", 2050: "Bulldog", 2250: "Guardian",
+    #                 2900: ("Phantom", "Vandal")}
+    #     for key, value in current_economy.items():
+    #         if key in saving_guys:
+    #             gun_contribution_value = int(value["weapon"]["price"])
+    #             operator_contribution = 1 if value["weapon"] == "operator" else 0
+    #             side_contribution = "ATK" if saving_guys_side == "attacking" else "DEF"
+    #             next_economy[key]["savedWeapon"] = value["weapon"]
+    #             loss_bonus_table = self.tools.get_round_loss_bonus_by_players(self.chosen_round)
+    #             current_loss_bonus = loss_bonus_table[key]
+    #             current_creds = value["remainingCreds"]
+    #             next_creds_without_saving = current_creds + current_loss_bonus
+    #             most_expensive_available_weapon = max(k for k in gun_shop if k <= next_creds_without_saving)
+    #             loadout_diff = gun_contribution_value - most_expensive_available_weapon
+    #             contribution = {f"{side_contribution}_loadoutValue": loadout_diff,
+    #                             f"{side_contribution}_operators": operator_contribution,
+    #                             "side": side_contribution}
+    #             next_economy[key]["savingContribution"] = contribution
+    #             print("Oi")
+    #     self.previous_round_saving_guys = next_economy
+    #     for key, value in next_economy.items():
+    #         player_side = self.player_sides[key]
+    #         value["side"] = player_side
+    #     saving_team = {k: v for k, v in next_economy.items() if v["side"] == saving_guys_side}
+    #     next_table = self.get_round_dataframe(round_number + 1)[all_features].copy()[:2]
+    #     next_table.iloc[1] = next_table.iloc[0].copy()
+    #     beginning = next_table.iloc[0]
+    #     contributions = [item.get("savingContribution", None) for item in saving_team.values()]
+    #     loadout_contribution = 0
+    #     operator_contribution = 0
+    #     for element in contributions:
+    #         if isinstance(element, dict):
+    #             for key, value in element.items():
+    #                 if "loadoutValue" in key:
+    #                     loadout_contribution += value
+    #                 if "operators" in key:
+    #                     operator_contribution += value
+    #     current_loadout_diff = beginning["Loadout_diff"]
+    #     saving_side = list(saving_team.values())[0]["side"]
+    #     ld_diff_without_saving = current_loadout_diff - loadout_contribution \
+    #         if saving_side == "attacking" else +loadout_contribution
+    #     next_table.iloc[1]["Loadout_diff"] = ld_diff_without_saving
+    #     probs = self.model.predict_proba(next_table)
+
+    # def __search_players_who_are_saving(self) -> list[str]:
+    #     """ :return: list of players who are saving in that round"""
+    #     """ ['Melser', 'Adverso']"""
+    #     dead_player_ids = [x["referencePlayerId"] for x in self.current_round_events
+    #                        if x["eventType"] == "kill" and x["eventType"] != "revival"]
+    #     player_details = self.exporter.export_player_details()
+    #     alive_players = [value["player_name"] for key, value in player_details.items()
+    #                      if key not in dead_player_ids]
+    #     self.player_sides = self.tools.get_player_name_sides(self.chosen_round)
+    #     round_outcome = [item for item in self.round_outcomes if item["number"] == self.chosen_round][0]
+    #     win_condition = round_outcome["winCondition"]
+    #     return [player for player in alive_players
+    #             if win_condition in ("defuse", "time")
+    #             and self.player_sides[player] == "attacking"
+    #             or win_condition not in ("defuse", "time")
+    #             and win_condition == "bomb" and self.player_sides[player] == "defending"]
 
     def __analyse_special_situation(self, table: pd.DataFrame):
         """ This method is used to analyse which special situation the current round belongs

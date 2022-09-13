@@ -9,20 +9,31 @@ class SavingImpact:
         self.all_features = self.rr.model.feature_name_
         self.saving_guys_side = None
         self.round_number = self.rr.chosen_round
+        self.player_contribution = {}
+        self.team_contribution = {}
 
-    def evaluate_saving_impact(self):
-        next_table = self.get_probabilities_without_saving()
-        probs = self.rr.model.predict_proba(next_table)
-        new_probs = [item[0] for item in probs] if self.saving_guys_side == "defending" else [item[1] for item in probs]
-        return 0
+    def evaluate_saving_impact(self) -> dict:
+        """ :return: dictionary of the saving impact for each player
+            {'Melser': 0.012718,
+            'Shyy': 0.012718}"""
+        probability_table = self.get_probabilities_without_saving()
+        probabilities = probability_table["Probability"].tolist()
+        impact = probabilities[1] - probabilities[0]
+        for key, value in self.player_contribution.items():
+            loadout_key = f"{self.side}_loadoutValue"
+            loadout_value = value[loadout_key]
+            total_contribution = self.team_contribution[loadout_key]
+            ratio = loadout_value / total_contribution
+            value["saving_impact"] = ratio * impact
+        return {key: value["saving_impact"] for key, value in self.player_contribution.items()}
 
     def get_probabilities_without_saving(self) -> pd.DataFrame:
         """ :return: append model probabilities to dataframe without the saving contributions"""
-        next_table = self.get_gamestate_without_saving()
-        probs = self.rr.model.predict_proba(next_table)
+        gamestate_table = self.get_gamestate_without_saving()
+        probs = self.rr.model.predict_proba(gamestate_table)
         new_probs = [item[0] for item in probs] if self.saving_guys_side == "defending" else [item[1] for item in probs]
-        next_table["Probability"] = new_probs
-        return next_table
+        gamestate_table["Probability"] = new_probs
+        return gamestate_table
 
     def get_gamestate_without_saving(self) -> pd.DataFrame:
         """ :return: gamestate dataframe without the saving contributions"""
@@ -41,10 +52,12 @@ class SavingImpact:
                         loadout_contribution += value
                     if "operators" in key:
                         operator_contribution += value
+        self.team_contribution[f"{self.side}_loadoutValue"] = loadout_contribution
+        self.team_contribution[f"{self.side}_operators"] = operator_contribution
         current_loadout_diff = int(beginning["Loadout_diff"])
         saving_side = list(saving_team.values())[0]["side"]
-        ld_diff_without_saving = int(current_loadout_diff - loadout_contribution) \
-            if saving_side == "attacking" else +loadout_contribution
+        ld_diff_without_saving = int(current_loadout_diff + loadout_contribution) \
+            if saving_side == "attacking" else int(current_loadout_diff - loadout_contribution)
         ld_diff_column = [current_loadout_diff, ld_diff_without_saving]
         next_table["Loadout_diff"] = ld_diff_column
         return next_table
@@ -55,6 +68,7 @@ class SavingImpact:
             'Shyy': 'savingContribution': {'ATK_loadoutValue': 650, 'ATK_operators': 0}},"""
         saving_guys = self.__search_players_who_are_saving()
         self.saving_guys_side = self.player_sides[saving_guys[0]]
+        self.side = "ATK" if self.saving_guys_side == "attacking" else "DEF"
         current_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round)
         next_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round + 1) if \
             self.rr.chosen_round != self.rr.round_amount else None
@@ -90,7 +104,9 @@ class SavingImpact:
                 loadout_diff = gun_contribution_value - most_expensive_available_weapon
                 contribution = {f"{side_contribution}_loadoutValue": loadout_diff,
                                 f"{side_contribution}_operators": operator_contribution,
-                                "side": side_contribution}
+                                "side": side_contribution,
+                                "name": key}
+                self.player_contribution[key] = contribution
                 next_economy[key]["savingContribution"] = contribution
 
     def __search_players_who_are_saving(self) -> list[str]:
@@ -117,8 +133,8 @@ def __main():
     rr.choose_round(16)
     rr.get_round_probability(round_number=16, side="atk")
     si = SavingImpact(rr)
-    si.evaluate_saving_impact()
-    print(si.all_features)
+    aux = si.evaluate_saving_impact()
+    print(aux)
 
 
 if __name__ == "__main__":

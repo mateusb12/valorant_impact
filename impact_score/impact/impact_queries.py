@@ -13,9 +13,11 @@ class PlayerNotFoundException(Exception):
 class ImpactQuery:
     def __init__(self):
         self.rr = RoundReplay()
+        self.match_id = 0
 
     def set_match(self, match_id: int):
         self.rr.set_match(match_id)
+        self.match_id = match_id
 
     def __most_difficult_rounds(self, match_id: int) -> list[dict]:
         self.rr.set_match(match_id)
@@ -52,13 +54,13 @@ class ImpactQuery:
         for index in range(len(prob_table)):
             row = prob_table.iloc[index]
             event_type = row["EventType"]
-            if event_type != "start":
+            if event_type == "kill":
                 actor = row["Killer"]
-                victim = row["Victim"]
                 impact_value = row["Impact"]
                 player_impact_table[actor]["gained"] += impact_value
-                if event_type == "kill":
-                    player_impact_table[victim]["lost"] += impact_value
+                player_impact_table[row["Victim"]]["lost"] += impact_value
+            elif event_type != "start":
+                player_impact_table[row["Killer"]]["gained"] += row["Impact"]
         for key, value in player_impact_table.items():
             value["delta"] = value["gained"] - value["lost"]
         return player_impact_table
@@ -96,7 +98,20 @@ class ImpactQuery:
         aux_impact = pd.DataFrame(impact_table)
         agent_dict = self.rr.exporter.export_player_agent_picks()
         aux_impact["Agent"] = aux_impact["Name"].map(agent_dict)
+        aux_impact["RoundAmount"] = self.rr.round_amount
+        aux_impact["GainedPerRound"] = aux_impact["Gain"] / aux_impact["RoundAmount"]
         return aux_impact
+
+    def get_multiple_map_impact_dataframe(self, match_id_list: list[int]) -> pd.DataFrame:
+        impact_pot = []
+        for match_id in match_id_list:
+            print(colored(f"Processing match {match_id}", "green"))
+            self.set_match(match_id)
+            impact_pot.append(self.get_map_impact_dataframe())
+        concat_df = pd.concat(impact_pot)
+        final_df = concat_df.groupby(["Name"]).sum().reset_index()
+        final_df["GainedPerRound"] = final_df["Gain"] / final_df["RoundAmount"]
+        return final_df.sort_values(by=["GainedPerRound"], ascending=False)
 
     def __is_player_in_this_match(self, player_name: str) -> bool:
         return player_name in self.rr.player_impact
@@ -126,10 +141,10 @@ class ImpactQuery:
         for i in range(1, round_amount + 1):
             self.rr.chosen_round = i
             side_info = team_sides[i][team_name]
-            current_side = side_info["side"]
-            formatted_side = {"defense": "def", "attack": "atk"}
-            prob = self.rr.get_round_probability(side=formatted_side[current_side], add_events=True)
             if side_info["outcome"] == "loss":
+                current_side = side_info["side"]
+                formatted_side = {"defense": "def", "attack": "atk"}
+                prob = self.rr.get_round_probability(side=formatted_side[current_side], add_events=True)
                 round_id = dtb[i]["number"]
                 max_prob = max(list(prob["Probability_before_event"]))
                 maximum_probabilities_dict[round_id] = round(100 * max_prob, 2)
@@ -169,6 +184,8 @@ class ImpactQuery:
 def __main():
     iq = ImpactQuery()
     iq.set_match(77104)
+    aux = iq.get_multiple_map_impact_dataframe([79202, 79203])
+    return 0
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ class SavingImpact:
         self.rr = input_rr_instance
         self.all_features = self.rr.model.feature_name_
         self.saving_guys_side = None
+        self.saving_guys = None
         self.round_number = self.rr.chosen_round
         self.player_contribution = {}
         self.team_contribution = {}
@@ -16,13 +17,16 @@ class SavingImpact:
         """ :return: dictionary of the saving impact for each player
             {'Melser': 0.012718,
             'Shyy': 0.012718}"""
+        self.saving_guys = self.__search_players_who_are_saving()
+        if not self.saving_guys:
+            return {}
         probability_table = self.get_probabilities_without_saving()
         probabilities = probability_table["Probability"].tolist()
         impact = probabilities[1] - probabilities[0]
+        loadout_key = f"{self.side}_loadoutValue"
+        total_contribution = self.team_contribution[loadout_key]
         for key, value in self.player_contribution.items():
-            loadout_key = f"{self.side}_loadoutValue"
             loadout_value = value[loadout_key]
-            total_contribution = self.team_contribution[loadout_key]
             ratio = loadout_value / total_contribution
             value["saving_impact"] = ratio * impact
         return {key: value["saving_impact"] for key, value in self.player_contribution.items()}
@@ -66,13 +70,12 @@ class SavingImpact:
         """ :return: dictionary of the next round economy with the saving contribution for each player
             {'Melser': {'savingContribution': {'ATK_loadoutValue': 650, 'ATK_operators': 0},
             'Shyy': 'savingContribution': {'ATK_loadoutValue': 650, 'ATK_operators': 0}},"""
-        saving_guys = self.__search_players_who_are_saving()
-        self.saving_guys_side = self.player_sides[saving_guys[0]]
+        self.saving_guys_side = self.player_sides[self.saving_guys[0]]
         self.side = "ATK" if self.saving_guys_side == "attacking" else "DEF"
         current_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round)
         next_economy = self.rr.tools.get_economy_dict(self.rr.chosen_round + 1) if \
             self.rr.chosen_round != self.rr.round_amount else None
-        self.__calculate_saving_contribution_for_each_player(current_economy, next_economy, saving_guys)
+        self.__calculate_saving_contribution_for_each_player(current_economy, next_economy, self.saving_guys)
         for key, value in next_economy.items():
             player_side = self.player_sides[key]
             value["side"] = player_side
@@ -84,7 +87,6 @@ class SavingImpact:
             :param next_economy: economy dict of the next round
             :param saving_guys: list of players who are saving in that round
             :return: None
-
             This function takes the gun price a given player is holding and calculates the saving contribution
              for each player who is saving in that round."""
 
@@ -126,14 +128,28 @@ class SavingImpact:
                 or win_condition not in ("defuse", "time")
                 and win_condition == "bomb" and self.player_sides[player] == "defending"]
 
+    def evaluate_single_round_saving_impact(self, input_round: int) -> dict:
+        """ :param input_round: round number
+            :return: None
+            This function evaluates the saving impact of a given round"""
+        self.rr.choose_round(input_round)
+        self.rr.get_round_probability(round_number=input_round, side="atk")
+        self.__init__(self.rr)
+        return self.evaluate_saving_impact()
+
+    def evaluate_all_rounds_saving_impact(self):
+        return [self.evaluate_single_round_saving_impact(i) for i in range(1, self.rr.round_amount + 1)]
+
 
 def __main():
     rr = RoundReplay()
     rr.set_match(78746)
-    rr.choose_round(16)
-    rr.get_round_probability(round_number=16, side="atk")
     si = SavingImpact(rr)
-    aux = si.evaluate_saving_impact()
+    aux = si.evaluate_all_rounds_saving_impact()
+    # rr.choose_round(16)
+    # rr.get_round_probability(round_number=16, side="atk")
+    # si = SavingImpact(rr)
+    # aux = si.evaluate_saving_impact()
     print(aux)
 
 

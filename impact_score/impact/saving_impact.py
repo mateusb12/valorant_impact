@@ -43,9 +43,10 @@ class SavingImpact:
         """ :return: gamestate dataframe without the saving contributions"""
         next_economy = self.__get_next_economy()
         saving_team = {k: v for k, v in next_economy.items() if v["side"] == self.saving_guys_side}
-        next_table = self.rr.get_round_dataframe(self.round_number + 1)[self.all_features].copy()[:2]
-        next_table.iloc[1] = next_table.iloc[0].copy()
-        beginning = next_table.iloc[0]
+        # current_round_gamestate_df = self.rr.get_round_dataframe(self.round_number)[self.all_features].copy()[:2]
+        next_round_gamestate_df = self.rr.get_round_dataframe(self.round_number + 1)[self.all_features].copy()[:2]
+        next_round_gamestate_df.iloc[1] = next_round_gamestate_df.iloc[0].copy()
+        first_gamestate = next_round_gamestate_df.iloc[0]
         contributions = [item.get("savingContribution", None) for item in saving_team.values()]
         loadout_contribution = 0
         operator_contribution = 0
@@ -58,13 +59,13 @@ class SavingImpact:
                         operator_contribution += value
         self.team_contribution[f"{self.side}_loadoutValue"] = loadout_contribution
         self.team_contribution[f"{self.side}_operators"] = operator_contribution
-        current_loadout_diff = int(beginning["Loadout_diff"])
+        current_loadout_diff = int(first_gamestate["Loadout_diff"])
         saving_side = list(saving_team.values())[0]["side"]
         ld_diff_without_saving = int(current_loadout_diff + loadout_contribution) \
             if saving_side == "attacking" else int(current_loadout_diff - loadout_contribution)
         ld_diff_column = [current_loadout_diff, ld_diff_without_saving]
-        next_table["Loadout_diff"] = ld_diff_column
-        return next_table
+        next_round_gamestate_df["Loadout_diff"] = ld_diff_column
+        return next_round_gamestate_df
 
     def __get_next_economy(self) -> dict:
         """ :return: dictionary of the next round economy with the saving contribution for each player
@@ -114,9 +115,9 @@ class SavingImpact:
     def __search_players_who_are_saving(self) -> list[str]:
         """ :return: list of players who are saving in that round"""
         """ ['Melser', 'Adverso']"""
+        player_details = self.rr.exporter.export_player_details()
         dead_player_ids = [x["referencePlayerId"] for x in self.rr.current_round_events
                            if x["eventType"] == "kill" and x["eventType"] != "revival"]
-        player_details = self.rr.exporter.export_player_details()
         alive_players = [value["player_name"] for key, value in player_details.items()
                          if key not in dead_player_ids]
         self.player_sides = self.rr.tools.get_player_name_sides(self.rr.chosen_round)
@@ -145,7 +146,9 @@ def __main():
     rr = RoundReplay()
     rr.set_match(78746)
     si = SavingImpact(rr)
-    aux = si.evaluate_all_rounds_saving_impact()
+    # aux = si.evaluate_all_rounds_saving_impact()
+    aux = si.evaluate_single_round_saving_impact(10)
+    # aux = si.evaluate_single_round_saving_impact(16)
     # rr.choose_round(16)
     # rr.get_round_probability(round_number=16, side="atk")
     # si = SavingImpact(rr)

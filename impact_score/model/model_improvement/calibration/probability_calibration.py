@@ -19,12 +19,12 @@ class ProbabilityCalibration:
 
     def create_multiple_gamestates(self, variable_name: str, variable_range: tuple[int, int, int])\
             -> pd.DataFrame:
-        value_list = list(range(variable_range[0], variable_range[1], variable_range[2]))
-        size = len(value_list)
+        value_range = list(range(variable_range[0], variable_range[1], variable_range[2]))
+        size = len(value_range)
         gamestate_df = pd.concat([self.sliced_gamestate] * size, ignore_index=True)
         if variable_name not in self.all_features:
             raise ValueError(f"{variable_name} is not a valid feature name")
-        gamestate_df[variable_name] = value_list
+        gamestate_df[variable_name] = value_range
         probs = self.rr.model.predict_proba(gamestate_df)
         current_probs = [item[0] for item in probs] if self.side == "atk" else [item[1] for item in probs]
         gamestate_df["Probability"] = current_probs
@@ -46,7 +46,7 @@ class ProbabilityCalibration:
 
 
 def __main():
-    pc = ProbabilityCalibration()
+    pc = ProbabilityCalibration(match_id=79334, round_number=14, event_index=0, side="atk")
     aux = pc.create_multiple_gamestates("Loadout_diff", (-10000, 10000, 1000))
     pc.plot_probabilities(aux)
     return 0

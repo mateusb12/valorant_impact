@@ -60,10 +60,10 @@ def get_match_df(input_match_id: int) -> pd.DataFrame:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(78746)
+    a.set_match(79333)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
-    query = aux[aux["RoundNumber"] == 12]
+    query = aux[aux["RoundNumber"] == 5]
     master_query = query[["RegularTime", "SpikeTime", "RoundNumber", "RoundTime",
                           "ATK_loadoutValue", "ATK_kills", "ATK_Initiator", "ATK_Duelist", "ATK_Sentinel",
                           "ATK_Controller", "DEF_loadoutValue", "DEF_kills", "DEF_Initiator", "DEF_Duelist",

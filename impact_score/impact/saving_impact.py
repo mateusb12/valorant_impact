@@ -61,9 +61,9 @@ class SavingImpact:
         self.team_contribution[f"{self.side}_operators"] = operator_contribution
         current_loadout_diff = int(first_gamestate["Loadout_diff"])
         saving_side = list(saving_team.values())[0]["side"]
-        ld_diff_without_saving = int(current_loadout_diff + loadout_contribution) \
-            if saving_side == "attacking" else int(current_loadout_diff - loadout_contribution)
-        ld_diff_column = [current_loadout_diff, ld_diff_without_saving]
+        ld_diff_without_saving = int(current_loadout_diff - loadout_contribution) \
+            if saving_side == "attacking" else int(current_loadout_diff + loadout_contribution)
+        ld_diff_column = [ld_diff_without_saving, current_loadout_diff]
         next_round_gamestate_df["Loadout_diff"] = ld_diff_column
         return next_round_gamestate_df
 
@@ -138,16 +138,38 @@ class SavingImpact:
         self.__init__(self.rr)
         return self.evaluate_saving_impact()
 
-    def evaluate_all_rounds_saving_impact(self):
-        return [self.evaluate_single_round_saving_impact(i) for i in range(1, self.rr.round_amount + 1)]
+    def __evaluate_all_rounds_saving_impact(self) -> dict:
+        return {i: self.evaluate_single_round_saving_impact(i) for i in range(1, self.rr.round_amount + 1)}
+
+    def saving_impact_rounds_df(self) -> pd.DataFrame:
+        saving_impact_dicts = self.__evaluate_all_rounds_saving_impact()
+        saving_impact_df = pd.DataFrame.from_dict(saving_impact_dicts, orient="index")
+        saving_impact_df.reset_index(level=0, inplace=True)
+        saving_impact_df.rename(columns={"index": "RoundNumber"}, inplace=True)
+        return saving_impact_df
+
+    def saving_impact_aggregation(self) -> pd.DataFrame:
+        saving_impact_df = self.saving_impact_rounds_df()
+        player_columns = [col for col in saving_impact_df.columns if col not in ["RoundNumber"]]
+        sum_values = saving_impact_df[player_columns].sum()
+        count_values = saving_impact_df[player_columns].count()
+        round_amount = saving_impact_df["RoundNumber"].count()
+        saving_amount = {player: 0 for player in player_columns}
+        impact_values = list(sum_values.values)
+        impact_value_percentage = [f"{round(x * 100, 2)}%" for x in impact_values]
+        impact_df = pd.DataFrame({"Player": list(sum_values.index), "SavingImpact": list(sum_values.values),
+                                  "Saved Rounds": list(count_values.values),
+                                  "Total Saving Impact (%)": impact_value_percentage})
+        impact_df.sort_values(by="SavingImpact", ascending=False, inplace=True)
+        return impact_df
 
 
 def __main():
     rr = RoundReplay()
     rr.set_match(78746)
     si = SavingImpact(rr)
-    # aux = si.evaluate_all_rounds_saving_impact()
-    aux = si.evaluate_single_round_saving_impact(10)
+    aux = si.saving_impact_aggregation()
+    # aux = si.evaluate_single_round_saving_impact(10)
     # aux = si.evaluate_single_round_saving_impact(16)
     # rr.choose_round(16)
     # rr.get_round_probability(round_number=16, side="atk")

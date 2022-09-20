@@ -14,10 +14,10 @@ class ProbabilityCalibration:
         self.rr.choose_round(round_number)
         self.all_features = self.rr.model.feature_name_
         self.gamestate_df = self.rr.get_round_dataframe(self.round_number)
-        self.sliced_gamestate = self.gamestate_df[self.all_features].copy()[event_index:event_index+1]
+        self.sliced_gamestate = self.gamestate_df[self.all_features].copy()[event_index:event_index + 1]
         self.side = side
 
-    def create_multiple_gamestates(self, variable_name: str, variable_range: tuple[int, int, int])\
+    def create_multiple_gamestates(self, variable_name: str, variable_range: tuple[int, int, int]) \
             -> pd.DataFrame:
         value_range = list(range(variable_range[0], variable_range[1], variable_range[2]))
         size = len(value_range)
@@ -26,18 +26,18 @@ class ProbabilityCalibration:
             raise ValueError(f"{variable_name} is not a valid feature name")
         gamestate_df[variable_name] = value_range
         probs = self.rr.model.predict_proba(gamestate_df)
-        current_probs = [item[0] for item in probs] if self.side == "atk" else [item[1] for item in probs]
+        current_probs = [item[0] for item in probs] if self.side == "def" else [item[1] for item in probs]
         gamestate_df["Probability"] = current_probs
         gamestate_df["Feature"] = variable_name
         return gamestate_df
 
-    @staticmethod
-    def plot_probabilities(input_df: pd.DataFrame):
+    def plot_probabilities(self, input_df: pd.DataFrame):
         variable_name = input_df["Feature"].unique()[0]
         plt.figure(figsize=(10, 5))
         plt.plot(input_df[variable_name], input_df["Probability"])
         plt.rcParams["figure.figsize"] = (10, 5)
         plt.grid(b=True, which='major', color='#666666', linestyle='-')
+        marker_color = "red" if self.side == "atk" else "blue"
         plt.scatter(input_df[variable_name], input_df["Probability"], marker="o", color="red")
         plt.xlabel(variable_name)
         plt.ylabel("Probability")
@@ -45,11 +45,36 @@ class ProbabilityCalibration:
         plt.show()
 
 
-def __main():
-    pc = ProbabilityCalibration(match_id=79334, round_number=14, event_index=0, side="atk")
+def __loadout_diff_example():
+    pc = ProbabilityCalibration(match_id=79334, round_number=5, event_index=0, side="atk")
     aux = pc.create_multiple_gamestates("Loadout_diff", (-10000, 10000, 1000))
     pc.plot_probabilities(aux)
     return 0
+
+
+def __regular_time_example():
+    pc = ProbabilityCalibration(match_id=79333, round_number=4, event_index=6, side="atk")
+    aux = pc.create_multiple_gamestates("RegularTime", (0, 100, 1))
+    pc.plot_probabilities(aux)
+    return 0
+
+
+def __atk_compaction_example():
+    pc = ProbabilityCalibration(match_id=79333, round_number=4, event_index=6, side="atk")
+    aux = pc.create_multiple_gamestates("ATK_compaction", (0, 934, 15))
+    pc.plot_probabilities(aux)
+    return 0
+
+
+def __def_compaction_example():
+    pc = ProbabilityCalibration(match_id=79333, round_number=4, event_index=6, side="def")
+    aux = pc.create_multiple_gamestates("DEF_compaction", (0, 934, 15))
+    pc.plot_probabilities(aux)
+    return 0
+
+
+def __main():
+    __def_compaction_example()
 
 
 if __name__ == '__main__':

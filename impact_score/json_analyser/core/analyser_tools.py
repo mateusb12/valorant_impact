@@ -227,6 +227,7 @@ class AnalyserTools:
         for economy in round_economies:
             economy["agent"] = self.a.agent_data[str(economy["agentId"])]
             economy["weapon"] = self.a.weapon_data[str(economy["weaponId"])]
+            economy["playerName"] = player_ids[economy["playerId"]]
             player_name = player_ids[economy["playerId"]]
             player_economies[player_name] = economy
         return player_economies

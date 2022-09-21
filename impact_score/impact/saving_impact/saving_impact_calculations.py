@@ -83,7 +83,7 @@ class SavingImpact:
         return next_economy
 
     def __calculate_saving_contribution_for_each_player(self, current_economy: dict, next_economy: dict,
-                                                        saving_guys: list[str]):
+                                                        saving_guys: list[str]) -> None:
         """ :param current_economy: economy dict of the current round
             :param next_economy: economy dict of the next round
             :param saving_guys: list of players who are saving in that round
@@ -101,10 +101,14 @@ class SavingImpact:
                 next_economy[key]["savedWeapon"] = value["weapon"]
                 loss_bonus_table = self.rr.tools.get_round_loss_bonus_by_players(self.rr.chosen_round)
                 current_loss_bonus = loss_bonus_table[key]
+                next_economy[key]["currentLossBonus"] = current_loss_bonus
                 current_creds = value["remainingCreds"]
                 next_creds_without_saving = current_creds + current_loss_bonus
-                most_expensive_available_weapon = max(k for k in gun_shop if k <= next_creds_without_saving)
-                loadout_diff = gun_contribution_value - most_expensive_available_weapon
+                most_expensive_available_weapon_price = max(k for k in gun_shop if k <= next_creds_without_saving)
+                most_expensive_available_weapon_name = gun_shop[most_expensive_available_weapon_price]
+                next_economy[key]["weaponPriceWithoutSaving"] = most_expensive_available_weapon_price
+                next_economy[key]["weaponWithoutSaving"] = most_expensive_available_weapon_name
+                loadout_diff = gun_contribution_value - most_expensive_available_weapon_price
                 contribution = {f"{side_contribution}_loadoutValue": loadout_diff,
                                 f"{side_contribution}_operators": operator_contribution,
                                 "side": side_contribution,

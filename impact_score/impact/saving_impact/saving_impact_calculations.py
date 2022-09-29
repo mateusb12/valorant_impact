@@ -1,6 +1,7 @@
 import pandas as pd
 
 from impact_score.impact.match_analysis import RoundReplay
+from impact_score.impact.saving_impact.saving_df_table import convert_economy_to_df
 
 
 class SavingImpact:
@@ -9,6 +10,7 @@ class SavingImpact:
         self.all_features = self.rr.model.feature_name_
         self.saving_guys_side = None
         self.saving_guys = None
+        self.player_sides = None
         self.round_number = self.rr.chosen_round
         self.player_contribution = {}
         self.team_contribution = {}
@@ -27,7 +29,7 @@ class SavingImpact:
         total_contribution = self.team_contribution[loadout_key]
         for key, value in self.player_contribution.items():
             loadout_value = value[loadout_key]
-            ratio = loadout_value / total_contribution
+            ratio = loadout_value / total_contribution if total_contribution != 0 else 0
             value["saving_impact"] = ratio * impact
         return {key: value["saving_impact"] for key, value in self.player_contribution.items()}
 
@@ -100,7 +102,7 @@ class SavingImpact:
                 side_contribution = "ATK" if self.saving_guys_side == "attacking" else "DEF"
                 next_economy[key]["savedWeapon"] = value["weapon"]
                 loss_bonus_table = self.rr.tools.get_round_loss_bonus_by_players(self.rr.chosen_round)
-                current_loss_bonus = loss_bonus_table[key]
+                current_loss_bonus = loss_bonus_table[key] if key in loss_bonus_table else 0
                 next_economy[key]["currentLossBonus"] = current_loss_bonus
                 current_creds = value["remainingCreds"]
                 next_creds_without_saving = current_creds + current_loss_bonus
@@ -145,7 +147,15 @@ class SavingImpact:
     def __evaluate_all_rounds_saving_impact(self) -> dict:
         return {i: self.evaluate_single_round_saving_impact(i) for i in range(1, self.rr.round_amount + 1)}
 
+    def saving_impact_single_round(self, input_round: int) -> dict:
+        """ This function evaluates details in a given round in which a player decided to save"""
+        self.rr.choose_round(input_round)
+        self.player_sides = self.rr.tools.get_player_name_sides(self.rr.chosen_round)
+        round_economy = self.__get_next_economy()
+        return convert_economy_to_df(round_economy)
+
     def saving_impact_rounds_df(self) -> pd.DataFrame:
+        """This function shows which rounds a given player decided to save his gun"""
         saving_impact_dicts = self.__evaluate_all_rounds_saving_impact()
         saving_impact_df = pd.DataFrame.from_dict(saving_impact_dicts, orient="index")
         saving_impact_df.reset_index(level=0, inplace=True)
@@ -153,6 +163,7 @@ class SavingImpact:
         return saving_impact_df
 
     def saving_impact_aggregation(self) -> pd.DataFrame:
+        """This function aggregates the saving impact of all player for all saving rounds"""
         saving_impact_df = self.saving_impact_rounds_df()
         player_columns = [col for col in saving_impact_df.columns if col not in ["RoundNumber"]]
         sum_values = saving_impact_df[player_columns].sum()
@@ -170,9 +181,11 @@ class SavingImpact:
 
 def __main():
     rr = RoundReplay()
-    rr.set_match(78746)
+    rr.set_match(79335)
     si = SavingImpact(rr)
-    aux = si.saving_impact_aggregation()
+    # aux = si.saving_impact_single_round()
+    # aux = si.saving_impact_rounds_df()
+    aux = si.saving_impact_single_round(15)
     # aux = si.evaluate_single_round_saving_impact(10)
     # aux = si.evaluate_single_round_saving_impact(16)
     # rr.choose_round(16)
@@ -184,3 +197,4 @@ def __main():
 
 if __name__ == "__main__":
     __main()
+

@@ -25,11 +25,6 @@ class AnalyserTools:
         final_winner_tag = current_sides[winning_team_number]
         final_winner_dict = {"attacking": 1, "defending": 0}
         return final_winner_dict[final_winner_tag]
-        # for r in self.a.map_dict["rounds"]:
-        #     if r["number"] == self.a.chosen_round:
-        #         official_winner = r["finalWinner"]
-        #
-        # return 1 if r["winningTeamNumber"] == self.a.attacking_first_team else 0
 
     def __are_sides_swapped(self) -> bool:
         if 1 <= self.a.chosen_round <= 12:
@@ -254,7 +249,7 @@ class AnalyserTools:
             if penultimate_round_outcome is not None else None
         antepenultimate_round_outcome = outcomes[round_number - 3] \
             if round_number not in (1, 13, 2, 14, 3, 15) else None
-        antepenultimate_round_losing_side = mirrored_side_format[antepenultimate_round_outcome]\
+        antepenultimate_round_losing_side = mirrored_side_format[antepenultimate_round_outcome] \
             if antepenultimate_round_outcome is not None else None
         loss_streak = 1
         if last_round_defeated_side == penultimate_round_losing_side:
@@ -278,17 +273,48 @@ class AnalyserTools:
         full_weapon_buy = all(item >= 2900 for item in losing_team_weapons)
         return full_shield_buy and full_weapon_buy
 
+    def get_single_round_positional_dict(self, round_number: int):
+        """ Get a dictionary with the position of each player in a given round
+        :param round_number: The round number
+        :return:
+        {"adverso": {'roundId': 1226860, 'round_number': 4, 'positionId': 2},
+        "Benkai": {'roundId': 1226860, 'round_number': 4, 'positionId': 2}}
+        """
+        position_pool = self.a.data["matches"]["matchDetails"]["locations"]
+        round_positions = [position for position in position_pool if position["roundNumber"] == round_number]
+        round_position_times = {position["roundTimeMillis"] for position in round_positions}
+        timing_table = {time: [] for time in round_position_times}
+        for position in round_positions:
+            timing_table[position["roundTimeMillis"]].append(position)
+        timing_table = {key: timing_table[key] for key in sorted(timing_table.keys())}
+        player_ids = self.get_player_id_to_name_table()
+        player_details = {value["playerId"]: value for value in self.a.map_dict["players"]}
+        player_sides = self.get_player_name_sides(round_number)
+        for round_positions in timing_table.values():
+            for value in round_positions:
+                value["playerName"] = player_ids[value["playerId"]]
+                player_name = player_ids[value["playerId"]]
+                player_agent_id = player_details[value["playerId"]]["agentId"]
+                agent_details = self.a.agent_data[str(player_agent_id)]
+                player_side = player_sides[player_name]
+                value["agentName"] = agent_details["name"]
+                value["agentRole"] = agent_details["role"]
+                value["side"] = player_side
+        return timing_table
+
+    def get_all_rounds_positional_dict(self):
+        """ Get a dictionary with the position of each player in every round"""
+        round_max = self.a.round_amount
+        return {round_number: self.get_single_round_positional_dict(round_number)
+                for round_number in range(1, round_max + 1)}
+
 
 def __main():
     a = analyser_pool.acquire()
     a.set_match(78746)
     aw = AnalyserTools(a)
     aw.a.choose_round(1)
-    # for i in range(1, 25):
-    #     print(i)
-    #     test1 = aw.get_round_loss_bonus_by_players(i)
-    #     print(test1)
-    test1 = aw.can_team_full_buy_this_round(4)
+    test1 = aw.get_all_rounds_positional_dict()
     print(test1)
 
 

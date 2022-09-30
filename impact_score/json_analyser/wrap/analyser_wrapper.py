@@ -60,7 +60,7 @@ def get_match_df(input_match_id: int) -> pd.DataFrame:
 
 def __main():
     a = analyser_pool.acquire()
-    a.set_match(79333)
+    a.set_match(79336)
     aw = AnalyserWrapper(a)
     aux = aw.export_df()
     query = aux[aux["RoundNumber"] == 5]

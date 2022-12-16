@@ -1,6 +1,7 @@
 import unittest
 
 import pandas as pd
+import pytest
 
 from impact_score.json_analyser.wrap.analyser_wrapper import get_match_df
 
@@ -40,4 +41,4 @@ class WrapperTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main()

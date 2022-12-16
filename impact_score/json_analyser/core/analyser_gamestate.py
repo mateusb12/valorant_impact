@@ -1,4 +1,5 @@
-from typing import Tuple
+from collections import defaultdict
+from typing import Tuple, Dict, Union, List, Any
 
 import numpy as np
 from scipy.spatial.distance import pdist
@@ -9,6 +10,9 @@ from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 
 class AnalyserGamestate:
+    """This class creates a starter gamestate for the beginning of the round.
+     Given a certain event (kill, plant, defuse or sage ult), this class can update the current gamestate accordingly.
+     The core method of this class is the generate_single_gamestate method, which returns a dictionary of the gamestate"""
     def __init__(self, input_core_analyser: CoreAnalyser):
         self.a = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
@@ -74,14 +78,14 @@ class AnalyserGamestate:
             return 0
         return 165 if len(input_locations) == 1 else np.mean(pdist(input_locations))
 
-    def generate_single_event_values(self, **kwargs) -> dict:
-        team_variables = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators", "kills"]
+    def generate_single_event_values(self, timestamp: int, plant: int, winner: int) -> Dict[str, Union[int, str]]:
+        team_stats = ["loadoutValue", "weaponValue", "shields", "remainingCreds", "operators", "kills"]
         roles = ["Initiator", "Duelist", "Sentinel", "Controller"]
-        features = team_variables + roles
+        features = team_stats + roles
         atk_dict = {item: 0 for item in features}
         def_dict = {item: 0 for item in features}
-        player_table: dict = self.a.current_status
-        round_info: dict = self.round_info[self.a.chosen_round]
+        player_table: Dict[str, dict] = self.a.current_status
+        round_info: Dict[str, dict] = self.round_info[self.a.chosen_round]
         attacking_team = round_info["attacking"]["id"]
         locations = self.__get_location_pot()
         atk_locations = []
@@ -104,10 +108,10 @@ class AnalyserGamestate:
                     atk_dict[feature] += feature_value
                 else:
                     def_dict[feature] += feature_value
-        round_winner = kwargs.get("winner")
+        round_winner = winner
         atk_dict["compaction"] = self.evaluate_team_compaction(atk_locations)
         def_dict["compaction"] = self.evaluate_team_compaction(def_locations)
-        final_dict = self.__get_match_state_dict(kwargs["timestamp"], kwargs["plant"], round_winner)
+        final_dict = self.__get_match_state_dict(timestamp, plant, round_winner)
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():

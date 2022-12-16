@@ -1,3 +1,5 @@
+from typing import Dict, Union
+
 from impact_score.json_analyser.core.analyser_gamestate import AnalyserGamestate
 from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
@@ -7,6 +9,9 @@ from scipy.spatial.distance import pdist
 
 
 class AnalyserRound:
+    """This class aggregates the multiple gamestates that a given round may have.
+    It loops through a list of events (kill, plant, defuse, sage ult) and generates a gamestate for each of them.
+    The core method of this class is generate_full_round, which returns a list of gamestates for a given round."""
     def __init__(self, input_core_analyser: CoreAnalyser):
         self.a: CoreAnalyser = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
@@ -26,7 +31,7 @@ class AnalyserRound:
         self.current_round_locations = [item for item in self.a.location_data if item["roundNumber"] == round_number]
         self.ag.set_round_locations(self.current_round_locations)
 
-    def __generate_single_gamestate(self, event: dict) -> dict:
+    def __generate_single_gamestate(self, event: dict) -> Dict[str, Union[int, str]]:
         event_type: str = event["event"]
         timing: int = event["timing"]
         self.ag.current_event = event
@@ -44,7 +49,7 @@ class AnalyserRound:
         elif event_type == "revival":
             self.a.current_status[event["victim"]]["shieldId"] = None
             self.a.current_status[event["victim"]]["alive"] = True
-        gamestate = self.ag.generate_single_event_values(timestamp=timing, winner=self.round_winner, plant=self.plant)
+        gamestate = self.ag.generate_single_event_values(timestamp=timing, plant=self.plant, winner=self.round_winner)
         gamestate["ATK_kills"] = self.atk_kills
         gamestate["DEF_kills"] = self.def_kills
         return gamestate

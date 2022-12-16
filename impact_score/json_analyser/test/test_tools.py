@@ -91,40 +91,32 @@ class ToolsTestCase(unittest.TestCase):
 
     def test_get_side_dict(self):
         self.aw.a.choose_round(5)
-        actual = self.aw.get_side_dict()
-        expected = {1: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    2: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    3: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    4: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    5: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    6: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    7: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    8: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    9: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    10: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    11: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    12: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    13: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    14: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    15: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    16: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    17: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    18: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    19: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    20: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    21: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    22: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    23: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    24: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    25: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    26: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    27: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    28: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1},
-                    29: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    30: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    31: {'name': 'FNATIC', 'id': 1625, 'team_id': 1, 'side': 'attack', 'finalWinner': 1},
-                    32: {'name': 'Leviatán', 'id': 738, 'team_id': 2, 'side': 'attack', 'finalWinner': 1}}
-        self.assertEqual(actual, expected)
+        original_dict = self.aw.get_side_dict()
+        slim_dict = {
+            k: {
+                "attacking": v1["Leviatán"]["name"] if v1["Leviatán"]["side"] == "attack" else v1["FNATIC"]["name"],
+                "defending": v1["Leviatán"]["name"] if v1["Leviatán"]["side"] == "defense" else v1["FNATIC"]["name"],
+                "outcome": "attackers" if v1["Leviatán"]["outcome"] == "win" else "defenders"
+            }
+            for k, v1 in original_dict.items()
+        }
+        side_list = [
+            "Default" if d["attacking"] == "FNATIC" else "Mirrored"
+            for d in slim_dict.values()
+        ]
+        outcome_list = [
+            "A" if d["outcome"] == "attackers" else "D"
+            for d in slim_dict.values()
+        ]
+        expected_side_list = ['Default', 'Default', 'Default', 'Default', 'Default', 'Default', 'Default', 'Default',
+                              'Default', 'Default', 'Default', 'Default', 'Mirrored', 'Mirrored', 'Mirrored',
+                              'Mirrored', 'Mirrored', 'Mirrored', 'Mirrored', 'Mirrored', 'Mirrored', 'Mirrored',
+                              'Mirrored', 'Mirrored', 'Default', 'Mirrored', 'Default', 'Mirrored', 'Default',
+                              'Mirrored', 'Default', 'Mirrored']
+        expected_outcome_list = ['A', 'A', 'D', 'A', 'A', 'A', 'D', 'A', 'D', 'D', 'D', 'A', 'D', 'D', 'A', 'D', 'D',
+                                 'A', 'D', 'D', 'A', 'D', 'A', 'A', 'A', 'D', 'A', 'D', 'D', 'A', 'D', 'D']
+        self.assertEqual(side_list, expected_side_list)
+        self.assertEqual(outcome_list, expected_outcome_list)
 
 
 if __name__ == '__main__':

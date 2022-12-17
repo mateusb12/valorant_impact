@@ -6,6 +6,8 @@ from impact_score.path_reference.folder_ref import datasets_reference
 
 
 def prepare_dataset(filename: str = "4000.csv") -> pd.DataFrame:
+    """This function is responsible for preparing the dataset for the model.
+    It focuses on removing redundant features and adding relevant ones."""
     dataset_folder = Path(datasets_reference(), filename)
     df = pd.read_csv(dataset_folder)
     dataset_columns = list(df.columns)

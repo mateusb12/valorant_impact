@@ -46,6 +46,7 @@ def get_dataset_reference() -> Path:
 
 
 class ValorantLGBM:
+    """This class is responsible for loading the LGBM model, training it and making predictions."""
     def __init__(self, filename: str = None):
         self.df = None
         self.old_df = None
@@ -72,6 +73,7 @@ class ValorantLGBM:
         # self.export_model()
 
     def __prepare_df(self):
+        """This function creates train and set tests from the dataframe."""
         if not self.df_prepared:
             if self.df is None:
                 self.df = prepare_dataset(self.filename)
@@ -83,6 +85,7 @@ class ValorantLGBM:
             self.df_prepared = True
 
     def __fit_model(self):
+        """This function trains the model, optionally using optuna to find the best parameters."""
         if self.do_optuna:
             self.__optuna_study(trials=100)
         optuna_dict = self.__get_optuna_parameters()
@@ -97,7 +100,7 @@ class ValorantLGBM:
         # joblib.dump(self.model, 'model.pkl')
 
     def import_model_from_file(self):
-        # model_folder = Path(impact_folder, "model")
+        """This function loads the model from a .pkl file."""
         model_folder = model_reference()
         pkl_path = Path(model_folder, "model.pkl")
         self.model: lightgbm.LGBMClassifier = joblib.load(pkl_path)
@@ -113,6 +116,8 @@ class ValorantLGBM:
         return {key: value[0] for key, value in optuna_dict.items()}
 
     def __optuna_study(self, **kwargs):
+        """This function uses optuna to find the best parameters for the model.
+        It uses trial and error with randomized parameters until it finds the best solution."""
         study = optuna.create_study()
         study_trials = kwargs.get("trials", 10)
         study.optimize(self.__objective, n_trials=study_trials)
@@ -123,6 +128,7 @@ class ValorantLGBM:
         pd_param.to_csv('model_params.csv', index=False)
 
     def __objective(self, trial):
+        """This is a helper function for the optuna study."""
         bagging_freq = trial.suggest_int('bagging_freq', 1, 10),
         min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 2, 100),
         max_depth = trial.suggest_int('max_depth', 1, 20),

@@ -5,10 +5,12 @@ class AnalyserExporter:
     def __init__(self, input_core_analyser: CoreAnalyser):
         self.a = input_core_analyser
 
-    def export_round_events(self) -> dict:
+    def export_round_events(self) -> list[dict]:
         events = self.a.data["matches"]["matchDetails"]["events"]
 
         for event in events:
+            if event["roundTimeMillis"] == 0:
+                continue
             killer_id = event["playerId"]
             victim_id = event["referencePlayerId"]
             if killer_id is None and victim_id is None:
@@ -38,6 +40,9 @@ class AnalyserExporter:
         return events
 
     def export_player_agent_picks(self) -> dict:
+        """Exports the player agent picks in format of a dictionary. The dictionary follows the pattern below
+        :return:    {'Derke': 'Chamber', 'Boaster': 'Viper', 'Mistic': 'Sage', 'Enzo': 'Sova', 'Alfajer': 'Killjoy'
+        'MOLSI': 'KAY/O, 'Destrian': 'Fade', 'feqew': 'Chamber', 'hype': 'Viper', 'Boo': 'Sage'}"""
         map_dict = self.a.map_dict
         agent_pick_dict = {}
         for item in map_dict["players"]:
@@ -48,6 +53,11 @@ class AnalyserExporter:
         return agent_pick_dict
 
     def export_player_details(self) -> dict:
+        """Exports the player details in format of a dictionary. The dictionary follows the pattern below
+        {2937: {'agent_name': 'Chamber', 'player_name': 'Derke'},
+        2011: {'agent_name': 'Viper', 'player_name': 'Boaster'},
+        76: {'agent_name': 'Sage', 'player_name': 'Mistic'},
+        718: {'agent_name': 'Sova', 'player_name': 'Enzo'}"""
         map_dict = self.a.map_dict
         details_dict = {}
         for item in map_dict["players"]:
@@ -74,11 +84,12 @@ class AnalyserExporter:
 def __main():
     a = analyser_pool.acquire()
     a.set_match(65588)
+    a.choose_round(1)
     ae = AnalyserExporter(a)
-    print(ae.round_details)
-    # a = ae.export_round_events()
-    # b = ae.export_player_agent_picks()
-    # c = ae.export_player_details()
+    a = ae.export_round_events()
+    b = ae.export_player_agent_picks()
+    c = ae.export_player_details()
+    return
     # print(a, b, c)
 
 

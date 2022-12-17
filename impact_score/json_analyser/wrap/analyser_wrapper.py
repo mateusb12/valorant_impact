@@ -1,9 +1,12 @@
+from pathlib import Path
+
 import pandas as pd
 
 from impact_score.json_analyser.pool.analyser_pool import analyser_pool, CoreAnalyser
 from impact_score.json_analyser.core.analyser_round_aggregator import AnalyserRound
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 from impact_score.model.features.model_features import generate_role_diff
+from impact_score.path_reference.folder_ref import json_analyser_reference
 
 
 class AnalyserWrapper:
@@ -56,6 +59,12 @@ def get_match_df(input_match_id: int) -> pd.DataFrame:
     a.set_match(input_match_id)
     aw = AnalyserWrapper(a)
     return aw.export_df()
+
+
+def export_test_df(input_match_id: int) -> None:
+    df = get_match_df(input_match_id)
+    test_df_path = Path(json_analyser_reference(), "test", "test.csv")
+    df.to_csv(test_df_path, index=False)
 
 
 def __main():

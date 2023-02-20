@@ -46,7 +46,7 @@ def __get_weak_features() -> list[str]:
             'Duelist_loadout_diff']
 
 
-def __generate_role_diff(input_df: pd.DataFrame) -> None:
+def _generate_role_diff(input_df: pd.DataFrame) -> None:
     roles = ["Sentinel", "Initiator", "Controller", "Duelist"]
     for role in roles:
         input_df[f"{role}_loadout_diff"] = input_df[f"ATK_{role}"] - input_df[f"DEF_{role}"]

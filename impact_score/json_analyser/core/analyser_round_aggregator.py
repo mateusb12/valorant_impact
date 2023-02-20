@@ -32,16 +32,16 @@ class AnalyserRound:
         self.ag.set_round_locations(self.current_round_locations)
 
     def __generate_single_gamestate(self, event: dict) -> Dict[str, Union[int, str]]:
-        event_type: str = event["event"]
         timing: int = event["timing"]
         self.ag.current_event = event
+        event_type: str = event["event"]
         if event_type == "defuse":
             self.a.defuse_happened = True
         elif event_type == "kill":
-            damage_type = event["damage_type"]
             self.a.current_status[event["victim"]]["alive"] = False
-            player_side = self.sides[event["author"]]
+            damage_type = event["damage_type"]
             if damage_type != "bomb":
+                player_side = self.sides[event["author"]]
                 if player_side == "attacking":
                     self.atk_kills += 1
                 elif player_side == "defending":

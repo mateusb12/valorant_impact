@@ -6,7 +6,7 @@ from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ag():
     a = get_analyser(74033)
     ag = AnalyserGamestate(a)

@@ -26,6 +26,12 @@ def get_impact_details(match_id: int):
     return response.json()
 
 
+def __main():
+    data = request_http_match_data(77100)
+    print(data)
+    return data
+
+
 if __name__ == "__main__":
-    print(get_impact_details(77100))
+    __main()
     # print(os.environ)

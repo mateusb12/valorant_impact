@@ -1,10 +1,9 @@
-from collections import defaultdict
-from typing import Tuple, Dict, Union, List, Any
+from typing import Tuple, Dict, Union
 
 import numpy as np
 from scipy.spatial.distance import pdist
 
-from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser, analyser_pool
+from impact_score.json_analyser.pool.analyser_pool import CoreAnalyser
 from impact_score.json_analyser.core.analyser_tools import AnalyserTools
 from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 
@@ -12,7 +11,9 @@ from impact_score.json_analyser.wrap.analyser_loader import get_analyser
 class AnalyserGamestate:
     """This class creates a starter gamestate for the beginning of the round.
      Given a certain event (kill, plant, defuse or sage ult), this class can update the current gamestate accordingly.
-     The core method of this class is the generate_single_gamestate method, which returns a dictionary of the gamestate"""
+     The core method of the class is the generate_single_gamestate(), which returns a dictionary of the gamestate
+     """
+
     def __init__(self, input_core_analyser: CoreAnalyser):
         self.a = input_core_analyser
         self.tools = AnalyserTools(input_core_analyser)
@@ -23,11 +24,11 @@ class AnalyserGamestate:
         self.current_event: dict = {}
         self.round_locations: dict = {}
 
-    def __get_weapon_price(self, weapon_id: int) -> int:
+    def _get_weapon_price(self, weapon_id: int) -> int:
         new_id = str(weapon_id)
         return int(self.a.weapon_data[new_id]["price"]) if new_id != "None" else 0
 
-    def __get_agent_role(self, agent_id: int) -> str:
+    def _get_agent_role(self, agent_id: int) -> str:
         new_id = str(agent_id)
         return self.a.agent_data[new_id]["role"]
 
@@ -39,10 +40,10 @@ class AnalyserGamestate:
     def __is_alive(player_dict: dict) -> bool:
         return player_dict["alive"]
 
-    def __get_player_gamestate_dict(self, player_dict: dict) -> dict:
+    def _get_player_gamestate_dict(self, player_dict: dict) -> dict:
         weapon_id = player_dict["weaponId"]
-        weapon_price = self.__get_weapon_price(weapon_id)
-        agent_role = self.__get_agent_role(player_dict["agentId"])
+        weapon_price = self._get_weapon_price(weapon_id)
+        agent_role = self._get_agent_role(player_dict["agentId"])
         shield_value = self.__get_shield_value(player_dict["shieldId"])
         return {"loadoutValue": player_dict["loadoutValue"],
                 "weaponValue": weapon_price,
@@ -51,7 +52,7 @@ class AnalyserGamestate:
                 "shields": shield_value,
                 agent_role: player_dict["loadoutValue"]}
 
-    def __get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
+    def _get_match_state_dict(self, timestamp: int, plant: int, round_winner: int) -> dict:
         regular_time, spike_time = self.tools.generate_spike_timings(timestamp, plant)
         return {"RegularTime": regular_time, "SpikeTime": spike_time, "MapName": self.a.map_name,
                 "FinalWinner": round_winner, "RoundID": self.round_table[self.a.chosen_round],
@@ -96,7 +97,7 @@ class AnalyserGamestate:
             team_number = value["name"]["team_number"]
             team_side = "attacking" if team_number == attacking_team else "defending"
             player_id = value["playerId"]
-            player_state = self.__get_player_gamestate_dict(value)
+            player_state = self._get_player_gamestate_dict(value)
             player_locations: dict = self.__get_player_exact_location(locations, player_id)
             x, y = player_locations["locationX"], player_locations["locationY"]
             if team_side == "attacking":
@@ -111,7 +112,7 @@ class AnalyserGamestate:
         round_winner = winner
         atk_dict["compaction"] = self.evaluate_team_compaction(atk_locations)
         def_dict["compaction"] = self.evaluate_team_compaction(def_locations)
-        final_dict = self.__get_match_state_dict(timestamp, plant, round_winner)
+        final_dict = self._get_match_state_dict(timestamp, plant, round_winner)
         for key, value in atk_dict.items():
             final_dict[f"ATK_{key}"] = value
         for key, value in def_dict.items():
@@ -119,9 +120,20 @@ class AnalyserGamestate:
         return final_dict
 
 
+def get_event_example():
+    return {'round_number': 2, 'timing': 0, 'author': None, 'victim': None,
+            'event': 'start', 'damage_type': None, 'weapon_id': None, 'ability': None,
+            'probability_before': '0.12638844887808912', 'probability_after': '0.12638844887808912',
+            'impact': '0', 'kill_id': None, 'round_id': 1155527, 'bomb_id': None, 'res_id': None}
+
+
 def __main():
-    a = get_analyser(77104)
+    a = get_analyser(74033)
     ag = AnalyserGamestate(a)
+    event = get_event_example()
+    ag.current_event = event
+    ag.round_locations = [item for item in ag.a.location_data if item["roundNumber"] == 5]
+    ag.a.choose_round(1)
     aux = ag.generate_single_event_values(timestamp=0, winner=0, plant=52502)
     print(aux)
 

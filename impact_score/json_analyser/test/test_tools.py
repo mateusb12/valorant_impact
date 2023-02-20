@@ -101,7 +101,6 @@ def test_generate_round_info(analyzer_tuple: tuple):
     assert actual == expected
 
 
-
 def test_generate_side_dict(analyzer_tuple: tuple):
     a, aw = analyzer_tuple
     a.choose_round(5)

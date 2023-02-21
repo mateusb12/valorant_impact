@@ -87,29 +87,29 @@ class ModelExplainer:
         misclassified = y_pred != selected
         return y_pred, misclassified
 
-    def _get_features(self, select) -> pd.DataFrame:
+    def _get_raw_features(self, select) -> pd.DataFrame:
         """It contains the features for which we want to compute SHAP values"""
         return self.X_test.iloc[select].reset_index(drop=True)
 
-    def _get_features_display(self, features) -> pd.DataFrame:
+    def _get_verbose_features(self, features) -> pd.DataFrame:
         """It contains the features that will be highlighted in the SHAP decision plot"""
         index = features.index
         valid_indices = index[index.isin(self.X_display.index)]
         return self.X_display.loc[valid_indices]
-        # return self.X_display.loc[index]
-        # return self.X_display.loc[index].reset_index(drop=True)
 
     def explain(self):
         """Displays the SHAP decision plot with highlighted features"""
         explainer = shap.TreeExplainer(self.model)
         expected_value = self._get_expected_value(explainer)
-        select = range(20)
-        features = self._get_features(select)
-        features_display = self._get_features_display(features)
-        shap_values, shap_interaction_values = self._compute_shap_values(explainer, features)
+        select = range(13)
+        raw_features = self._get_raw_features(select)
+        verbose_features = self._get_verbose_features(raw_features)
+        shap_values, shap_interaction_values = self._compute_shap_values(explainer, raw_features)
         y_pred, misclassified = self._compute_predictions(shap_values, expected_value, select)
-        shap.decision_plot(expected_value, shap_values[misclassified], features_display[misclassified],
-                           link='logit', highlight=0)
+        misclassified_shap_values = shap_values[misclassified]
+        misclassified_verbose_features = verbose_features[misclassified]
+        shap.decision_plot(expected_value, misclassified_shap_values, misclassified_verbose_features,
+                           link='logit', highlight=0, feature_display_range=slice(None, -31, -1))
 
 
 def __get_adult_dataset() -> tuple[pd.DataFrame, pd.Series]:
@@ -119,7 +119,7 @@ def __get_adult_dataset() -> tuple[pd.DataFrame, pd.Series]:
 def __get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
     raw_csv = prepare_dataset("merged.csv")
     df_size = raw_csv.shape[0]
-    reduced_size = int(0.1 * df_size)
+    reduced_size = 32561
     reduced_df = raw_csv.head(reduced_size)
     y = reduced_df['FinalWinner'].replace({0: False, 1: True}).transpose().to_numpy()
     X = reduced_df.drop(columns=['FinalWinner'])

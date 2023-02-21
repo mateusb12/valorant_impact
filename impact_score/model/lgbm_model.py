@@ -47,6 +47,7 @@ def get_dataset_reference() -> Path:
 
 class ValorantLGBM:
     """This class is responsible for loading the LGBM model, training it and making predictions."""
+
     def __init__(self, filename: str = None):
         self.df = None
         self.old_df = None
@@ -157,6 +158,13 @@ class ValorantLGBM:
 
 def get_dataset() -> pd.DataFrame:
     return pd.read_csv(f"{get_dataset_reference()}{sl}5000.csv")
+
+
+def get_dataset_from_csv(filename: str = "merged.csv") -> ValorantLGBM:
+    model_obj = ValorantLGBM()
+    model_obj.setup_dataframe(filename)
+    model_obj.setup_features_and_target()
+    return model_obj
 
 
 def get_trained_model_from_csv(filename: str = "merged.csv") -> ValorantLGBM:

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import shap
 from numpy import ndarray
@@ -5,22 +7,33 @@ from sklearn.model_selection import train_test_split
 import lightgbm as lgb
 import warnings
 
+from impact_score.model.features.model_features import prepare_dataset
+from impact_score.model.lgbm_model import get_trained_model_from_csv
+from impact_score.path_reference.folder_ref import datasets_reference
 
-class AdultModel:
-    def __init__(self, display=False):
+
+class DatasetClass:
+    def __init__(self):
         self.model, self.X_display, self.y_display = None, None, None
         self.X_train, self.X_test, self.y_train, self.y_test = None, None, None, None
-        self.X, self.y = shap.datasets.adult(display=display)
+        self.X, self.y = None, None
         self.random_state = 7
+
+    def add_dataset(self, x_dataset, y_dataset):
+        self.X, self.y = x_dataset, y_dataset
 
     def run(self):
         self.model = self.train()
+        self.set_display()
 
     def split_train_test(self) -> tuple[lgb.basic.Dataset, lgb.basic.Dataset]:
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.2,
                                                                                 random_state=self.random_state)
-        self.X_display, self.y_display = shap.datasets.adult(display=True)
         return lgb.Dataset(self.X_train, label=self.y_train), lgb.Dataset(self.X_test, label=self.y_test)
+
+    def set_display(self):
+        # self.X_display, self.y_display = shap.datasets.adult(display=True)
+        self.X_display, self.y_display = self.X, self.y
 
     def train(self) -> lgb.basic.Booster:
         params = {
@@ -40,8 +53,8 @@ class AdultModel:
         return lgb.train(params, d_train, 10000, valid_sets=[d_test], callbacks=callbacks)
 
 
-class AdultShapValues:
-    def __init__(self, model_object: AdultModel):
+class ModelExplainer:
+    def __init__(self, model_object: DatasetClass):
         self.model: lgb.basic.Booster = model_object.model
         self.X_test = model_object.X_test
         self.y_test = model_object.y_test
@@ -66,20 +79,25 @@ class AdultShapValues:
             shap_interaction_values = shap_interaction_values[1]
         return shap_values, shap_interaction_values
 
-    def _compute_predictions(self, shap_values, expected_value, select):
+    def _compute_predictions(self, shap_values, expected_value, select) -> tuple[ndarray, ndarray]:
         """ y_pred → predicted class labels
             misclassified → array indicating whether each example is misclassified or not"""
         y_pred = (shap_values.sum(1) + expected_value) > 0
-        misclassified = y_pred != self.y_test[select]
+        selected = self.y_test[select]
+        misclassified = y_pred != selected
         return y_pred, misclassified
 
     def _get_features(self, select) -> pd.DataFrame:
         """It contains the features for which we want to compute SHAP values"""
-        return self.X_test.iloc[select]
+        return self.X_test.iloc[select].reset_index(drop=True)
 
     def _get_features_display(self, features) -> pd.DataFrame:
         """It contains the features that will be highlighted in the SHAP decision plot"""
-        return self.X_display.loc[features.index]
+        index = features.index
+        valid_indices = index[index.isin(self.X_display.index)]
+        return self.X_display.loc[valid_indices]
+        # return self.X_display.loc[index]
+        # return self.X_display.loc[index].reset_index(drop=True)
 
     def explain(self):
         """Displays the SHAP decision plot with highlighted features"""
@@ -94,11 +112,29 @@ class AdultShapValues:
                            link='logit', highlight=0)
 
 
+def __get_adult_dataset() -> tuple[pd.DataFrame, pd.Series]:
+    return shap.datasets.adult(display=False)
+
+
+def __get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
+    raw_csv = prepare_dataset("merged.csv")
+    df_size = raw_csv.shape[0]
+    reduced_size = int(0.1 * df_size)
+    reduced_df = raw_csv.head(reduced_size)
+    y = reduced_df['FinalWinner'].replace({0: False, 1: True}).transpose().to_numpy()
+    X = reduced_df.drop(columns=['FinalWinner'])
+    return X, y
+
+
 def __main():
-    am = AdultModel()
-    am.run()
-    ash = AdultShapValues(am)
-    ash.explain()
+    # X, y = __get_adult_dataset()
+    X, y = __get_valorant_dataset()
+    # X2, y2 = __get_valorant_dataset()
+    dc = DatasetClass()
+    dc.add_dataset(X, y)
+    dc.run()
+    de = ModelExplainer(dc)
+    de.explain()
     return
 
 

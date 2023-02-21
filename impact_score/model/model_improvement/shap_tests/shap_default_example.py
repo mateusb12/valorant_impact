@@ -78,7 +78,7 @@ class ModelExplainer:
         self.model: lgb.basic.Booster = model_object.model
         self.X_test = model_object.X_test
         self.y_test = model_object.y_test
-        self.X_display = model_object.X_display
+        self.verbose_dataframe = model_object.X_display
 
     @staticmethod
     def _get_expected_value(explainer: shap.explainers):
@@ -90,32 +90,32 @@ class ModelExplainer:
         return expected_value
 
     @staticmethod
-    def _compute_shap_values(explainer, features):
+    def _compute_shap_values(explainer: shap.explainers, features: pd.DataFrame):
+        """Computes the SHAP values and SHAP interaction values for the desired features using the given explainer"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             shap_values = explainer.shap_values(features)[1]
             shap_interaction_values = explainer.shap_interaction_values(features)
         if isinstance(shap_interaction_values, list):
             shap_interaction_values = shap_interaction_values[1]
-        return shap_values, shap_interaction_values
+        return shap_values
 
-    def _compute_predictions(self, shap_values, expected_value, select) -> tuple[ndarray, ndarray]:
+    def _compute_predictions(self, shap_values: ndarray, expected_value: ndarray, select) -> ndarray:
         """ y_pred → predicted class labels
             misclassified → array indicating whether each example is misclassified or not"""
         y_pred = (shap_values.sum(1) + expected_value) > 0
         selected = self.y_test[select]
-        misclassified = y_pred != selected
-        return y_pred, misclassified
+        return y_pred != selected
 
-    def _get_raw_features(self, select) -> pd.DataFrame:
-        """It contains the features for which we want to compute SHAP values"""
+    def _get_raw_features(self, select: range) -> pd.DataFrame:
+        """Returns the raw features of the examples in the dataset specified by the indices in the 'select' parameter"""
         return self.X_test.iloc[select].reset_index(drop=True)
 
-    def _get_verbose_features(self, features) -> pd.DataFrame:
-        """It contains the features that will be highlighted in the SHAP decision plot"""
+    def _get_verbose_features(self, features: pd.DataFrame) -> pd.DataFrame:
+        """Returns the verbose features of the examples in the dataset specified by the 'features' parameter"""
         index = features.index
-        valid_indices = index[index.isin(self.X_display.index)]
-        return self.X_display.loc[valid_indices]
+        valid_indices = index[index.isin(self.verbose_dataframe.index)]
+        return self.verbose_dataframe.loc[valid_indices]
 
     def explain(self):
         """Displays the SHAP decision plot with highlighted features"""
@@ -124,13 +124,23 @@ class ModelExplainer:
         select = range(13)
         raw_features = self._get_raw_features(select)
         verbose_features = self._get_verbose_features(raw_features)
-        shap_values, shap_interaction_values = self._compute_shap_values(explainer, raw_features)
-        sliced_shap_values, sliced_verbose_features = self.get_shap_samples(expected_value, select, shap_values,
-                                                                            verbose_features)
+        shap_values = self._compute_shap_values(explainer, raw_features)
+        # sliced_shap_values, sliced_verbose_features = self._get_misclassified_samples(expected_value, select,
+        #                                                                               shap_values, verbose_features)
+        sliced_shap_values, sliced_verbose_features = self.get_single_sample(shap_values, 0)
         self.plot_explanation(expected_value, sliced_shap_values, sliced_verbose_features)
 
-    def get_shap_samples(self, expected_value, select, shap_values, verbose_features):
-        y_pred, misclassified = self._compute_predictions(shap_values, expected_value, select)
+    def get_single_sample(self, shap_values: ndarray, row_index: int):
+        """Returns a single example from the dataset, along with its SHAP values and verbose features"""
+        sample_shap_values = shap_values[row_index]
+        sample_verbose_features = self.verbose_dataframe.loc[row_index]
+        return sample_shap_values, sample_verbose_features
+
+    def _get_misclassified_samples(self, expected_value: ndarray, select: range, shap_values: ndarray,
+                                   verbose_features: pd.DataFrame):
+        """Returns a sample of misclassified examples from the dataset, along with their
+        SHAP values and verbose features"""
+        misclassified = self._compute_predictions(shap_values, expected_value, select)
         misclassified_shap_values = shap_values[misclassified]
         misclassified_verbose_features = verbose_features[misclassified]
         sample_amount = 1

@@ -2,10 +2,12 @@ from pathlib import Path
 
 import pandas as pd
 import shap
+from matplotlib import pyplot as plt
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 import lightgbm as lgb
 import warnings
+import textwrap
 
 from impact_score.model.features.model_features import prepare_dataset
 from impact_score.model.lgbm_model import get_trained_model_from_csv
@@ -51,6 +53,24 @@ class DatasetClass:
         callbacks = [lgb.early_stopping(50, verbose=False)]
         d_train, d_test = self.split_train_test()
         return lgb.train(params, d_train, 10000, valid_sets=[d_test], callbacks=callbacks)
+
+
+def y_axis_break_long_labels(fig: plt.Figure):
+    ax = fig.get_axes()[0]
+    y_tick_labels = [label.get_text() for label in ax.get_yticklabels()]
+    replace_dict = {"RegularTime": "Regular_Time", "Loadout_diff": "Loadout_Diff", "ATK_kills": "ATK_Kills",
+                    "DEF_kills": "DEF_Kills", "ATK_compaction": "ATK_Compaction", "DEF_compaction": "DEF_Compaction"
+        , "ATK_operators": "ATK_Operators", "DEF_operators": "DEF_Operators"}
+    y_tick_labels = [replace_dict.get(label, label) for label in y_tick_labels]
+    wrapped_y_tick_labels = []
+    for label in y_tick_labels:
+        if '_' in label:
+            wrapped_lines = label.split('_')
+            wrapped_label = '\n'.join(wrapped_lines)
+            wrapped_y_tick_labels.append(wrapped_label)
+        else:
+            wrapped_y_tick_labels.append(label)
+    ax.set_yticklabels(wrapped_y_tick_labels)
 
 
 class ModelExplainer:
@@ -105,11 +125,29 @@ class ModelExplainer:
         raw_features = self._get_raw_features(select)
         verbose_features = self._get_verbose_features(raw_features)
         shap_values, shap_interaction_values = self._compute_shap_values(explainer, raw_features)
+        sliced_shap_values, sliced_verbose_features = self.get_shap_samples(expected_value, select, shap_values,
+                                                                            verbose_features)
+        self.plot_explanation(expected_value, sliced_shap_values, sliced_verbose_features)
+
+    def get_shap_samples(self, expected_value, select, shap_values, verbose_features):
         y_pred, misclassified = self._compute_predictions(shap_values, expected_value, select)
         misclassified_shap_values = shap_values[misclassified]
         misclassified_verbose_features = verbose_features[misclassified]
-        shap.decision_plot(expected_value, misclassified_shap_values, misclassified_verbose_features,
-                           link='logit', highlight=0, feature_display_range=slice(None, -31, -1))
+        sample_amount = 1
+        sliced_shap_values = misclassified_shap_values[:sample_amount]
+        sliced_verbose_features = misclassified_verbose_features[:sample_amount]
+        return sliced_shap_values, sliced_verbose_features
+
+    @staticmethod
+    def plot_explanation(expected_value: ndarray, sliced_shap_values, sliced_verbose_features):
+        fig = plt.figure()
+        shap.decision_plot(expected_value, sliced_shap_values, sliced_verbose_features,
+                           link='logit', highlight=0, feature_display_range=slice(None, -31, -1), show=False)
+        y_axis_break_long_labels(fig)
+        plt.xlabel("Attackers winning probability")
+        plt.gcf().set_size_inches(9, 6)
+        plt.tick_params(axis='y', labelsize=12)
+        plt.show()
 
 
 def __get_adult_dataset() -> tuple[pd.DataFrame, pd.Series]:

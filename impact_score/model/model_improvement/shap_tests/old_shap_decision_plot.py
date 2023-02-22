@@ -56,22 +56,7 @@ class DatasetClass:
         return lgb.train(params, d_train, 10000, valid_sets=[d_test], callbacks=callbacks)
 
 
-def y_axis_break_long_labels(fig: plt.Figure):
-    ax = fig.get_axes()[0]
-    y_tick_labels = [label.get_text() for label in ax.get_yticklabels()]
-    replace_dict = {"RegularTime": "Regular_Time", "Loadout_diff": "Loadout_Diff", "ATK_kills": "ATK_Kills",
-                    "DEF_kills": "DEF_Kills", "ATK_compaction": "ATK_Compaction", "DEF_compaction": "DEF_Compaction"
-        , "ATK_operators": "ATK_Operators", "DEF_operators": "DEF_Operators"}
-    y_tick_labels = [replace_dict.get(label, label) for label in y_tick_labels]
-    wrapped_y_tick_labels = []
-    for label in y_tick_labels:
-        if '_' in label:
-            wrapped_lines = label.split('_')
-            wrapped_label = '\n'.join(wrapped_lines)
-            wrapped_y_tick_labels.append(wrapped_label)
-        else:
-            wrapped_y_tick_labels.append(label)
-    ax.set_yticklabels(wrapped_y_tick_labels)
+
 
 
 class ModelExplainer:

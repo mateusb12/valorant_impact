@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import shap
 from matplotlib import pyplot as plt
@@ -117,6 +118,14 @@ class ModelExplainer:
         valid_indices = index[index.isin(self.verbose_dataframe.index)]
         return self.verbose_dataframe.loc[valid_indices]
 
+    def shap_force_plot(self):
+        explainer = shap.TreeExplainer(self.model)
+        expected_value = self._get_expected_value(explainer)
+        sample = np.expand_dims(self.X_test.iloc[0], axis=0)
+        shap_values = explainer.shap_values(sample)
+        shap.force_plot(expected_value, shap_values[0], sample[0], matplotlib=True)
+        plt.show()
+
     def explain(self):
         """Displays the SHAP decision plot with highlighted features"""
         explainer = shap.TreeExplainer(self.model)
@@ -132,8 +141,9 @@ class ModelExplainer:
 
     def get_single_sample(self, shap_values: ndarray, row_index: int):
         """Returns a single example from the dataset, along with its SHAP values and verbose features"""
-        sample_shap_values = shap_values[row_index]
         sample_verbose_features = self.verbose_dataframe.loc[row_index]
+        predicted_probability = self.model.predict(sample_verbose_features)[0]
+        sample_shap_values = shap_values[row_index, :]
         return sample_shap_values, sample_verbose_features
 
     def _get_misclassified_samples(self, expected_value: ndarray, select: range, shap_values: ndarray,
@@ -175,8 +185,8 @@ def __get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
 
 
 def __main():
-    # X, y = __get_adult_dataset()
-    X, y = __get_valorant_dataset()
+    X, y = __get_adult_dataset()
+    # X, y = __get_valorant_dataset()
     # X2, y2 = __get_valorant_dataset()
     dc = DatasetClass()
     dc.add_dataset(X, y)

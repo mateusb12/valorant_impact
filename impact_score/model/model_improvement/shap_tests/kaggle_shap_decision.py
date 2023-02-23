@@ -26,8 +26,8 @@ def split_training_data(x: pd.DataFrame, y: pd.Series, random_state=0):
 
 def train_model(train_x, train_y, random_state=0) -> LGBMClassifier:
     # return RandomForestClassifier(random_state=random_state).fit(train_x, train_y)
-    # return XGBClassifier(random_state=random_state).fit(train_x, train_y)
     return LGBMClassifier(random_state=random_state).fit(train_x, train_y)
+    # return XGBClassifier(random_state=random_state).fit(train_x, train_y)
 
 
 def predict(model: RandomForestClassifier, data_for_prediction: pd.Series):
@@ -39,23 +39,6 @@ def get_explainer(model, sample):
     sample_df = sample.to_frame().T
     return shap.TreeExplainer(model)
     # return shap.Explainer(model.predict_proba, sample_df)
-
-
-def decision_plot_visualization(model, sample: pd.Series):
-    # shap.initjs()
-    prediction = predict(model, sample)
-    explainer = get_explainer(model, sample)
-    sample_df = sample.to_frame().T
-    shap_values = explainer.shap_values(sample_df)
-    feature_names = list(sample.index.values)
-    fig = plt.figure()
-    shap.decision_plot(explainer.expected_value[1], shap_values[1], sample, feature_names=feature_names, highlight=0,
-                       show=False)
-    y_axis_break_long_labels(fig)
-    plt.xlabel("Attackers winning probability")
-    plt.gcf().set_size_inches(14, 8)
-    # plt.tick_params(axis='y', labelsize=12)
-    plt.show()
 
 
 def y_axis_break_long_labels(fig: plt.Figure):
@@ -91,13 +74,33 @@ def force_plot_visualization(model, sample: pd.Series):
     sample_df = sample.to_frame().T
     shap_values_array = explainer.shap_values(sample_df)
     expected_values_array = explainer.expected_value
-    if isinstance(model, XGBClassifier):
-        shap_value = shap_values_array
-        expected_value = expected_values_array
-    else:
-        shap_value = shap_values_array[1]
-        expected_value = expected_values_array[1]
+    shap_value = shap_values_array[1]
+    expected_value = expected_values_array[1]
     shap.force_plot(expected_value, shap_value, sample, matplotlib=True)
+    plt.show()
+
+
+def decision_plot_visualization(model, sample: pd.Series):
+    # shap.initjs()
+    explainer = get_explainer(model, sample)
+    sample_df = sample.to_frame().T
+    all_shap_values = explainer.shap_values(sample_df)
+    all_expected_values = explainer.expected_value
+    shap_value = all_shap_values[1]
+    expected_value = all_expected_values[1]
+    prediction = predict(model, sample)
+    prediction_diff = prediction[0][1] - expected_value
+    shap_sum = np.sum(shap_value)
+    normalized_shap_values = [prediction_diff*item/shap_sum for item in shap_value][0]
+    final_probability = np.sum(normalized_shap_values) + expected_value
+    feature_names = list(sample.index.values)
+    fig = plt.figure()
+    shap.decision_plot(expected_value, normalized_shap_values, sample, feature_names=feature_names, highlight=0,
+                       show=False)
+    y_axis_break_long_labels(fig)
+    plt.xlabel("Attackers winning probability")
+    plt.gcf().set_size_inches(14, 8)
+    # plt.tick_params(axis='y', labelsize=12)
     plt.show()
 
 
@@ -108,8 +111,8 @@ def __main():
     sample = val_x.iloc[5]
     # pred = predict(model, sample)
     # force_plot_visualization(model, sample)
-    # decision_plot_visualization(model, sample)
-    model_summary_plot(model, sample)
+    decision_plot_visualization(model, sample)
+    # model_summary_plot(model, sample)
 
 
 if __name__ == "__main__":

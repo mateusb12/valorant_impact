@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import shap
+from lightgbm import LGBMClassifier
 from matplotlib import pyplot as plt
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
@@ -22,7 +23,7 @@ class DatasetClass:
         self.X, self.y = None, None
         self.random_state = 7
 
-    def add_dataset(self, x_dataset, y_dataset):
+    def add_dataset_from_x_y(self, x_dataset, y_dataset):
         self.X, self.y = x_dataset, y_dataset
 
     def run(self):
@@ -53,10 +54,7 @@ class DatasetClass:
         }
         callbacks = [lgb.early_stopping(50, verbose=False)]
         d_train, d_test = self.split_train_test()
-        return lgb.train(params, d_train, 10000, valid_sets=[d_test], callbacks=callbacks)
-
-
-
+        return LGBMClassifier(**params).fit(d_train, d_test, callbacks=callbacks)
 
 
 class ModelExplainer:
@@ -159,7 +157,7 @@ def __get_adult_dataset() -> tuple[pd.DataFrame, pd.Series]:
     return shap.datasets.adult(display=False)
 
 
-def __get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
+def get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
     raw_csv = prepare_dataset("merged.csv")
     df_size = raw_csv.shape[0]
     reduced_size = 32561
@@ -170,11 +168,11 @@ def __get_valorant_dataset() -> tuple[pd.DataFrame, pd.Series]:
 
 
 def __main():
-    X, y = __get_adult_dataset()
-    # X, y = __get_valorant_dataset()
+    # X, y = __get_adult_dataset()
+    X, y = get_valorant_dataset()
     # X2, y2 = __get_valorant_dataset()
     dc = DatasetClass()
-    dc.add_dataset(X, y)
+    dc.add_dataset_from_x_y(X, y)
     dc.run()
     de = ModelExplainer(dc)
     de.explain()

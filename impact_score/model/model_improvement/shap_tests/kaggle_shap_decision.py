@@ -1,3 +1,4 @@
+import random
 import warnings
 from functools import reduce
 from typing import Tuple, Any, List
@@ -31,14 +32,15 @@ def split_training_data(x: pd.DataFrame, y: pd.Series, random_state=0):
 
 
 def train_model(train_x, train_y, random_state=0) -> LGBMClassifier:
-    # return RandomForestClassifier(random_state=random_state).fit(train_x, train_y)
-    return LGBMClassifier(random_state=random_state).fit(train_x, train_y)
+    return RandomForestClassifier(random_state=random_state).fit(train_x, train_y)
+    # return LGBMClassifier(random_state=random_state).fit(train_x, train_y)
     # return XGBClassifier(random_state=random_state).fit(train_x, train_y)
 
 
 def predict(model: RandomForestClassifier, data_for_prediction: pd.Series):
-    data_for_prediction_array = data_for_prediction.values.reshape(1, -1)
-    return model.predict_proba(data_for_prediction_array)
+    feature_names = model.feature_names_in_
+    data_for_prediction_with_names = pd.DataFrame([data_for_prediction.values], columns=feature_names)
+    return model.predict_proba(data_for_prediction_with_names)
 
 
 def get_explainer(model, sample):
@@ -87,8 +89,10 @@ def force_plot_visualization(model, sample: pd.Series):
 
 
 def _get_normalized_shap_values(baseline_probability: float, model, sample: pd.Series, shap_value: ndarray):
-    prediction = predict(model, sample)
-    prediction_diff = prediction[0][1] - baseline_probability
+    sample_features = list(sample.index)
+    prediction_pair = predict(model, sample)
+    prediction = prediction_pair[0][1]
+    prediction_diff = prediction - baseline_probability
     shap_sum = np.sum(shap_value)
     return [prediction_diff * item / shap_sum for item in shap_value][0]
 
@@ -101,8 +105,14 @@ def _get_probability_ticks(normalized_shap_values) -> np.ndarray:
     return np.arange(min_tick, max_tick + step, step)
 
 
-def decision_plot_visualization(model, sample: pd.Series):
-    # shap.initjs()
+def _get_aggregated_probabilities(normalized_shap_values: ndarray, baseline_probability: float):
+    shap_list = list(normalized_shap_values)
+    proba_list = [baseline_probability]
+    proba_list.extend(proba_list[-1] + shap_value for shap_value in shap_list)
+    return proba_list
+
+
+def get_probability_progression(model, sample: pd.Series):
     explainer = get_explainer(model, sample)
     sample_df = sample.to_frame().T
     all_shap_values = explainer.shap_values(sample_df)
@@ -110,77 +120,58 @@ def decision_plot_visualization(model, sample: pd.Series):
     shap_value = all_shap_values[1]
     baseline_probability = all_expected_values[1]
     normalized_shap_values = _get_normalized_shap_values(baseline_probability, model, sample, shap_value)
-    final_probability = np.sum(normalized_shap_values) + baseline_probability
-    true_prediction = predict(model, sample)[0][1]
-    feature_names = list(sample.index.values)
-    feature_values = list(sample.values)
-    probability_ticks = _get_probability_ticks(normalized_shap_values)
-    fig, ax = plt.subplots()
-    shap.decision_plot(baseline_probability, normalized_shap_values, sample, feature_names=feature_names, highlight=0,
-                       show=False)
-    # ax.set_xticklabels(probability_ticks)
-    y_axis_break_long_labels(fig)
-    plt.xlabel("Attackers winning probability")
-    plt.gcf().set_size_inches(14, 8)
-    # plt.tick_params(axis='y', labelsize=12)
-    plt.show()
+    return _get_aggregated_probabilities(normalized_shap_values, baseline_probability)
 
 
-# def custom_decision_plot():
-#     probabilities = [0.5, 0.1, 0.67, 0.88, 0.35, 0.12]
-#     feature_values = [70, 100, 120, 150, 170, 200]
-#     feature_names = [" ", "feature1", "feature2", "feature3", "feature4", "feature5"]
-#     fig, ax = plt.subplots(figsize=(10, 6))
+# def decision_plot_visualization(model, sample: pd.Series):
+#     # shap.initjs()
+#     explainer = get_explainer(model, sample)
+#     sample_df = sample.to_frame().T
+#     all_shap_values = explainer.shap_values(sample_df)
+#     all_expected_values = explainer.expected_value
+#     shap_value = all_shap_values[1]
+#     baseline_probability = all_expected_values[1]
+#     normalized_shap_values = _get_normalized_shap_values(baseline_probability, model, sample, shap_value)
+#     probability_progression = _get_aggregated_probabilities(normalized_shap_values, baseline_probability)
+
+#     shap_sum = sum(list(shap_value[0]))
+#     normalized_sum = sum(list(normalized_shap_values))
 #
-#     previous_x, previous_y, previous_probability = None, None, None
-#     for i, (feature_name, probability) in enumerate(zip(feature_names, probabilities)):
-#         new_x = probability - 0.5
-#         if i == 0:
-#             new_y = i + 0.03
-#         elif i == len(feature_names) - 1:
-#             new_y = i - 0.04
-#         else:
-#             new_y = i + 0.05
-#
-#         # Plot the point
-#         ax.scatter(new_x, new_y, color='blue')
-#
-#         if previous_x is not None and previous_y is not None:
-#             ax.plot([previous_x, new_x], [previous_y, new_y], color='gray', linestyle='--', linewidth=1)
-#
-#         if i != 0:
-#             probability_shift = (probability - previous_probability)
-#             ax.annotate(f"{feature_values[i]} ({probability_shift:.2%})", (new_x, new_y), xytext=(10, -2),
-#                         textcoords='offset pixels', ha='left', va='top', fontsize=12, color='black')
-#
-#         previous_x, previous_y = new_x, new_y
-#         previous_probability = probability
-#
-#     x = probabilities
-#     y = feature_values
-#     for i in range(len(x) - 1):
-#         ax.plot([x[i], x[i + 1]], [y[i], y[i + 1]], color='blue', linewidth=2)
-#
-#     ax.set_yticks(range(len(feature_names)))
-#     ax.set_yticklabels(feature_names)
-#     ax.set_xlabel('Impact on Probability', fontsize=14)
-#     ticks = np.arange(-.5, .75, 0.25)
-#     ax.set_xticks(ticks)
-#     ax.set_xlim([-0.5, max(probabilities) - 0.3])  # Set x-limits
-#     ax.set_ylim([0, len(feature_names) - 1])
-#
-#     ax2 = ax.twiny()
-#     x_ticks = ax.get_xticks()
-#     new_labels = [100*(x + 0.5) for x in x_ticks]
-#     new_labels = [f"{w}%" for w in new_labels]
-#     ax2.set_xticklabels(new_labels)
-#     ax2.set_xticks(ax.get_xticks())
-#     ax2.set_xlim(ax.get_xlim())
-#     ax2.set_ylim(ax.get_ylim())
-#     ax2.set_xlabel('Probability', fontsize=14)
-#     ax.axvline(x=0, color='black')
-#
+#     final_probability = np.sum(normalized_shap_values) + baseline_probability
+#     true_prediction = predict(model, sample)[0][1]
+#     feature_names = list(sample.index.values)
+#     feature_values = list(sample.values)
+#     probability_ticks = _get_probability_ticks(normalized_shap_values)
+#     fig, ax = plt.subplots()
+#     shap.decision_plot(baseline_probability, normalized_shap_values, sample, feature_names=feature_names, highlight=0,
+#                    show=False)
+#     y_axis_break_long_labels(fig)
+#     plt.xlabel("Attackers winning probability")
+#     plt.gcf().set_size_inches(14, 8)
 #     plt.show()
+
+def get_fifa_example(sample_index: int = -1):
+    x, y = load_data('FIFA 2018 Statistics.csv')
+    train_x, val_x, train_y, val_y = split_training_data(x, y, random_state=1)
+    model = train_model(train_x, train_y, random_state=0)
+    if sample_index == -1:
+        size = len(val_x)
+        sample_index = random.randint(0, size - 1)
+        print(f"Index: {sample_index}")
+    sample = val_x.iloc[sample_index]
+    probabilities = get_probability_progression(model, sample)
+    return sample, probabilities
+
+
+def get_valorant_example():
+    valorant_model = get_trained_model_from_csv()
+    x, y = valorant_model.X, valorant_model.Y
+    train_x, val_x, train_y, val_y = valorant_model.X_train, valorant_model.X_test, valorant_model.Y_train, \
+        valorant_model.Y_test
+    model = valorant_model.model
+    sample = val_x.iloc[572]
+    probabilities = get_probability_progression(model, sample)
+    return sample, probabilities
 
 
 def __main():
@@ -195,16 +186,12 @@ def __main():
     # # model_summary_plot(model, sample)
     # return
 
-    custom_decision_plot()
+    # custom_decision_plot()
 
-    x, y = load_data('FIFA 2018 Statistics.csv')
-    train_x, val_x, train_y, val_y = split_training_data(x, y, random_state=1)
-    model = train_model(train_x, train_y, random_state=0)
-    sample = val_x.iloc[7]
     # pred = predict(model, sample)
     # force_plot_visualization(model, sample)
 
-    # decision_plot_visualization(model, sample)
+    decision_plot_visualization(model, sample)
 
     # model_summary_plot(model, sample)
 
